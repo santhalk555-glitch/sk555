@@ -4,16 +4,22 @@ import { Users, Gamepad2, UserPlus, Crown, Zap, Heart } from "lucide-react";
 import { useState } from "react";
 import StudentMatching from "./StudentMatching";
 import QuizLobby from "./QuizLobby";
+import MatchedFriends from "./MatchedFriends";
 
 const Dashboard = () => {
-  const [activeSection, setActiveSection] = useState<"dashboard" | "matching" | "lobby">("dashboard");
+  const [activeSection, setActiveSection] = useState<"dashboard" | "matching" | "lobby" | "matches">("dashboard");
+  const [matchedStudents, setMatchedStudents] = useState<any[]>([]);
 
   if (activeSection === "matching") {
-    return <StudentMatching onBack={() => setActiveSection("dashboard")} />;
+    return <StudentMatching onBack={() => setActiveSection("dashboard")} onMatchesUpdate={setMatchedStudents} />;
   }
 
   if (activeSection === "lobby") {
     return <QuizLobby onBack={() => setActiveSection("dashboard")} />;
+  }
+
+  if (activeSection === "matches") {
+    return <MatchedFriends onBack={() => setActiveSection("dashboard")} matches={matchedStudents} />;
   }
 
   return (
@@ -34,10 +40,10 @@ const Dashboard = () => {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <Card className="bg-gradient-card border-border hover:shadow-gaming transition-all duration-300">
+           <Card className="bg-gradient-card border-border hover:shadow-gaming transition-all duration-300">
             <CardContent className="p-6 text-center">
               <Heart className="w-8 h-8 text-gaming-accent mx-auto mb-3" />
-              <div className="text-2xl font-bold text-gaming-accent">12</div>
+              <div className="text-2xl font-bold text-gaming-accent">{matchedStudents.length}</div>
               <div className="text-sm text-muted-foreground">Study Matches</div>
             </CardContent>
           </Card>
@@ -60,51 +66,58 @@ const Dashboard = () => {
         </div>
 
         {/* Main Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          <Card className="bg-gradient-card border-gaming-primary/20 hover:border-gaming-primary/40 transition-all duration-300 hover:shadow-gaming group cursor-pointer"
-                onClick={() => setActiveSection("matching")}>
-            <CardHeader className="text-center pb-4">
-              <div className="w-12 h-12 rounded-full bg-gaming-primary/20 flex items-center justify-center mx-auto mb-4 group-hover:bg-gaming-primary/30 transition-colors">
-                <Users className="w-6 h-6 text-gaming-primary" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          {/* Find Study Partners Card */}
+          <Card 
+            className="bg-gradient-card border-gaming-primary/20 hover:border-gaming-primary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-gaming hover:shadow-glow"
+            onClick={() => setActiveSection("matching")}
+          >
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
+                <Heart className="w-8 h-8 text-white" />
               </div>
-              <CardTitle className="text-xl mb-2">Find Study Partners</CardTitle>
-              <CardDescription>
-                Connect with students who share your interests and study goals
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <Button 
-                variant="gaming" 
-                size="lg" 
-                className="w-full"
-                onClick={() => setActiveSection("matching")}
-              >
+              <h3 className="text-xl font-bold mb-2 group-hover:text-gaming-primary transition-colors duration-300">Find Study Partners</h3>
+              <p className="text-muted-foreground mb-4">Connect with students who share your academic interests</p>
+              <Button variant="gaming" className="w-full group-hover:shadow-glow transition-all duration-300">
                 Start Matching
-                <Heart className="w-4 h-4 ml-2" />
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-card border-gaming-accent/20 hover:border-gaming-accent/40 transition-all duration-300 hover:shadow-gaming group cursor-pointer"
-                onClick={() => setActiveSection("lobby")}>
-            <CardHeader className="text-center pb-4">
-              <div className="w-12 h-12 rounded-full bg-gaming-accent/20 flex items-center justify-center mx-auto mb-4 group-hover:bg-gaming-accent/30 transition-colors">
-                <Gamepad2 className="w-6 h-6 text-gaming-accent" />
+          {/* My Matches Card */}
+          <Card 
+            className="bg-gradient-card border-gaming-accent/20 hover:border-gaming-accent/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-gaming hover:shadow-glow"
+            onClick={() => setActiveSection("matches")}
+          >
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gaming-accent to-gaming-primary flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
+                <Users className="w-8 h-8 text-white" />
               </div>
-              <CardTitle className="text-xl mb-2">Quiz Battles</CardTitle>
-              <CardDescription>
-                Create or join quiz lobbies for 2v2 or 4-player competitions
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <Button 
-                variant="accent" 
-                size="lg" 
-                className="w-full"
-                onClick={() => setActiveSection("lobby")}
-              >
-                Enter Arena
-                <Gamepad2 className="w-4 h-4 ml-2" />
+              <h3 className="text-xl font-bold mb-2 group-hover:text-gaming-accent transition-colors duration-300">My Study Squad</h3>
+              <p className="text-muted-foreground mb-4">View and chat with your matched study partners</p>
+              <div className="flex items-center justify-center space-x-2 mb-4">
+                <span className="text-2xl font-bold text-gaming-accent">{matchedStudents.length}</span>
+                <span className="text-sm text-muted-foreground">matches</span>
+              </div>
+              <Button variant="outline" className="w-full bg-gaming-accent/10 border-gaming-accent/30 hover:bg-gaming-accent/20 group-hover:shadow-glow transition-all duration-300">
+                View Matches
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Quiz Battles Card */}
+          <Card 
+            className="bg-gradient-card border-gaming-secondary/20 hover:border-gaming-secondary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-gaming hover:shadow-glow"
+            onClick={() => setActiveSection("lobby")}
+          >
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gaming-secondary to-gaming-accent flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
+                <Gamepad2 className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-2 group-hover:text-gaming-secondary transition-colors duration-300">Quiz Battles</h3>
+              <p className="text-muted-foreground mb-4">Challenge friends in competitive quiz matches</p>
+              <Button variant="outline" className="w-full bg-gaming-secondary/10 border-gaming-secondary/30 hover:bg-gaming-secondary/20 group-hover:shadow-glow transition-all duration-300">
+                Enter Lobby
               </Button>
             </CardContent>
           </Card>

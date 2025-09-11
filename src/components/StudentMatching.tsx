@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Heart, X, MapPin, BookOpen, Star, Users } from "lucide-react";
+import { ArrowLeft, Heart, X, MapPin, BookOpen, Star, Users, Sparkles } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 interface Student {
   id: string;
@@ -62,9 +63,10 @@ const mockStudents: Student[] = [
 
 interface StudentMatchingProps {
   onBack: () => void;
+  onMatchesUpdate?: (matches: Student[]) => void;
 }
 
-const StudentMatching = ({ onBack }: StudentMatchingProps) => {
+const StudentMatching = ({ onBack, onMatchesUpdate }: StudentMatchingProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matches, setMatches] = useState<Student[]>([]);
   
@@ -72,7 +74,15 @@ const StudentMatching = ({ onBack }: StudentMatchingProps) => {
 
   const handleLike = () => {
     if (currentStudent) {
-      setMatches([...matches, currentStudent]);
+      const updatedMatches = [...matches, currentStudent];
+      setMatches(updatedMatches);
+      onMatchesUpdate?.(updatedMatches);
+      
+      // Show success toast
+      toast.success(`✨ It's a match with ${currentStudent.name}!`, {
+        description: "You can now connect and start studying together",
+        duration: 3000,
+      });
     }
     nextStudent();
   };
@@ -119,10 +129,11 @@ const StudentMatching = ({ onBack }: StudentMatchingProps) => {
         <div className="max-w-md mx-auto">
           {currentStudent ? (
             <div className="relative">
-              <Card className="bg-gradient-card border-border shadow-gaming overflow-hidden transform transition-all duration-300 hover:scale-105">
+              <Card className="bg-gradient-card border-gaming-primary/20 shadow-gaming overflow-hidden transform transition-all duration-500 hover:scale-105 hover:shadow-glow animate-fade-in">
                 <CardHeader className="text-center pb-4">
-                  <div className="w-24 h-24 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-4 text-4xl">
+                  <div className="relative w-24 h-24 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-4 text-4xl hover:scale-110 transition-transform duration-300 shadow-glow">
                     {currentStudent.avatar}
+                    <div className="absolute inset-0 rounded-full bg-gradient-primary opacity-0 hover:opacity-20 transition-opacity duration-300"></div>
                   </div>
                   
                   <CardTitle className="text-xl mb-1">
@@ -177,18 +188,18 @@ const StudentMatching = ({ onBack }: StudentMatchingProps) => {
                   variant="outline"
                   size="lg"
                   onClick={handlePass}
-                  className="w-16 h-16 rounded-full border-destructive/20 hover:border-destructive hover:bg-destructive/10 hover:text-destructive transition-all duration-300"
+                  className="w-18 h-18 rounded-full border-destructive/20 hover:border-destructive hover:bg-destructive/10 hover:text-destructive transition-all duration-300 hover:scale-110 shadow-card"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-7 h-7" />
                 </Button>
                 
                 <Button
                   variant="gaming"
                   size="lg"
                   onClick={handleLike}
-                  className="w-16 h-16 rounded-full shadow-glow hover:shadow-gaming transition-all duration-300"
+                  className="w-20 h-20 rounded-full shadow-glow hover:shadow-gaming transition-all duration-300 hover:scale-110 animate-pulse"
                 >
-                  <Heart className="w-6 h-6" />
+                  <Heart className="w-8 h-8" />
                 </Button>
               </div>
             </div>
@@ -208,21 +219,91 @@ const StudentMatching = ({ onBack }: StudentMatchingProps) => {
           )}
         </div>
 
-        {/* Matches Preview */}
+        {/* Enhanced Matches Display */}
         {matches.length > 0 && (
           <div className="mt-16">
-            <h2 className="text-xl font-bold text-center mb-6">Your Matches</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
+            <div className="text-center mb-8">
+              <div className="flex items-center justify-center space-x-2 mb-4">
+                <Sparkles className="w-6 h-6 text-gaming-primary animate-pulse" />
+                <h2 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                  Your Study Matches ✨
+                </h2>
+                <Sparkles className="w-6 h-6 text-gaming-accent animate-pulse" />
+              </div>
+              <p className="text-muted-foreground">
+                {matches.length} amazing study partner{matches.length !== 1 ? 's' : ''} waiting to connect!
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
               {matches.map((match, index) => (
-                <Card key={match.id} className="bg-gradient-card border-gaming-primary/20 animate-slide-in" style={{animationDelay: `${index * 100}ms`}}>
-                  <CardContent className="p-4 text-center">
-                    <div className="text-2xl mb-2">{match.avatar}</div>
-                    <div className="text-sm font-medium">{match.name}</div>
-                    <div className="text-xs text-muted-foreground">{match.major}</div>
+                <Card 
+                  key={match.id} 
+                  className="bg-gradient-card border-gaming-primary/30 hover:border-gaming-primary/60 transform hover:scale-105 transition-all duration-500 cursor-pointer group animate-fade-in shadow-gaming hover:shadow-glow"
+                  style={{animationDelay: `${index * 150}ms`}}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-4">
+                      <div className="relative">
+                        <div className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300">
+                          {match.avatar}
+                        </div>
+                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-gaming-success rounded-full flex items-center justify-center">
+                          <Heart className="w-3 h-3 text-white fill-current" />
+                        </div>
+                      </div>
+                      
+                      <div className="flex-1">
+                        <h3 className="font-bold text-lg group-hover:text-gaming-primary transition-colors duration-300">
+                          {match.name}
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-1">{match.major}</p>
+                        <div className="flex items-center space-x-1">
+                          <Star className="w-3 h-3 text-gaming-warning fill-current" />
+                          <span className="text-xs font-medium">{match.rating}</span>
+                          <span className="text-xs text-muted-foreground">• {match.university}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4">
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {match.interests.slice(0, 2).map((interest, idx) => (
+                          <Badge 
+                            key={idx} 
+                            variant="secondary"
+                            className="text-xs bg-gaming-primary/10 text-gaming-primary border-gaming-primary/20"
+                          >
+                            {interest}
+                          </Badge>
+                        ))}
+                        {match.interests.length > 2 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{match.interests.length - 2} more
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <Button 
+                        variant="gaming" 
+                        size="sm" 
+                        className="w-full group-hover:shadow-glow transition-all duration-300"
+                      >
+                        Connect & Study Together
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
+            
+            {matches.length >= 3 && (
+              <div className="text-center mt-8">
+                <Button variant="outline" className="bg-gaming-primary/10 border-gaming-primary/30 hover:bg-gaming-primary/20">
+                  View All Matches ({matches.length})
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
