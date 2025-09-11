@@ -47,6 +47,13 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        gaming: {
+          primary: "hsl(var(--gaming-primary))",
+          secondary: "hsl(var(--gaming-secondary))",
+          accent: "hsl(var(--gaming-accent))",
+          warning: "hsl(var(--gaming-warning))",
+          success: "hsl(var(--gaming-success))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -57,6 +64,20 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+      },
+      backgroundImage: {
+        "gradient-primary": "var(--gradient-primary)",
+        "gradient-card": "var(--gradient-card)",
+        "gradient-hero": "var(--gradient-hero)",
+      },
+      boxShadow: {
+        gaming: "var(--shadow-gaming)",
+        "card-gaming": "var(--shadow-card)",
+        glow: "var(--shadow-glow)",
+      },
+      transitionTimingFunction: {
+        gaming: "var(--transition-gaming)",
+        "bounce-in": "var(--bounce-in)",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -80,10 +101,50 @@ export default {
             height: "0",
           },
         },
+        "pulse-gaming": {
+          "0%, 100%": {
+            opacity: "1",
+            transform: "scale(1)",
+          },
+          "50%": {
+            opacity: "0.8",
+            transform: "scale(1.05)",
+          },
+        },
+        "glow-pulse": {
+          "0%, 100%": {
+            boxShadow: "0 0 20px hsl(var(--gaming-primary) / 0.3)",
+          },
+          "50%": {
+            boxShadow: "0 0 40px hsl(var(--gaming-primary) / 0.6)",
+          },
+        },
+        "card-hover": {
+          "0%": {
+            transform: "translateY(0) scale(1)",
+          },
+          "100%": {
+            transform: "translateY(-4px) scale(1.02)",
+          },
+        },
+        "slide-in": {
+          "0%": {
+            opacity: "0",
+            transform: "translateX(-20px)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "translateX(0)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "pulse-gaming": "pulse-gaming 2s ease-in-out infinite",
+        "glow-pulse": "glow-pulse 2s ease-in-out infinite",
+        "card-hover": "card-hover 0.3s ease-out forwards",
+        "slide-in": "slide-in 0.5s ease-out",
       },
     },
   },
