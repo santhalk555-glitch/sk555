@@ -14,7 +14,152 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      quiz_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          subject: Database["public"]["Enums"]["quiz_subject"]
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          subject: Database["public"]["Enums"]["quiz_subject"]
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          subject?: Database["public"]["Enums"]["quiz_subject"]
+        }
+        Relationships: []
+      }
+      quiz_lobbies: {
+        Row: {
+          created_at: string
+          current_players: number
+          difficulty: Database["public"]["Enums"]["difficulty_level"]
+          ended_at: string | null
+          host_id: string
+          id: string
+          max_players: number
+          name: string
+          started_at: string | null
+          status: Database["public"]["Enums"]["quiz_status"]
+          subject: Database["public"]["Enums"]["quiz_subject"]
+          time_limit: number
+        }
+        Insert: {
+          created_at?: string
+          current_players?: number
+          difficulty?: Database["public"]["Enums"]["difficulty_level"]
+          ended_at?: string | null
+          host_id: string
+          id?: string
+          max_players?: number
+          name: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["quiz_status"]
+          subject: Database["public"]["Enums"]["quiz_subject"]
+          time_limit?: number
+        }
+        Update: {
+          created_at?: string
+          current_players?: number
+          difficulty?: Database["public"]["Enums"]["difficulty_level"]
+          ended_at?: string | null
+          host_id?: string
+          id?: string
+          max_players?: number
+          name?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["quiz_status"]
+          subject?: Database["public"]["Enums"]["quiz_subject"]
+          time_limit?: number
+        }
+        Relationships: []
+      }
+      quiz_participants: {
+        Row: {
+          answers: Json | null
+          id: string
+          joined_at: string
+          lobby_id: string
+          score: number
+          user_id: string
+        }
+        Insert: {
+          answers?: Json | null
+          id?: string
+          joined_at?: string
+          lobby_id: string
+          score?: number
+          user_id: string
+        }
+        Update: {
+          answers?: Json | null
+          id?: string
+          joined_at?: string
+          lobby_id?: string
+          score?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_participants_lobby_id_fkey"
+            columns: ["lobby_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_lobbies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_questions: {
+        Row: {
+          correct_answer: string
+          created_at: string
+          difficulty: Database["public"]["Enums"]["difficulty_level"]
+          explanation: string | null
+          id: string
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          question: string
+          subject: Database["public"]["Enums"]["quiz_subject"]
+        }
+        Insert: {
+          correct_answer: string
+          created_at?: string
+          difficulty: Database["public"]["Enums"]["difficulty_level"]
+          explanation?: string | null
+          id?: string
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          question: string
+          subject: Database["public"]["Enums"]["quiz_subject"]
+        }
+        Update: {
+          correct_answer?: string
+          created_at?: string
+          difficulty?: Database["public"]["Enums"]["difficulty_level"]
+          explanation?: string | null
+          id?: string
+          option_a?: string
+          option_b?: string
+          option_c?: string
+          option_d?: string
+          question?: string
+          subject?: Database["public"]["Enums"]["quiz_subject"]
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +168,21 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      difficulty_level: "easy" | "medium" | "hard"
+      quiz_status: "waiting" | "active" | "completed"
+      quiz_subject:
+        | "aptitude_quantitative"
+        | "aptitude_reasoning"
+        | "aptitude_verbal"
+        | "general_science"
+        | "mechanical_engineering"
+        | "civil_engineering"
+        | "electrical_engineering"
+        | "electronics_communication"
+        | "computer_science_it"
+        | "metallurgy"
+        | "chemical_engineering"
+        | "other_engineering"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +309,23 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      difficulty_level: ["easy", "medium", "hard"],
+      quiz_status: ["waiting", "active", "completed"],
+      quiz_subject: [
+        "aptitude_quantitative",
+        "aptitude_reasoning",
+        "aptitude_verbal",
+        "general_science",
+        "mechanical_engineering",
+        "civil_engineering",
+        "electrical_engineering",
+        "electronics_communication",
+        "computer_science_it",
+        "metallurgy",
+        "chemical_engineering",
+        "other_engineering",
+      ],
+    },
   },
 } as const
