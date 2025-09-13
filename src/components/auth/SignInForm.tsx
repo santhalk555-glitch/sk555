@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,7 @@ export const SignInForm = ({ onSwitchToSignUp }: SignInFormProps) => {
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +38,8 @@ export const SignInForm = ({ onSwitchToSignUp }: SignInFormProps) => {
         title: 'Welcome back!',
         description: 'You have successfully signed in.',
       });
+      // Redirect to home page after successful login
+      navigate('/');
     }
     
     setLoading(false);
