@@ -1,7 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Gamepad2, UserPlus, Crown, Zap, Heart } from "lucide-react";
-import { useState } from "react";
+import { Users, Gamepad2, UserPlus, Crown, Zap, Heart, Settings } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import StudentMatching from "./StudentMatching";
 import QuizLobby from "./QuizLobby";
 import MatchedFriends from "./MatchedFriends";
@@ -9,6 +12,36 @@ import MatchedFriends from "./MatchedFriends";
 const Dashboard = () => {
   const [activeSection, setActiveSection] = useState<"dashboard" | "matching" | "lobby" | "matches">("dashboard");
   const [matchedStudents, setMatchedStudents] = useState<any[]>([]);
+  const [hasProfile, setHasProfile] = useState<boolean | null>(null);
+  const [profileMatchCount, setProfileMatchCount] = useState(0);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkUserProfile = async () => {
+      if (!user) return;
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      
+      setHasProfile(!!profile);
+
+      if (profile) {
+        // Get count of other profiles for matching
+        const { count } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .neq('user_id', user.id);
+        
+        setProfileMatchCount(count || 0);
+      }
+    };
+
+    checkUserProfile();
+  }, [user]);
 
   if (activeSection === "matching") {
     return <StudentMatching onBack={() => setActiveSection("dashboard")} onMatchesUpdate={setMatchedStudents} />;
@@ -43,7 +76,9 @@ const Dashboard = () => {
            <Card className="bg-gradient-card border-border hover:shadow-gaming transition-all duration-300">
             <CardContent className="p-6 text-center">
               <Heart className="w-8 h-8 text-gaming-accent mx-auto mb-3" />
-              <div className="text-2xl font-bold text-gaming-accent">{matchedStudents.length}</div>
+              <div className="text-2xl font-bold text-gaming-accent">
+                {hasProfile ? profileMatchCount : '0'}
+              </div>
               <div className="text-sm text-muted-foreground">Study Matches</div>
             </CardContent>
           </Card>
@@ -67,19 +102,26 @@ const Dashboard = () => {
 
         {/* Main Actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {/* Find Study Partners Card */}
+          {/* Profile Setup/Study Partners Card */}
           <Card 
             className="bg-gradient-card border-gaming-primary/20 hover:border-gaming-primary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-gaming hover:shadow-glow"
-            onClick={() => setActiveSection("matching")}
+            onClick={() => hasProfile ? navigate('/profile-matches') : navigate('/create-profile')}
           >
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                <Heart className="w-8 h-8 text-white" />
+                {hasProfile ? <Heart className="w-8 h-8 text-white" /> : <Settings className="w-8 h-8 text-white" />}
               </div>
-              <h3 className="text-xl font-bold mb-2 group-hover:text-gaming-primary transition-colors duration-300">Find Study Partners</h3>
-              <p className="text-muted-foreground mb-4">Connect with students who share your academic interests</p>
+              <h3 className="text-xl font-bold mb-2 group-hover:text-gaming-primary transition-colors duration-300">
+                {hasProfile ? 'Find Study Partners' : 'Create Profile'}
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                {hasProfile 
+                  ? `Find matches from ${profileMatchCount} students` 
+                  : 'Set up your profile to find study partners'
+                }
+              </p>
               <Button variant="gaming" className="w-full group-hover:shadow-glow transition-all duration-300">
-                Start Matching
+                {hasProfile ? 'Find Matches' : 'Get Started'}
               </Button>
             </CardContent>
           </Card>
@@ -87,20 +129,31 @@ const Dashboard = () => {
           {/* My Matches Card */}
           <Card 
             className="bg-gradient-card border-gaming-accent/20 hover:border-gaming-accent/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-gaming hover:shadow-glow"
-            onClick={() => setActiveSection("matches")}
+            onClick={() => hasProfile ? navigate('/profile-matches') : navigate('/create-profile')}
           >
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gaming-accent to-gaming-primary flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
                 <Users className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-xl font-bold mb-2 group-hover:text-gaming-accent transition-colors duration-300">My Study Squad</h3>
-              <p className="text-muted-foreground mb-4">View and chat with your matched study partners</p>
+              <p className="text-muted-foreground mb-4">
+                {hasProfile 
+                  ? 'View your matched study partners' 
+                  : 'Create profile to find matches'
+                }
+              </p>
               <div className="flex items-center justify-center space-x-2 mb-4">
-                <span className="text-2xl font-bold text-gaming-accent">{matchedStudents.length}</span>
-                <span className="text-sm text-muted-foreground">matches</span>
+                <span className="text-2xl font-bold text-gaming-accent">
+                  {hasProfile ? profileMatchCount : '0'}
+                </span>
+                <span className="text-sm text-muted-foreground">potential matches</span>
               </div>
-              <Button variant="outline" className="w-full bg-gaming-accent/10 border-gaming-accent/30 hover:bg-gaming-accent/20 group-hover:shadow-glow transition-all duration-300">
-                View Matches
+              <Button 
+                variant="outline" 
+                className="w-full bg-gaming-accent/10 border-gaming-accent/30 hover:bg-gaming-accent/20 group-hover:shadow-glow transition-all duration-300"
+                disabled={!hasProfile}
+              >
+                {hasProfile ? 'View Matches' : 'Setup Required'}
               </Button>
             </CardContent>
           </Card>

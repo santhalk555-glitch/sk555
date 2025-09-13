@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          competitive_exams: string[]
+          course_name: string
+          created_at: string
+          id: string
+          subjects: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          competitive_exams?: string[]
+          course_name: string
+          created_at?: string
+          id?: string
+          subjects?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          competitive_exams?: string[]
+          course_name?: string
+          created_at?: string
+          id?: string
+          subjects?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       quiz_categories: {
         Row: {
           created_at: string
