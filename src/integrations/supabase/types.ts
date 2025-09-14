@@ -14,11 +14,80 @@ export type Database = {
   }
   public: {
     Tables: {
+      game_lobbies: {
+        Row: {
+          created_at: string
+          creator_id: string
+          current_players: number
+          id: string
+          lobby_code: string
+          max_players: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          current_players?: number
+          id?: string
+          lobby_code: string
+          max_players: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          current_players?: number
+          id?: string
+          lobby_code?: string
+          max_players?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lobby_participants: {
+        Row: {
+          display_user_id: string
+          id: string
+          joined_at: string
+          lobby_id: string
+          slot_number: number
+          user_id: string
+        }
+        Insert: {
+          display_user_id: string
+          id?: string
+          joined_at?: string
+          lobby_id: string
+          slot_number: number
+          user_id: string
+        }
+        Update: {
+          display_user_id?: string
+          id?: string
+          joined_at?: string
+          lobby_id?: string
+          slot_number?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lobby_participants_lobby_id_fkey"
+            columns: ["lobby_id"]
+            isOneToOne: false
+            referencedRelation: "game_lobbies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           competitive_exams: string[]
           course_name: string
           created_at: string
+          display_user_id: string | null
           id: string
           subjects: string[]
           updated_at: string
@@ -28,6 +97,7 @@ export type Database = {
           competitive_exams?: string[]
           course_name: string
           created_at?: string
+          display_user_id?: string | null
           id?: string
           subjects?: string[]
           updated_at?: string
@@ -37,6 +107,7 @@ export type Database = {
           competitive_exams?: string[]
           course_name?: string
           created_at?: string
+          display_user_id?: string | null
           id?: string
           subjects?: string[]
           updated_at?: string
@@ -195,7 +266,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_8_digit_user_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_lobby_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       difficulty_level: "easy" | "medium" | "hard"
