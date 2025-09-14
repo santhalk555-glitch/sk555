@@ -111,6 +111,12 @@ export const ProfileCreationForm = () => {
     setLoading(true);
 
     try {
+      // Generate 8-digit user ID
+      const { data: generatedId, error: idError } = await supabase
+        .rpc('generate_8_digit_user_id');
+
+      if (idError) throw idError;
+
       // Check if profile already exists
       const { data: existingProfile } = await supabase
         .from('profiles')
@@ -138,7 +144,8 @@ export const ProfileCreationForm = () => {
             user_id: user.id,
             course_name: courseName,
             competitive_exams: competitiveExams,
-            subjects: subjects
+            subjects: subjects,
+            display_user_id: generatedId
           });
 
         if (error) throw error;
@@ -146,10 +153,10 @@ export const ProfileCreationForm = () => {
 
       toast({
         title: 'Success',
-        description: 'Profile saved successfully!'
+        description: 'Profile created successfully!'
       });
 
-      navigate('/profile-matches');
+      navigate('/');
     } catch (error) {
       console.error('Error saving profile:', error);
       toast({

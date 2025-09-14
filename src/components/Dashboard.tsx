@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import StudentMatching from "./StudentMatching";
-import QuizLobby from "./QuizLobby";
+import GameLobby from "./GameLobby";
 import MatchedFriends from "./MatchedFriends";
 
 const Dashboard = () => {
@@ -48,7 +48,7 @@ const Dashboard = () => {
   }
 
   if (activeSection === "lobby") {
-    return <QuizLobby onBack={() => setActiveSection("dashboard")} />;
+    return <GameLobby onBack={() => setActiveSection("dashboard")} />;
   }
 
   if (activeSection === "matches") {
@@ -167,10 +167,10 @@ const Dashboard = () => {
               <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gaming-secondary to-gaming-accent flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
                 <Gamepad2 className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold mb-2 group-hover:text-gaming-secondary transition-colors duration-300">Quiz Battles</h3>
-              <p className="text-muted-foreground mb-4">Challenge friends in competitive quiz matches</p>
+              <h3 className="text-xl font-bold mb-2 group-hover:text-gaming-secondary transition-colors duration-300">Create Lobby</h3>
+              <p className="text-muted-foreground mb-4">Create 2 or 4 player lobbies for study sessions</p>
               <Button variant="outline" className="w-full bg-gaming-secondary/10 border-gaming-secondary/30 hover:bg-gaming-secondary/20 group-hover:shadow-glow transition-all duration-300">
-                Enter Lobby
+                Create Lobby
               </Button>
             </CardContent>
           </Card>

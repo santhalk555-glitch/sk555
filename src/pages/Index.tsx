@@ -1,20 +1,54 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import Dashboard from "@/components/Dashboard";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const { user, loading } = useAuth();
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [hasProfile, setHasProfile] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && !user) {
-      navigate("/auth");
+    if (!loading) {
+      if (!user) {
+        navigate("/auth");
+      } else {
+        checkUserProfile();
+      }
     }
   }, [user, loading, navigate]);
 
-  if (loading) {
+  const checkUserProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking profile:', error);
+      }
+
+      if (!profile) {
+        // No profile exists, redirect to profile creation
+        navigate('/create-profile');
+      } else {
+        setHasProfile(true);
+      }
+    } catch (error) {
+      console.error('Error checking profile:', error);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  if (loading || profileLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -25,7 +59,7 @@ const Index = () => {
     );
   }
 
-  if (!user) {
+  if (!user || !hasProfile) {
     return null;
   }
 
