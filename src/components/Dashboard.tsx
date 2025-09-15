@@ -5,15 +5,17 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import StudentMatching from "./StudentMatching";
+import SwipeMatching from "./SwipeMatching";
 import GameLobby from "./GameLobby";
 import MatchedFriends from "./MatchedFriends";
+import SubjectSelectionModal from "./SubjectSelectionModal";
 
 const Dashboard = () => {
   const [activeSection, setActiveSection] = useState<"dashboard" | "matching" | "lobby" | "matches">("dashboard");
   const [matchedStudents, setMatchedStudents] = useState<any[]>([]);
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const [profileMatchCount, setProfileMatchCount] = useState(0);
+  const [showSubjectModal, setShowSubjectModal] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -43,8 +45,14 @@ const Dashboard = () => {
     checkUserProfile();
   }, [user]);
 
+  const handleSubjectSelect = async (subject: string, maxPlayers: 2 | 4) => {
+    setShowSubjectModal(false);
+    // Pass subject to lobby creation
+    setActiveSection("lobby");
+  };
+
   if (activeSection === "matching") {
-    return <StudentMatching onBack={() => setActiveSection("dashboard")} onMatchesUpdate={setMatchedStudents} />;
+    return <SwipeMatching onBack={() => setActiveSection("dashboard")} onMatchesUpdate={setMatchedStudents} />;
   }
 
   if (activeSection === "lobby") {
@@ -102,34 +110,34 @@ const Dashboard = () => {
 
         {/* Main Actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {/* Profile Setup/Study Partners Card */}
+          {/* Find Match Card */}
           <Card 
             className="bg-gradient-card border-gaming-primary/20 hover:border-gaming-primary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-gaming hover:shadow-glow"
-            onClick={() => hasProfile ? navigate('/profile-matches') : navigate('/create-profile')}
+            onClick={() => hasProfile ? setActiveSection("matching") : navigate('/create-profile')}
           >
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
                 {hasProfile ? <Heart className="w-8 h-8 text-white" /> : <Settings className="w-8 h-8 text-white" />}
               </div>
               <h3 className="text-xl font-bold mb-2 group-hover:text-gaming-primary transition-colors duration-300">
-                {hasProfile ? 'Find Study Partners' : 'Create Profile'}
+                {hasProfile ? 'Find Match' : 'Create Profile'}
               </h3>
               <p className="text-muted-foreground mb-4">
                 {hasProfile 
-                  ? `Find matches from ${profileMatchCount} students` 
+                  ? `Swipe through ${profileMatchCount} study partners` 
                   : 'Set up your profile to find study partners'
                 }
               </p>
               <Button variant="gaming" className="w-full group-hover:shadow-glow transition-all duration-300">
-                {hasProfile ? 'Find Matches' : 'Get Started'}
+                {hasProfile ? 'Start Swiping' : 'Get Started'}
               </Button>
             </CardContent>
           </Card>
 
-          {/* My Matches Card */}
+          {/* My Study Squad Card */}
           <Card 
             className="bg-gradient-card border-gaming-accent/20 hover:border-gaming-accent/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-gaming hover:shadow-glow"
-            onClick={() => hasProfile ? navigate('/profile-matches') : navigate('/create-profile')}
+            onClick={() => hasProfile ? setActiveSection("matches") : navigate('/create-profile')}
           >
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gaming-accent to-gaming-primary flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
@@ -144,24 +152,24 @@ const Dashboard = () => {
               </p>
               <div className="flex items-center justify-center space-x-2 mb-4">
                 <span className="text-2xl font-bold text-gaming-accent">
-                  {hasProfile ? profileMatchCount : '0'}
+                  {matchedStudents.length}
                 </span>
-                <span className="text-sm text-muted-foreground">potential matches</span>
+                <span className="text-sm text-muted-foreground">matched partners</span>
               </div>
               <Button 
                 variant="outline" 
                 className="w-full bg-gaming-accent/10 border-gaming-accent/30 hover:bg-gaming-accent/20 group-hover:shadow-glow transition-all duration-300"
                 disabled={!hasProfile}
               >
-                {hasProfile ? 'View Matches' : 'Setup Required'}
+                {hasProfile ? 'View Squad' : 'Setup Required'}
               </Button>
             </CardContent>
           </Card>
 
-          {/* Quiz Battles Card */}
+          {/* Create Lobby Card */}
           <Card 
             className="bg-gradient-card border-gaming-secondary/20 hover:border-gaming-secondary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-gaming hover:shadow-glow"
-            onClick={() => setActiveSection("lobby")}
+            onClick={() => setShowSubjectModal(true)}
           >
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gaming-secondary to-gaming-accent flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
@@ -210,6 +218,13 @@ const Dashboard = () => {
             ))}
           </div>
         </div>
+
+        {/* Subject Selection Modal */}
+        <SubjectSelectionModal 
+          isOpen={showSubjectModal}
+          onClose={() => setShowSubjectModal(false)}
+          onSubjectSelect={handleSubjectSelect}
+        />
       </div>
     </div>
   );
