@@ -7,6 +7,7 @@ import { ArrowLeft, Users, Plus, Copy, UserPlus, Crown, Clock } from 'lucide-rea
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import SubjectSelectionModal from './SubjectSelectionModal';
 
 interface GameLobbyProps {
   onBack: () => void;
@@ -29,13 +30,20 @@ interface LobbyParticipant {
 }
 
 const GameLobby = ({ onBack }: GameLobbyProps) => {
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showSubjectModal, setShowSubjectModal] = useState(true);
+  const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [currentLobby, setCurrentLobby] = useState<Lobby | null>(null);
   const [participants, setParticipants] = useState<LobbyParticipant[]>([]);
   const [inviteUserId, setInviteUserId] = useState('');
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+
+  const handleSubjectSelect = (subject: string, maxPlayers: 2 | 4) => {
+    setSelectedSubject(subject);
+    setShowSubjectModal(false);
+    createLobby(maxPlayers);
+  };
 
   const createLobby = async (maxPlayers: 2 | 4) => {
     if (!user) return;
@@ -89,8 +97,6 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
         display_user_id: profile.display_user_id,
         user_id: user.id
       }]);
-      setShowCreateForm(false);
-
       toast({
         title: 'Lobby Created!',
         description: `Lobby ${lobbyCode} is ready for ${maxPlayers} players.`,
@@ -224,6 +230,16 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
     setCurrentLobby(null);
     setParticipants([]);
     setInviteUserId('');
+    setShowSubjectModal(true);
+    setSelectedSubject('');
+  };
+
+  const handleBackToMenu = () => {
+    if (currentLobby) {
+      leaveLobby();
+    } else {
+      onBack();
+    }
   };
 
   // If user is in a lobby, show lobby view
@@ -235,7 +251,7 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
           <div className="flex items-center justify-between mb-8">
             <Button 
               variant="ghost" 
-              onClick={leaveLobby}
+              onClick={handleBackToMenu}
               className="text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -366,7 +382,7 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
         <div className="flex items-center justify-between mb-8">
           <Button 
             variant="ghost" 
-            onClick={onBack}
+            onClick={handleBackToMenu}
             className="text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -475,6 +491,13 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Subject Selection Modal - only shown in Create Lobby screen */}
+        <SubjectSelectionModal 
+          isOpen={showSubjectModal}
+          onClose={() => setShowSubjectModal(false)}
+          onSubjectSelect={handleSubjectSelect}
+        />
       </div>
     </div>
   );

@@ -8,14 +8,14 @@ import { supabase } from "@/integrations/supabase/client";
 import SwipeMatching from "./SwipeMatching";
 import GameLobby from "./GameLobby";
 import MatchedFriends from "./MatchedFriends";
-import SubjectSelectionModal from "./SubjectSelectionModal";
+
 
 const Dashboard = () => {
   const [activeSection, setActiveSection] = useState<"dashboard" | "matching" | "lobby" | "matches">("dashboard");
   const [matchedStudents, setMatchedStudents] = useState<any[]>([]);
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const [profileMatchCount, setProfileMatchCount] = useState(0);
-  const [showSubjectModal, setShowSubjectModal] = useState(false);
+  
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -45,11 +45,6 @@ const Dashboard = () => {
     checkUserProfile();
   }, [user]);
 
-  const handleSubjectSelect = async (subject: string, maxPlayers: 2 | 4) => {
-    setShowSubjectModal(false);
-    // Pass subject to lobby creation
-    setActiveSection("lobby");
-  };
 
   if (activeSection === "matching") {
     return <SwipeMatching onBack={() => setActiveSection("dashboard")} onMatchesUpdate={setMatchedStudents} />;
@@ -169,7 +164,7 @@ const Dashboard = () => {
           {/* Create Lobby Card */}
           <Card 
             className="bg-gradient-card border-gaming-secondary/20 hover:border-gaming-secondary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-gaming hover:shadow-glow"
-            onClick={() => setShowSubjectModal(true)}
+            onClick={() => setActiveSection("lobby")}
           >
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gaming-secondary to-gaming-accent flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
@@ -219,12 +214,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Subject Selection Modal */}
-        <SubjectSelectionModal 
-          isOpen={showSubjectModal}
-          onClose={() => setShowSubjectModal(false)}
-          onSubjectSelect={handleSubjectSelect}
-        />
       </div>
     </div>
   );
