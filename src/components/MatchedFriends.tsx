@@ -4,29 +4,22 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Heart, Star, MapPin, MessageCircle, Video, BookOpen, Users } from "lucide-react";
 import { useState } from "react";
 
-interface Student {
+interface Profile {
   id: string;
-  name: string;
-  age: number;
-  major: string;
-  university: string;
-  location: string;
-  interests: string[];
-  studyLevel: string;
-  rating: number;
-  bio: string;
-  avatar: string;
-  lastSeen?: string;
-  isOnline?: boolean;
+  user_id: string;
+  course_name: string;
+  subjects: string[];
+  competitive_exams: string[];
+  display_user_id: string;
 }
 
 interface MatchedFriendsProps {
   onBack: () => void;
-  matches: Student[];
+  matches: Profile[];
 }
 
 const MatchedFriends = ({ onBack, matches }: MatchedFriendsProps) => {
-  const [selectedMatch, setSelectedMatch] = useState<Student | null>(null);
+  const [selectedMatch, setSelectedMatch] = useState<Profile | null>(null);
 
   return (
     <div className="pt-20 pb-12 min-h-screen">
@@ -81,57 +74,64 @@ const MatchedFriends = ({ onBack, matches }: MatchedFriendsProps) => {
               >
                 <CardHeader className="text-center pb-4">
                   <div className="relative w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-4 text-3xl group-hover:scale-110 transition-transform duration-300 shadow-glow">
-                    {match.avatar}
-                    {match.isOnline && (
-                      <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-gaming-success rounded-full border-2 border-background flex items-center justify-center">
-                        <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-                      </div>
-                    )}
+                    {match.display_user_id ? String(match.display_user_id).charAt(0) : '👤'}
                   </div>
                   
                   <CardTitle className="text-xl mb-1 group-hover:text-gaming-primary transition-colors duration-300">
-                    {match.name}, {match.age}
+                    User #{match.display_user_id}
                   </CardTitle>
                   
                   <div className="flex items-center justify-center space-x-1 mb-2">
                     <Star className="w-4 h-4 text-gaming-warning fill-current" />
-                    <span className="text-sm font-medium">{match.rating}</span>
+                    <span className="text-sm font-medium">4.8</span>
                   </div>
                   
                   <p className="text-sm text-muted-foreground">
-                    {match.major} • {match.university}
+                    {match.course_name}
                   </p>
                 </CardHeader>
 
                 <CardContent className="space-y-4">
                   <div className="flex items-center text-sm text-muted-foreground">
-                    <MapPin className="w-4 h-4 mr-2" />
-                    {match.location}
-                  </div>
-                  
-                  <div className="flex items-center text-sm text-muted-foreground">
                     <BookOpen className="w-4 h-4 mr-2" />
-                    {match.studyLevel} Level
+                    Study Partner
                   </div>
-
-                  <p className="text-sm text-foreground leading-relaxed line-clamp-2">
-                    {match.bio}
-                  </p>
 
                   <div>
+                    <h4 className="text-sm font-semibold mb-2">Subjects:</h4>
                     <div className="flex flex-wrap gap-2 mb-4">
-                      {match.interests.slice(0, 2).map((interest, idx) => (
+                      {match.subjects && match.subjects.slice(0, 2).map((subject, idx) => (
                         <Badge 
                           key={idx} 
                           variant="secondary"
                           className="text-xs bg-gaming-primary/10 text-gaming-primary border-gaming-primary/20"
                         >
-                          {interest}
+                          {subject}
                         </Badge>
                       ))}
-                      {match.interests.length > 2 && (
+                      {match.subjects && match.subjects.length > 2 && (
                         <Badge variant="secondary" className="text-xs">
-                          +{match.interests.length - 2}
+                          +{match.subjects.length - 2}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Exams:</h4>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {match.competitive_exams && match.competitive_exams.slice(0, 1).map((exam, idx) => (
+                        <Badge 
+                          key={idx} 
+                          variant="outline"
+                          className="text-xs bg-gaming-secondary/10 border-gaming-secondary/20"
+                        >
+                          {exam}
+                        </Badge>
+                      ))}
+                      {match.competitive_exams && match.competitive_exams.length > 1 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{match.competitive_exams.length - 1}
                         </Badge>
                       )}
                     </div>
