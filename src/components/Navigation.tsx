@@ -17,7 +17,7 @@ const Navigation = () => {
               <Trophy className="w-5 h-5 text-primary-foreground" />
             </div>
             <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              StudyMatch
+              StudyMates
             </h1>
           </div>
           

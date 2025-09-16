@@ -30,7 +30,7 @@ interface LobbyParticipant {
 }
 
 const GameLobby = ({ onBack }: GameLobbyProps) => {
-  const [showSubjectModal, setShowSubjectModal] = useState(true);
+  const [showSubjectModal, setShowSubjectModal] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [currentLobby, setCurrentLobby] = useState<Lobby | null>(null);
   const [participants, setParticipants] = useState<LobbyParticipant[]>([]);
@@ -42,7 +42,10 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
   const handleSubjectSelect = (subject: string, maxPlayers: 2 | 4) => {
     setSelectedSubject(subject);
     setShowSubjectModal(false);
-    createLobby(maxPlayers);
+    toast({
+      title: 'Subject Selected!',
+      description: `Ready to start ${subject} study session with ${maxPlayers} players.`,
+    });
   };
 
   const createLobby = async (maxPlayers: 2 | 4) => {
@@ -50,12 +53,6 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
 
     setLoading(true);
     try {
-      // Generate lobby code
-      const { data: lobbyCode, error: codeError } = await supabase
-        .rpc('generate_lobby_code');
-
-      if (codeError) throw codeError;
-
       // Get user's profile
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -65,11 +62,11 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
 
       if (profileError) throw profileError;
 
-      // Create lobby
+      // Create lobby without lobby_code
       const { data: lobby, error: lobbyError } = await supabase
         .from('game_lobbies')
         .insert({
-          lobby_code: lobbyCode,
+          lobby_code: '', // Remove lobby code system
           creator_id: user.id,
           max_players: maxPlayers,
           current_players: 1
@@ -97,9 +94,13 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
         display_user_id: profile.display_user_id,
         user_id: user.id
       }]);
+      
+      // Show subject selection modal AFTER lobby is created
+      setShowSubjectModal(true);
+      
       toast({
         title: 'Lobby Created!',
-        description: `Lobby ${lobbyCode} is ready for ${maxPlayers} players.`,
+        description: `${maxPlayers}-player lobby created successfully!`,
       });
     } catch (error) {
       console.error('Error creating lobby:', error);
@@ -132,23 +133,6 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
         return;
       }
 
-      // Check if user is already in lobby
-      const { data: existingParticipant } = await supabase
-        .from('lobby_participants')
-        .select('id')
-        .eq('lobby_id', currentLobby.id)
-        .eq('user_id', profile.user_id)
-        .single();
-
-      if (existingParticipant) {
-        toast({
-          title: 'Already Joined',
-          description: 'This user is already in the lobby.',
-          variant: 'destructive'
-        });
-        return;
-      }
-
       // Check if lobby is full
       if (participants.length >= currentLobby.max_players) {
         toast({
@@ -159,42 +143,27 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
         return;
       }
 
-      // Add participant
-      const nextSlot = Math.min(...Array.from({length: currentLobby.max_players}, (_, i) => i + 1)
-        .filter(slot => !participants.some(p => p.slot_number === slot)));
-
-      const { error: insertError } = await supabase
-        .from('lobby_participants')
+      // Send real-time invite
+      const { error: inviteError } = await supabase
+        .from('lobby_invites')
         .insert({
           lobby_id: currentLobby.id,
-          user_id: profile.user_id,
-          display_user_id: profile.display_user_id,
-          slot_number: nextSlot
+          sender_id: user?.id,
+          receiver_id: profile.user_id
         });
 
-      if (insertError) throw insertError;
+      if (inviteError) throw inviteError;
 
-      // Update lobby player count
-      const { error: updateError } = await supabase
-        .from('game_lobbies')
-        .update({ current_players: participants.length + 1 })
-        .eq('id', currentLobby.id);
-
-      if (updateError) throw updateError;
-
-      // Refresh participants
-      loadParticipants();
       setInviteUserId('');
-
       toast({
-        title: 'Player Invited!',
-        description: `${profile.display_user_id} has joined the lobby.`,
+        title: 'Invite Sent!',
+        description: `Sent lobby invite to ${profile.display_user_id}`,
       });
     } catch (error) {
-      console.error('Error inviting player:', error);
+      console.error('Error sending invite:', error);
       toast({
         title: 'Error',
-        description: 'Failed to invite player. Please try again.',
+        description: 'Failed to send invite. Please try again.',
         variant: 'destructive'
       });
     }
@@ -230,7 +199,7 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
     setCurrentLobby(null);
     setParticipants([]);
     setInviteUserId('');
-    setShowSubjectModal(true);
+    setShowSubjectModal(false);
     setSelectedSubject('');
   };
 
@@ -273,24 +242,18 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
           {/* Lobby Info */}
           <Card className="mb-8 bg-gradient-card border-primary/20">
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span className="flex items-center">
-                  <Crown className="w-5 h-5 mr-2 text-primary" />
-                  Lobby Code
-                </span>
-                <Button variant="outline" size="sm" onClick={copyLobbyCode}>
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy Code
-                </Button>
+              <CardTitle className="flex items-center justify-center">
+                <Crown className="w-5 h-5 mr-2 text-primary" />
+                Study Lobby Created
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-center">
-                <div className="text-4xl font-bold font-mono text-primary mb-2">
-                  {currentLobby.lobby_code}
+                <div className="text-2xl font-bold text-primary mb-2">
+                  {selectedSubject ? `Subject: ${selectedSubject}` : 'Waiting for subject selection...'}
                 </div>
                 <p className="text-muted-foreground">
-                  Share this code with friends to join
+                  Invite friends using their 8-digit User ID
                 </p>
               </div>
             </CardContent>
@@ -476,7 +439,7 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
                 </div>
                 <h4 className="font-semibold mb-2">Invite Friends</h4>
                 <p className="text-sm text-muted-foreground">
-                  Share your lobby code or invite players using their 8-digit User ID
+                  Invite players using their 8-digit User ID for real-time notifications
                 </p>
               </div>
               <div>

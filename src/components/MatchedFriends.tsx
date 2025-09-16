@@ -2,7 +2,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Heart, Star, MapPin, MessageCircle, Video, BookOpen, Users } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Profile {
   id: string;
@@ -20,6 +22,66 @@ interface MatchedFriendsProps {
 
 const MatchedFriends = ({ onBack, matches }: MatchedFriendsProps) => {
   const [selectedMatch, setSelectedMatch] = useState<Profile | null>(null);
+  const [friends, setFriends] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    loadFriends();
+  }, [user]);
+
+  const loadFriends = async () => {
+    if (!user) return;
+
+    try {
+      // Load accepted friends from the friends table
+      const { data, error } = await supabase
+        .from('friends')
+        .select(`
+          *,
+          profiles!inner(*)
+        `)
+        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`);
+
+      if (error) throw error;
+
+      // Transform the data to get friend profiles
+      const friendProfiles: Profile[] = [];
+      
+      // For each friendship, we need to get both user profiles
+      for (const friendship of data || []) {
+        // Get the profile of the other user (not the current user)
+        const otherUserId = friendship.user1_id === user.id ? friendship.user2_id : friendship.user1_id;
+        
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', otherUserId)
+          .single();
+          
+        if (profile) {
+          friendProfiles.push(profile);
+        }
+      }
+
+      setFriends(friendProfiles);
+    } catch (error) {
+      console.error('Error loading friends:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="pt-20 pb-12 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading your study squad...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-20 pb-12 min-h-screen">
@@ -40,17 +102,17 @@ const MatchedFriends = ({ onBack, matches }: MatchedFriendsProps) => {
               Your Study Squad ✨
             </h1>
             <p className="text-muted-foreground">
-              {matches.length} amazing study partner{matches.length !== 1 ? 's' : ''} ready to learn together!
+              {friends.length} amazing study partner{friends.length !== 1 ? 's' : ''} ready to learn together!
             </p>
           </div>
           
           <div className="flex items-center space-x-2 bg-gaming-primary/10 px-4 py-2 rounded-full">
             <Users className="w-5 h-5 text-gaming-primary" />
-            <span className="text-sm font-bold text-gaming-primary">{matches.length}</span>
+            <span className="text-sm font-bold text-gaming-primary">{friends.length}</span>
           </div>
         </div>
 
-        {matches.length === 0 ? (
+        {friends.length === 0 ? (
           <Card className="bg-gradient-card text-center p-12 max-w-md mx-auto">
             <CardContent>
               <Heart className="w-16 h-16 text-gaming-primary mx-auto mb-4 opacity-50" />
@@ -65,7 +127,7 @@ const MatchedFriends = ({ onBack, matches }: MatchedFriendsProps) => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {matches.map((match, index) => (
+            {friends.map((match, index) => (
               <Card 
                 key={match.id}
                 className="bg-gradient-card border-gaming-primary/30 hover:border-gaming-primary/60 transform hover:scale-105 transition-all duration-500 cursor-pointer group shadow-gaming hover:shadow-glow animate-fade-in"
@@ -161,7 +223,7 @@ const MatchedFriends = ({ onBack, matches }: MatchedFriendsProps) => {
         )}
 
         {/* Quick Actions */}
-        {matches.length > 0 && (
+        {friends.length > 0 && (
           <div className="mt-12 text-center">
             <Card className="bg-gradient-card border-gaming-primary/20 max-w-2xl mx-auto">
               <CardContent className="p-6">

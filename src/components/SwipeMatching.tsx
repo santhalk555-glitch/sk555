@@ -16,6 +16,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import FriendRequestPopup from './FriendRequestPopup';
 
 interface Profile {
   id: string;
@@ -38,11 +39,17 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [matches, setMatches] = useState<Profile[]>([]);
+  const [friendRequests, setFriendRequests] = useState<any[]>([]);
+  const [showFriendRequest, setShowFriendRequest] = useState<any>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
-    loadProfiles();
+    if (user) {
+      loadProfiles();
+      loadFriendRequests();
+      setupRealtimeListeners();
+    }
   }, [user]);
 
   const loadProfiles = async () => {
@@ -69,23 +76,141 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
     }
   };
 
+  const loadFriendRequests = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('friend_requests')
+        .select(`
+          *,
+          sender_profile:profiles!friend_requests_sender_id_fkey(*)
+        `)
+        .eq('receiver_id', user.id)
+        .eq('status', 'pending');
+
+      if (error) throw error;
+      
+      setFriendRequests(data || []);
+      
+      // Show popup for the first pending request
+      if (data && data.length > 0) {
+        setShowFriendRequest(data[0]);
+      }
+    } catch (error) {
+      console.error('Error loading friend requests:', error);
+    }
+  };
+
+  const setupRealtimeListeners = () => {
+    if (!user) return;
+
+    // Listen for incoming friend requests
+    const friendRequestsChannel = supabase
+      .channel('friend-requests')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'friend_requests',
+          filter: `receiver_id=eq.${user.id}`
+        },
+        async (payload) => {
+          // Fetch the complete request with sender profile
+          const { data } = await supabase
+            .from('friend_requests')
+            .select(`
+              *,
+              sender_profile:profiles!friend_requests_sender_id_fkey(*)
+            `)
+            .eq('id', payload.new.id)
+            .single();
+
+          if (data) {
+            setFriendRequests(prev => [data, ...prev]);
+            setShowFriendRequest(data);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(friendRequestsChannel);
+    };
+  };
+
+  const sendFriendRequest = async (targetProfile: Profile) => {
+    if (!user) return;
+
+    try {
+      // Check if request already exists
+      const { data: existingRequest } = await supabase
+        .from('friend_requests')
+        .select('id')
+        .eq('sender_id', user.id)
+        .eq('receiver_id', targetProfile.user_id)
+        .single();
+
+      if (existingRequest) {
+        toast({
+          title: 'Already Sent',
+          description: 'You already sent a friend request to this user.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Check if they're already friends
+      const { data: existingFriend } = await supabase
+        .from('friends')
+        .select('id')
+        .or(`and(user1_id.eq.${user.id},user2_id.eq.${targetProfile.user_id}),and(user1_id.eq.${targetProfile.user_id},user2_id.eq.${user.id})`)
+        .single();
+
+      if (existingFriend) {
+        toast({
+          title: 'Already Friends',
+          description: 'You are already friends with this user.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Send friend request
+      const { error } = await supabase
+        .from('friend_requests')
+        .insert({
+          sender_id: user.id,
+          receiver_id: targetProfile.user_id
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: '💝 Friend Request Sent!',
+        description: `Sent friend request to ${targetProfile.display_user_id}`,
+      });
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send friend request. Please try again.',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const handleSwipe = async (direction: 'left' | 'right') => {
     if (isAnimating || currentProfileIndex >= profiles.length) return;
 
     setIsAnimating(true);
     setSwipeDirection(direction);
 
-    // If swiped right (liked), add to matches
+    // If swiped right (liked), send friend request
     if (direction === 'right') {
       const currentProfile = profiles[currentProfileIndex];
-      const newMatches = [...matches, currentProfile];
-      setMatches(newMatches);
-      onMatchesUpdate?.(newMatches);
-      
-      toast({
-        title: '💖 It\'s a Match!',
-        description: `You liked ${currentProfile.display_user_id}. They've been added to your Study Squad!`,
-      });
+      await sendFriendRequest(currentProfile);
     }
 
     // Wait for animation
@@ -133,7 +258,7 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
           
           <div className="flex items-center space-x-2 bg-primary/10 px-3 py-1 rounded-full">
             <Heart className="w-4 h-4 text-primary" />
-            <span className="text-sm font-bold text-primary">{matches.length}</span>
+            <span className="text-sm font-bold text-primary">{friendRequests.length}</span>
           </div>
         </div>
 
@@ -149,7 +274,7 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
                 </p>
                 <Button variant="outline" onClick={onBack} className="mb-4">
                   <Users className="w-4 h-4 mr-2" />
-                  View My Study Squad ({matches.length})
+                  View My Study Squad
                 </Button>
               </CardContent>
             </Card>
@@ -301,6 +426,30 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
               💚 Like • ❌ Pass • Swipe or tap buttons
             </p>
           </div>
+        )}
+
+        {/* Friend Request Popup */}
+        {showFriendRequest && (
+          <FriendRequestPopup
+            friendRequest={showFriendRequest}
+            onClose={() => setShowFriendRequest(null)}
+            onResponse={(accepted) => {
+              if (accepted) {
+                // Update matches list if accepted
+                const newMatch = showFriendRequest.sender_profile;
+                setMatches(prev => [...prev, newMatch]);
+                onMatchesUpdate?.([...matches, newMatch]);
+              }
+              // Remove from pending requests
+              setFriendRequests(prev => prev.filter(req => req.id !== showFriendRequest.id));
+              
+              // Show next request if any
+              const remainingRequests = friendRequests.filter(req => req.id !== showFriendRequest.id);
+              if (remainingRequests.length > 0) {
+                setTimeout(() => setShowFriendRequest(remainingRequests[0]), 1000);
+              }
+            }}
+          />
         )}
       </div>
     </div>

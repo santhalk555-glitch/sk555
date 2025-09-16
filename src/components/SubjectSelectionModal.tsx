@@ -22,7 +22,25 @@ const subjects = [
   'Economics',
   'Psychology',
   'Engineering',
-  'Medical'
+  'Medical',
+  'Business Studies',
+  'Accounting',
+  'Political Science',
+  'Sociology',
+  'Philosophy',
+  'Statistics',
+  'Data Science',
+  'Mechanical Engineering',
+  'Electrical Engineering',
+  'Civil Engineering',
+  'Information Technology',
+  'Marketing',
+  'Finance',
+  'Law',
+  'Environmental Science',
+  'Biotechnology',
+  'Pharmaceutical',
+  'Architecture'
 ];
 
 const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSelectionModalProps) => {

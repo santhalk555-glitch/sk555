@@ -67,7 +67,7 @@ const Dashboard = () => {
             <Crown className="w-8 h-8 text-primary-foreground" />
           </div>
           <h1 className="text-4xl md:text-6xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">
-            StudyMatch Arena
+            StudyMates Arena
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Connect with study partners and challenge them in epic quiz battles. Level up your learning game!
