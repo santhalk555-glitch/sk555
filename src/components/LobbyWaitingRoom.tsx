@@ -84,11 +84,14 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
             
             // If quiz started, redirect all participants
             if (updatedLobby.status === 'active') {
+              console.log('Quiz status changed to active, starting quiz...');
               onQuizStarted(updatedLobby);
             }
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Lobby channel subscription status:', status);
+        });
 
       return () => {
         supabase.removeChannel(participantsChannel);
@@ -173,6 +176,14 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
           title: 'Quiz Started!',
           description: `The quiz has begun${participants.length > 1 ? ' for all participants' : ' in single-player mode'}!`,
         });
+        
+        // Manually trigger quiz start if real-time doesn't work immediately
+        const updatedLobby = { ...lobby, status: 'active' };
+        setLobby(updatedLobby);
+        setTimeout(() => {
+          console.log('Manually triggering quiz start...');
+          onQuizStarted(updatedLobby);
+        }, 500);
       } else {
         console.log('Quiz start failed - access denied');
         toast({

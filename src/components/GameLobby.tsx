@@ -34,19 +34,25 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
   };
 
   const handleLobbyCreated = (lobby: any) => {
+    console.log('Lobby created with status:', lobby.status);
     setCurrentLobby(lobby);
     if (lobby.status === 'active') {
+      console.log('Switching to quiz view');
       setCurrentView('quiz');
     } else {
+      console.log('Switching to waiting view');
       setCurrentView('waiting');
     }
   };
 
   const handleJoinedLobby = (lobby: any) => {
+    console.log('Joined lobby with status:', lobby.status);
     setCurrentLobby(lobby);
     if (lobby.status === 'active') {
+      console.log('Switching to quiz view');
       setCurrentView('quiz');
     } else {
+      console.log('Switching to waiting view');
       setCurrentView('waiting');
     }
   };
@@ -73,6 +79,7 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
           lobby={currentLobby}
           onBack={handleBackToMenu}
           onQuizStarted={(lobby) => {
+            console.log('Quiz started callback received, lobby status:', lobby.status);
             setCurrentLobby(lobby);
             setCurrentView('quiz');
           }}
