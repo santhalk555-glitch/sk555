@@ -1,521 +1,82 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Users, Plus, Copy, UserPlus, Crown, Clock } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import SubjectSelectionModal from './SubjectSelectionModal';
+import LobbyMenu from './LobbyMenu';
+import CreateLobbyFlow from './CreateLobbyFlow';
+import JoinLobbyFlow from './JoinLobbyFlow';
 
 interface GameLobbyProps {
   onBack: () => void;
 }
 
-interface Lobby {
-  id: string;
-  lobby_code: string;
-  creator_id: string;
-  max_players: number;
-  current_players: number;
-  status: string;
-  created_at: string;
-  subject?: string;
-  game_mode?: string;
-}
-
-interface LobbyParticipant {
-  slot_number: number;
-  username: string;
-  user_id: string;
-}
+type LobbyView = 'menu' | 'create' | 'join' | 'inLobby';
 
 const GameLobby = ({ onBack }: GameLobbyProps) => {
-  const [showSubjectModal, setShowSubjectModal] = useState(false);
-  const [selectedSubject, setSelectedSubject] = useState<string>('');
-  const [selectedGameMode, setSelectedGameMode] = useState<'study' | 'quiz'>('study');
-  const [currentLobby, setCurrentLobby] = useState<Lobby | null>(null);
-  const [participants, setParticipants] = useState<LobbyParticipant[]>([]);
-  const [inviteUserId, setInviteUserId] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const [currentView, setCurrentView] = useState<LobbyView>('menu');
+  const [currentLobby, setCurrentLobby] = useState<any>(null);
 
-  const handleSubjectSelect = (subject: string, maxPlayers: 2 | 4, gameMode: 'study' | 'quiz') => {
-    setSelectedSubject(subject);
-    setSelectedGameMode(gameMode);
-    setShowSubjectModal(false);
-    // Create lobby with selected options
-    createLobbyWithOptions(subject, maxPlayers, gameMode);
+  const handleCreateLobby = () => {
+    setCurrentView('create');
   };
 
-  const createLobbyWithOptions = async (subject: string, maxPlayers: 2 | 4, gameMode: 'study' | 'quiz') => {
-    if (!user) return;
-
-    setLoading(true);
-    try {
-      // Get user's profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('user_id', user.id)
-        .single();
-
-      if (profileError) throw profileError;
-
-      // Create lobby with generated lobby code and selected options
-      const { data: lobby, error: lobbyError } = await supabase
-        .from('game_lobbies')
-        .insert({
-          lobby_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
-          creator_id: user.id,
-          max_players: maxPlayers,
-          current_players: 1,
-          subject: subject,
-          game_mode: gameMode
-        })
-        .select()
-        .single();
-
-      if (lobbyError) throw lobbyError;
-
-      // Add creator as first participant
-      const { error: participantError } = await supabase
-        .from('lobby_participants')
-        .insert({
-          lobby_id: lobby.id,
-          user_id: user.id,
-          username: profile.username,
-          slot_number: 1
-        });
-
-      if (participantError) throw participantError;
-
-      setCurrentLobby(lobby);
-      setParticipants([{
-        slot_number: 1,
-        username: profile.username,
-        user_id: user.id
-      }]);
-      
-      toast({
-        title: 'Lobby Created!',
-        description: `${subject} ${gameMode} lobby created with ${maxPlayers} players!`,
-      });
-    } catch (error) {
-      console.error('Error creating lobby:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to create lobby. Please try again.',
-        variant: 'destructive'
-      });
-    }
-    setLoading(false);
-  };
-
-  const startQuiz = async () => {
-    if (!currentLobby || !user) return;
-
-    try {
-      const { data, error } = await supabase.rpc('start_quiz_lobby', {
-        lobby_id: currentLobby.id
-      });
-
-      if (error) throw error;
-
-      if (data) {
-        toast({
-          title: 'Quiz Started!',
-          description: 'The quiz has begun for all participants.',
-        });
-        // Reload lobby to get updated status
-        loadLobbyData();
-      } else {
-        toast({
-          title: 'Access Denied',
-          description: 'Only the lobby creator can start the quiz.',
-          variant: 'destructive'
-        });
-      }
-    } catch (error) {
-      console.error('Error starting quiz:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to start quiz. Please try again.',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const loadLobbyData = async () => {
-    if (!currentLobby) return;
-
-    const { data, error } = await supabase
-      .from('game_lobbies')
-      .select('*')
-      .eq('id', currentLobby.id)
-      .single();
-
-    if (error) {
-      console.error('Error loading lobby:', error);
-    } else {
-      setCurrentLobby(data);
-    }
-  };
-
-  const invitePlayer = async () => {
-    if (!currentLobby || !inviteUserId.trim()) return;
-
-    try {
-      // Check if user exists
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_id, username')
-        .eq('username', inviteUserId.trim())
-        .single();
-
-      if (profileError || !profile) {
-        toast({
-          title: 'User Not Found',
-          description: 'No user found with that username.',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      // Check if lobby is full
-      if (participants.length >= currentLobby.max_players) {
-        toast({
-          title: 'Lobby Full',
-          description: 'This lobby is already full.',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      // Send real-time invite
-      const { error: inviteError } = await supabase
-        .from('lobby_invites')
-        .insert({
-          lobby_id: currentLobby.id,
-          sender_id: user?.id,
-          receiver_id: profile.user_id
-        });
-
-      if (inviteError) throw inviteError;
-
-      setInviteUserId('');
-      toast({
-        title: 'Invite Sent!',
-        description: `Sent lobby invite to @${profile.username}`,
-      });
-    } catch (error) {
-      console.error('Error sending invite:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to send invite. Please try again.',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const loadParticipants = async () => {
-    if (!currentLobby) return;
-
-    const { data, error } = await supabase
-      .from('lobby_participants')
-      .select('slot_number, username, user_id')
-      .eq('lobby_id', currentLobby.id)
-      .order('slot_number');
-
-    if (error) {
-      console.error('Error loading participants:', error);
-    } else {
-      setParticipants(data || []);
-    }
-  };
-
-  const copyLobbyCode = () => {
-    if (currentLobby) {
-      navigator.clipboard.writeText(currentLobby.lobby_code);
-      toast({
-        title: 'Copied!',
-        description: 'Lobby code copied to clipboard.',
-      });
-    }
-  };
-
-  const leaveLobby = () => {
-    setCurrentLobby(null);
-    setParticipants([]);
-    setInviteUserId('');
-    setShowSubjectModal(false);
-    setSelectedSubject('');
+  const handleJoinLobby = () => {
+    setCurrentView('join');
   };
 
   const handleBackToMenu = () => {
-    if (currentLobby) {
-      leaveLobby();
-    } else {
+    if (currentView === 'menu') {
       onBack();
+    } else {
+      setCurrentView('menu');
+      setCurrentLobby(null);
     }
   };
 
-  // If user is in a lobby, show lobby view
-  if (currentLobby) {
-    return (
-      <div className="pt-20 pb-12">
-        <div className="container mx-auto px-6 max-w-4xl">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <Button 
-              variant="ghost" 
-              onClick={handleBackToMenu}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Leave Lobby
-            </Button>
-            
-            <div className="text-center">
-              <h1 className="text-3xl font-bold mb-2 bg-gradient-primary bg-clip-text text-transparent">
-                Game Lobby
-              </h1>
-              <p className="text-muted-foreground">
-                {participants.length}/{currentLobby.max_players} players
-              </p>
-            </div>
-            
-            <div></div>
-          </div>
+  const handleLobbyCreated = (lobby: any) => {
+    setCurrentLobby(lobby);
+    setCurrentView('inLobby');
+  };
 
-          {/* Lobby Info */}
-          <Card className="mb-8 bg-gradient-card border-primary/20">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-center">
-                <Crown className="w-5 h-5 mr-2 text-primary" />
-                Study Lobby Created
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary mb-2">
-                  {currentLobby.subject || 'No Subject Selected'}
-                </div>
-                <div className="text-lg text-muted-foreground mb-2">
-                  Mode: {currentLobby.game_mode === 'quiz' ? '🏆 Quiz Mode' : '📚 Study Mode'}
-                </div>
-                <p className="text-muted-foreground">
-                  Invite friends using their username
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+  const handleJoinedLobby = (lobby: any) => {
+    setCurrentLobby(lobby);
+    setCurrentView('inLobby');
+  };
 
-          {/* Player Slots */}
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Users className="w-5 h-5 mr-2" />
-                Players ({participants.length}/{currentLobby.max_players})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={`grid grid-cols-${currentLobby.max_players === 2 ? '2' : '2'} md:grid-cols-${currentLobby.max_players} gap-4`}>
-                {Array.from({ length: currentLobby.max_players }, (_, index) => {
-                  const slot = index + 1;
-                  const participant = participants.find(p => p.slot_number === slot);
-                  
-                  return (
-                    <div
-                      key={slot}
-                      className={`p-4 rounded-lg border-2 border-dashed transition-all ${
-                        participant 
-                          ? 'border-primary bg-primary/10' 
-                          : 'border-muted bg-muted/20'
-                      }`}
-                    >
-                      <div className="text-center">
-                        <div className="text-lg font-medium mb-2">
-                          Slot {slot}
-                          {participant?.user_id === user?.id && (
-                            <Badge variant="secondary" className="ml-2">You</Badge>
-                          )}
-                        </div>
-                        {participant ? (
-                          <div className="text-2xl font-bold text-primary">
-                            @{participant.username}
-                          </div>
-                        ) : (
-                          <div className="text-muted-foreground">
-                            Waiting for player...
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quiz Controls */}
-          {currentLobby.game_mode === 'quiz' && currentLobby.creator_id === user?.id && currentLobby.status === 'waiting' && (
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Crown className="w-5 h-5 mr-2 text-primary" />
-                  Quiz Controls
-                </CardTitle>
-                <CardDescription>
-                  As the lobby creator, you can start the quiz when ready
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  onClick={startQuiz}
-                  className="w-full bg-gradient-primary hover:opacity-90"
-                  disabled={participants.length < 2}
-                >
-                  {participants.length < 2 ? 'Need at least 2 players to start' : 'Start Quiz'}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Invite Player */}
-          {participants.length < currentLobby.max_players && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <UserPlus className="w-5 h-5 mr-2" />
-                  Invite Player
-                </CardTitle>
-                <CardDescription>
-                  Enter a player's username to invite them
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex space-x-2">
-                  <Input
-                    placeholder="username"
-                    value={inviteUserId}
-                    onChange={(e) => setInviteUserId(e.target.value)}
-                    maxLength={20}
-                  />
-                  <Button onClick={invitePlayer} disabled={!inviteUserId.trim()}>
-                    Invite
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="pt-20 pb-12">
-      <div className="container mx-auto px-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <Button 
-            variant="ghost" 
-            onClick={handleBackToMenu}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
-          
-          <div className="text-center">
-            <h1 className="text-3xl font-bold mb-2 bg-gradient-primary bg-clip-text text-transparent">
-              Create Lobby
-            </h1>
-            <p className="text-muted-foreground">
-              Choose your lobby type to get started
-            </p>
-          </div>
-          
-          <div></div>
-        </div>
-
-        {/* Create Lobby Button */}
-        <div className="max-w-md mx-auto mb-12">
-          <Card 
-            className="bg-gradient-card border-primary/20 hover:border-primary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-lg hover:shadow-glow"
-            onClick={() => setShowSubjectModal(true)}
-          >
-            <CardContent className="p-8 text-center">
-              <div className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                <Plus className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold mb-2 group-hover:text-primary transition-colors duration-300">
-                Create Lobby
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                Choose your subject and game mode to get started
-              </p>
-              <Button 
-                variant="outline" 
-                className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300"
-                disabled={loading}
-              >
-                {loading ? 'Creating...' : 'Get Started'}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Instructions */}
-        <Card className="mt-12 max-w-4xl mx-auto">
-          <CardHeader>
-            <CardTitle className="text-center">How it works</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-              <div>
-                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-3">
-                  <span className="text-xl font-bold text-primary">1</span>
-                </div>
-                <h4 className="font-semibold mb-2">Create Lobby</h4>
-                <p className="text-sm text-muted-foreground">
-                  Choose between 2 or 4 player lobby and get your lobby code
-                </p>
-              </div>
-              <div>
-                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-3">
-                  <span className="text-xl font-bold text-primary">2</span>
-                </div>
-                <h4 className="font-semibold mb-2">Invite Friends</h4>
-                <p className="text-sm text-muted-foreground">
-                  Invite players using their username for real-time notifications
-                </p>
-              </div>
-              <div>
-                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-3">
-                  <span className="text-xl font-bold text-primary">3</span>
-                </div>
-                <h4 className="font-semibold mb-2">Start Playing</h4>
-                <p className="text-sm text-muted-foreground">
-                  Once all players join, start your study session or quiz challenge
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Subject Selection Modal */}
-        <SubjectSelectionModal 
-          isOpen={showSubjectModal}
-          onClose={() => setShowSubjectModal(false)}
-          onSubjectSelect={handleSubjectSelect}
+  // Render based on current view
+  switch (currentView) {
+    case 'create':
+      return (
+        <CreateLobbyFlow
+          onBack={handleBackToMenu}
+          onLobbyCreated={handleLobbyCreated}
         />
-      </div>
-    </div>
-  );
+      );
+    case 'join':
+      return (
+        <JoinLobbyFlow
+          onBack={handleBackToMenu}
+          onJoinLobby={handleJoinedLobby}
+        />
+      );
+    case 'inLobby':
+      // TODO: Create a dedicated InLobbyView component
+      return (
+        <div className="pt-20 pb-12">
+          <div className="container mx-auto px-6 text-center">
+            <h2 className="text-2xl font-bold mb-4">In Lobby: {currentLobby?.subject}</h2>
+            <p className="text-muted-foreground mb-4">Lobby functionality will be implemented here</p>
+            <Button onClick={handleBackToMenu}>Back to Menu</Button>
+          </div>
+        </div>
+      );
+    default:
+      return (
+        <LobbyMenu
+          onBack={onBack}
+          onCreateLobby={handleCreateLobby}
+          onJoinLobby={handleJoinLobby}
+        />
+      );
+  }
 };
 
 export default GameLobby;
