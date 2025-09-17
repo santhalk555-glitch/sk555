@@ -16,7 +16,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import FriendRequestPopup from './FriendRequestPopup';
+// Removed FriendRequestPopup import - no longer using instant popups
 
 interface Profile {
   id: string;
@@ -39,16 +39,13 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [matches, setMatches] = useState<Profile[]>([]);
-  const [friendRequests, setFriendRequests] = useState<any[]>([]);
-  const [showFriendRequest, setShowFriendRequest] = useState<any>(null);
+  // Removed instant popup functionality
   const { user } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
       loadProfiles();
-      loadFriendRequests();
-      setupRealtimeListeners();
     }
   }, [user]);
 
@@ -76,69 +73,7 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
     }
   };
 
-  const loadFriendRequests = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('friend_requests')
-        .select(`
-          *,
-          sender_profile:profiles!friend_requests_sender_id_fkey(*)
-        `)
-        .eq('receiver_id', user.id)
-        .eq('status', 'pending');
-
-      if (error) throw error;
-      
-      setFriendRequests(data || []);
-      
-      // Show popup for the first pending request
-      if (data && data.length > 0) {
-        setShowFriendRequest(data[0]);
-      }
-    } catch (error) {
-      console.error('Error loading friend requests:', error);
-    }
-  };
-
-  const setupRealtimeListeners = () => {
-    if (!user) return;
-
-    // Listen for incoming friend requests
-    const friendRequestsChannel = supabase
-      .channel('friend-requests')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'friend_requests',
-          filter: `receiver_id=eq.${user.id}`
-        },
-        async (payload) => {
-          // Fetch the complete request with sender profile
-          const { data } = await supabase
-            .from('friend_requests')
-            .select(`
-              *,
-              sender_profile:profiles!friend_requests_sender_id_fkey(*)
-            `)
-            .eq('id', payload.new.id)
-            .single();
-
-          if (data) {
-            setFriendRequests(prev => [data, ...prev]);
-            setShowFriendRequest(data);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(friendRequestsChannel);
-    };
-  };
+  // Friend request functions removed - handled in FriendRequests component
 
   const sendFriendRequest = async (targetProfile: Profile) => {
     if (!user) return;
@@ -256,10 +191,7 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
             </h1>
           </div>
           
-          <div className="flex items-center space-x-2 bg-primary/10 px-3 py-1 rounded-full">
-            <Heart className="w-4 h-4 text-primary" />
-            <span className="text-sm font-bold text-primary">{friendRequests.length}</span>
-          </div>
+          <div></div>
         </div>
 
         {/* Card Stack */}
@@ -428,29 +360,7 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
           </div>
         )}
 
-        {/* Friend Request Popup */}
-        {showFriendRequest && (
-          <FriendRequestPopup
-            friendRequest={showFriendRequest}
-            onClose={() => setShowFriendRequest(null)}
-            onResponse={(accepted) => {
-              if (accepted) {
-                // Update matches list if accepted
-                const newMatch = showFriendRequest.sender_profile;
-                setMatches(prev => [...prev, newMatch]);
-                onMatchesUpdate?.([...matches, newMatch]);
-              }
-              // Remove from pending requests
-              setFriendRequests(prev => prev.filter(req => req.id !== showFriendRequest.id));
-              
-              // Show next request if any
-              const remainingRequests = friendRequests.filter(req => req.id !== showFriendRequest.id);
-              if (remainingRequests.length > 0) {
-                setTimeout(() => setShowFriendRequest(remainingRequests[0]), 1000);
-              }
-            }}
-          />
-        )}
+        {/* Friend requests are now handled in the FriendRequests component */}
       </div>
     </div>
   );

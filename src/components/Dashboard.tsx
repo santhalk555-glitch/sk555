@@ -8,10 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 import SwipeMatching from "./SwipeMatching";
 import GameLobby from "./GameLobby";
 import MatchedFriends from "./MatchedFriends";
+import FriendRequests from "./FriendRequests";
 
 
 const Dashboard = () => {
-  const [activeSection, setActiveSection] = useState<"dashboard" | "matching" | "lobby" | "matches">("dashboard");
+  const [activeSection, setActiveSection] = useState<"dashboard" | "matching" | "lobby" | "matches" | "requests">("dashboard");
   const [matchedStudents, setMatchedStudents] = useState<any[]>([]);
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const [profileMatchCount, setProfileMatchCount] = useState(0);
@@ -56,6 +57,10 @@ const Dashboard = () => {
 
   if (activeSection === "matches") {
     return <MatchedFriends onBack={() => setActiveSection("dashboard")} matches={matchedStudents} />;
+  }
+
+  if (activeSection === "requests") {
+    return <FriendRequests onBack={() => setActiveSection("dashboard")} />;
   }
 
   return (
@@ -104,7 +109,7 @@ const Dashboard = () => {
         </div>
 
         {/* Main Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
           {/* Find Match Card */}
           <Card 
             className="bg-gradient-card border-gaming-primary/20 hover:border-gaming-primary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-gaming hover:shadow-glow"
@@ -174,6 +179,28 @@ const Dashboard = () => {
               <p className="text-muted-foreground mb-4">Create 2 or 4 player lobbies for study sessions</p>
               <Button variant="outline" className="w-full bg-gaming-secondary/10 border-gaming-secondary/30 hover:bg-gaming-secondary/20 group-hover:shadow-glow transition-all duration-300">
                 Create Lobby
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Friend Requests Card */}
+          <Card 
+            className="bg-gradient-card border-gaming-warning/20 hover:border-gaming-warning/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-gaming hover:shadow-glow"
+            onClick={() => setActiveSection("requests")}
+          >
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gaming-warning to-gaming-primary flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
+                <UserPlus className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-2 group-hover:text-gaming-warning transition-colors duration-300">Friend Requests</h3>
+              <p className="text-muted-foreground mb-4">
+                Manage incoming and outgoing friend requests
+              </p>
+              <Button 
+                variant="outline" 
+                className="w-full bg-gaming-warning/10 border-gaming-warning/30 hover:bg-gaming-warning/20 group-hover:shadow-glow transition-all duration-300"
+              >
+                View Requests
               </Button>
             </CardContent>
           </Card>

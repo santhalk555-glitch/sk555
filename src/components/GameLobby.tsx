@@ -62,11 +62,11 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
 
       if (profileError) throw profileError;
 
-      // Create lobby without lobby_code
+      // Create lobby with generated lobby code
       const { data: lobby, error: lobbyError } = await supabase
         .from('game_lobbies')
         .insert({
-          lobby_code: '', // Remove lobby code system
+          lobby_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
           creator_id: user.id,
           max_players: maxPlayers,
           current_players: 1
