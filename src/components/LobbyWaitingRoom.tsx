@@ -127,6 +127,9 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
   const startQuiz = async () => {
     if (!lobby || !user || !isCreator) return;
 
+    console.log('Starting quiz for lobby:', lobby.id, 'with', participants.length, 'participants');
+    setLoading(true);
+
     try {
       // First, create quiz participants for all lobby participants
       const { data: lobbyParticipants, error: participantsError } = await supabase
@@ -155,18 +158,23 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
       }
 
       // Start the quiz
+      console.log('Calling start_quiz_lobby RPC function...');
       const { data, error } = await supabase.rpc('start_quiz_lobby', {
         lobby_id: lobby.id
       });
 
+      console.log('start_quiz_lobby response:', { data, error });
+
       if (error) throw error;
 
       if (data) {
+        console.log('Quiz started successfully!');
         toast({
           title: 'Quiz Started!',
-          description: 'The quiz has begun for all participants.',
+          description: `The quiz has begun${participants.length > 1 ? ' for all participants' : ' in single-player mode'}!`,
         });
       } else {
+        console.log('Quiz start failed - access denied');
         toast({
           title: 'Access Denied',
           description: 'Only the lobby creator can start the quiz.',
@@ -177,9 +185,11 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
       console.error('Error starting quiz:', error);
       toast({
         title: 'Error',
-        description: 'Failed to start quiz. Please try again.',
+        description: `Failed to start quiz: ${error.message || 'Unknown error'}`,
         variant: 'destructive'
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -440,7 +450,7 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
                     <div className="text-center">
                       <Button
                         onClick={startQuiz}
-                        disabled={loading || participants.length < 2}
+                        disabled={loading}
                         className="bg-gradient-primary hover:opacity-90 min-w-[200px]"
                         size="lg"
                       >
@@ -450,8 +460,8 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
                     </div>
                     
                     <div className="text-sm text-muted-foreground text-center">
-                      {participants.length < 2 ? (
-                        <p>Need at least 2 players to start the quiz</p>
+                      {participants.length === 1 ? (
+                        <p>🎯 Single-player mode - Perfect for practice!</p>
                       ) : (
                         <p>All participants will be taken to the quiz when you start</p>
                       )}
