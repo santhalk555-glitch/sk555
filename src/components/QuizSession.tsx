@@ -67,22 +67,62 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
   const loadQuizData = async () => {
     try {
+      // Convert human-readable subject to database format
+      const subjectMapping: { [key: string]: string } = {
+        'Mechanical Engineering': 'mechanical_engineering',
+        'Electrical Engineering': 'electrical_engineering', 
+        'Civil Engineering': 'civil_engineering',
+        'Computer Science': 'computer_science',
+        'Information Technology': 'information_technology',
+        'Mathematics': 'mathematics',
+        'Physics': 'physics',
+        'Chemistry': 'chemistry',
+        'Biology': 'biology',
+        'English': 'english',
+        'History': 'history',
+        'Geography': 'geography',
+        'Economics': 'economics',
+        'Psychology': 'psychology',
+        'Engineering': 'engineering',
+        'Medical': 'medical',
+        'Business Studies': 'business_studies',
+        'Accounting': 'accounting',
+        'Political Science': 'political_science',
+        'Sociology': 'sociology',
+        'Philosophy': 'philosophy',
+        'Statistics': 'statistics',
+        'Data Science': 'data_science',
+        'Marketing': 'marketing',
+        'Finance': 'finance',
+        'Law': 'law',
+        'Environmental Science': 'environmental_science',
+        'Biotechnology': 'biotechnology',
+        'Pharmaceutical': 'pharmaceutical',
+        'Architecture': 'architecture'
+      };
+
+      const dbSubject = subjectMapping[lobby.subject] || lobby.subject.toLowerCase().replace(/\s+/g, '_');
+      
       // Fetch 15 questions from the selected subject
       const { data: questionsData, error: questionsError } = await supabase
         .from('quiz_questions')
         .select('*')
-        .eq('subject', lobby.subject)
+        .eq('subject', dbSubject)
         .limit(15);
 
       if (questionsError) throw questionsError;
+
+      console.log(`Fetching questions for subject: ${lobby.subject} -> ${dbSubject}`);
+      console.log('Questions found:', questionsData?.length || 0);
 
       if (questionsData && questionsData.length > 0) {
         setQuestions(questionsData);
         setAnswers(new Array(questionsData.length).fill(''));
       } else {
+        console.error(`No questions found for subject: ${lobby.subject} (${dbSubject})`);
         toast({
           title: 'No Questions Available',
-          description: `No questions found for ${lobby.subject}. Please try a different subject.`,
+          description: `No questions found for ${lobby.subject}. Please contact support or try a different subject.`,
           variant: 'destructive'
         });
       }
