@@ -83,7 +83,7 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
             setLobby(updatedLobby);
             
             // If quiz started, redirect all participants
-            if (updatedLobby.status === 'in_progress') {
+            if (updatedLobby.status === 'active') {
               onQuizStarted(updatedLobby);
             }
           }

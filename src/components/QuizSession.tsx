@@ -43,7 +43,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (lobby && lobby.status === 'in_progress') {
+    if (lobby && lobby.status === 'active') {
       loadQuizData();
       setQuizStarted(true);
     }

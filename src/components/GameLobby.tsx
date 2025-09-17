@@ -35,7 +35,7 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
 
   const handleLobbyCreated = (lobby: any) => {
     setCurrentLobby(lobby);
-    if (lobby.status === 'in_progress') {
+    if (lobby.status === 'active') {
       setCurrentView('quiz');
     } else {
       setCurrentView('waiting');
@@ -44,7 +44,7 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
 
   const handleJoinedLobby = (lobby: any) => {
     setCurrentLobby(lobby);
-    if (lobby.status === 'in_progress') {
+    if (lobby.status === 'active') {
       setCurrentView('quiz');
     } else {
       setCurrentView('waiting');
