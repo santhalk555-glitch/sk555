@@ -266,52 +266,98 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
             </CardContent>
           </Card>
 
-          {/* Player Slots */}
+          {/* Current Players Table */}
           <Card className="mb-8">
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Users className="w-5 h-5 mr-2" />
-                Players ({participants.length}/{currentLobby.max_players})
+                Current Players ({participants.length}/{currentLobby.max_players})
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={`grid grid-cols-${currentLobby.max_players === 2 ? '2' : '2'} md:grid-cols-${currentLobby.max_players} gap-4`}>
-                {Array.from({ length: currentLobby.max_players }, (_, index) => {
-                  const slot = index + 1;
-                  const participant = participants.find(p => p.slot_number === slot);
-                  
-                  return (
-                    <div
-                      key={slot}
-                      className={`p-4 rounded-lg border-2 border-dashed transition-all ${
-                        participant 
-                          ? 'border-primary bg-primary/10' 
-                          : 'border-muted bg-muted/20'
-                      }`}
-                    >
-                      <div className="text-center">
-                        <div className="text-lg font-medium mb-2">
-                          Slot {slot}
-                          {participant?.user_id === user?.id && (
-                            <Badge variant="secondary" className="ml-2">You</Badge>
-                          )}
-                        </div>
-                        {participant ? (
-                          <div className="text-2xl font-bold text-primary">
-                            @{participant.username}
-                          </div>
-                        ) : (
-                          <div className="text-muted-foreground">
-                            Waiting for player...
-                          </div>
+              <div className="space-y-2">
+                {participants.map((participant, index) => (
+                  <div
+                    key={participant.user_id}
+                    className="flex items-center justify-between p-4 rounded-lg bg-primary/10 border border-primary/20"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                        <span className="font-bold text-primary">{index + 1}</span>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-lg">@{participant.username}</div>
+                        {participant.user_id === user?.id && (
+                          <Badge variant="secondary" className="mt-1">Creator</Badge>
                         )}
                       </div>
                     </div>
-                  );
-                })}
+                    <div className="text-sm text-muted-foreground">
+                      Joined {new Date().toLocaleTimeString()}
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Empty slots */}
+                {Array.from({ length: currentLobby.max_players - participants.length }, (_, index) => (
+                  <div
+                    key={`empty-${index}`}
+                    className="flex items-center justify-between p-4 rounded-lg bg-muted/20 border border-muted/40 border-dashed"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-muted/40 flex items-center justify-center">
+                        <span className="font-bold text-muted-foreground">{participants.length + index + 1}</span>
+                      </div>
+                      <div className="text-muted-foreground">
+                        Waiting for player...
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
+
+          {/* Invite Players Table */}
+          {participants.length < currentLobby.max_players && (
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <UserPlus className="w-5 h-5 mr-2" />
+                  Invite Players
+                </CardTitle>
+                <CardDescription>
+                  Enter a player's username to send them an invitation
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex space-x-2">
+                    <Input
+                      placeholder="Enter username to invite..."
+                      value={inviteUserId}
+                      onChange={(e) => setInviteUserId(e.target.value)}
+                      maxLength={20}
+                      className="flex-1"
+                    />
+                    <Button 
+                      onClick={invitePlayer} 
+                      disabled={!inviteUserId.trim()}
+                      className="bg-gradient-primary hover:opacity-90"
+                    >
+                      Send Invite
+                    </Button>
+                  </div>
+                  
+                  <div className="text-sm text-muted-foreground">
+                    <p>• Players will receive an invitation notification</p>
+                    <p>• They can accept or decline your invitation</p>
+                    <p>• You have {currentLobby.max_players - participants.length} slots remaining</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Quiz Controls */}
           {currentLobby.game_mode === 'quiz' && currentLobby.creator_id === user?.id && currentLobby.status === 'waiting' && (
