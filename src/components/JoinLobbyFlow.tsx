@@ -145,7 +145,7 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
 
       // Check if lobby is not waiting
       console.log('Lobby status:', currentLobby.status);
-      if (currentLobby.status !== 'waiting') {
+      if (currentLobby.status !== 'waiting' && currentLobby.status !== 'in_progress') {
         console.log('Lobby is not waiting for players');
         toast({
           title: 'Lobby No Longer Available',
@@ -380,7 +380,7 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
                       </div>
                       <div>
                         <div className="text-sm text-muted-foreground">Status</div>
-                        <Badge variant={invite.game_lobbies.status === 'waiting' ? 'default' : 'secondary'}>
+                        <Badge variant={invite.game_lobbies.status === 'waiting' ? 'default' : invite.game_lobbies.status === 'in_progress' ? 'secondary' : 'secondary'}>
                           {invite.game_lobbies.status}
                         </Badge>
                       </div>
@@ -394,7 +394,7 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
                           handleInviteClick(invite);
                         }}
                         className="flex-1 bg-gradient-primary hover:opacity-90"
-                        disabled={invite.game_lobbies.status !== 'waiting'}
+                        disabled={invite.game_lobbies.status !== 'waiting' && invite.game_lobbies.status !== 'in_progress'}
                       >
                         <Check className="w-4 h-4 mr-2" />
                         Accept & Join
@@ -412,7 +412,7 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
                       </Button>
                     </div>
 
-                    {invite.game_lobbies.status !== 'waiting' && (
+                    {invite.game_lobbies.status !== 'waiting' && invite.game_lobbies.status !== 'in_progress' && (
                       <p className="text-sm text-muted-foreground text-center">
                         This lobby is no longer accepting players
                       </p>
