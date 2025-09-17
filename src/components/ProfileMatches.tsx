@@ -74,7 +74,7 @@ export const ProfileMatches = () => {
     if (!user) return null;
 
     const { data, error } = await supabase
-      .from('profiles')
+      .from('profile_view')
       .select('*')
       .eq('user_id', user.id)
       .single();
@@ -92,7 +92,7 @@ export const ProfileMatches = () => {
     const to = from + ITEMS_PER_PAGE - 1;
 
     const { data, error } = await supabase
-      .from('profiles')
+      .from('profile_view')
       .select('*')
       .neq('user_id', user?.id)
       .range(from, to)

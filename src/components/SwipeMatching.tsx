@@ -54,7 +54,7 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
 
     try {
       const { data: profilesData, error } = await supabase
-        .from('profiles')
+        .from('profile_view')
         .select('*')
         .neq('user_id', user.id);
 

@@ -385,9 +385,48 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      profile_view: {
+        Row: {
+          competitive_exams: string[] | null
+          course_name: string | null
+          created_at: string | null
+          display_user_id: string | null
+          id: string | null
+          subjects: string[] | null
+          updated_at: string | null
+          user_id: string | null
+          username: string | null
+        }
+        Insert: {
+          competitive_exams?: never
+          course_name?: never
+          created_at?: string | null
+          display_user_id?: string | null
+          id?: string | null
+          subjects?: never
+          updated_at?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Update: {
+          competitive_exams?: never
+          course_name?: never
+          created_at?: string | null
+          display_user_id?: string | null
+          id?: string | null
+          subjects?: never
+          updated_at?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      are_friends: {
+        Args: { user1_id: string; user2_id: string }
+        Returns: boolean
+      }
       generate_8_digit_user_id: {
         Args: Record<PropertyKey, never>
         Returns: string

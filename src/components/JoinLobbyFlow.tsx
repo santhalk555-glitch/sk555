@@ -78,7 +78,7 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
       console.log('Sender IDs:', senderIds);
       
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profile_view')
         .select('user_id, username')
         .in('user_id', senderIds);
 
@@ -158,7 +158,7 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
       // Get user profile to join lobby
       console.log('Getting user profile for user_id:', user?.id);
       const { data: profile, error: profileError } = await supabase
-        .from('profiles')
+        .from('profile_view')
         .select('username')
         .eq('user_id', user?.id)
         .single();

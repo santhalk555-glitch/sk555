@@ -29,7 +29,7 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
     setLoading(true);
     try {
       const { data: profile, error: profileError } = await supabase
-        .from('profiles')
+        .from('profile_view')
         .select('username')
         .eq('user_id', user.id)
         .single();

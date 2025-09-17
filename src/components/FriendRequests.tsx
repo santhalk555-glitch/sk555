@@ -85,7 +85,7 @@ const FriendRequests = ({ onBack }: FriendRequestsProps) => {
       const receivedWithProfiles = await Promise.all(
         (received || []).map(async (request) => {
           const { data: profile } = await supabase
-            .from('profiles')
+            .from('profile_view')
             .select('*')
             .eq('user_id', request.sender_id)
             .single();
@@ -97,7 +97,7 @@ const FriendRequests = ({ onBack }: FriendRequestsProps) => {
       const sentWithProfiles = await Promise.all(
         (sent || []).map(async (request) => {
           const { data: profile } = await supabase
-            .from('profiles')
+            .from('profile_view')
             .select('*')
             .eq('user_id', request.receiver_id)
             .single();

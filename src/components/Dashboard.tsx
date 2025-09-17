@@ -26,7 +26,7 @@ const Dashboard = () => {
       if (!user) return;
       
       const { data: profile } = await supabase
-        .from('profiles')
+        .from('profile_view')
         .select('id')
         .eq('user_id', user.id)
         .single();
@@ -36,7 +36,7 @@ const Dashboard = () => {
       if (profile) {
         // Get count of other profiles for matching
         const { count } = await supabase
-          .from('profiles')
+          .from('profile_view')
           .select('*', { count: 'exact', head: true })
           .neq('user_id', user.id);
         

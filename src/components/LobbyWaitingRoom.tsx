@@ -190,7 +190,7 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
 
     try {
       const { data: profile, error: profileError } = await supabase
-        .from('profiles')
+        .from('profile_view')
         .select('user_id, username')
         .eq('username', inviteUserId.trim())
         .single();

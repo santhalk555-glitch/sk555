@@ -87,7 +87,7 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
         const otherUserId = friendship.user1_id === user.id ? friendship.user2_id : friendship.user1_id;
         
         const { data: profile, error: profileError } = await supabase
-          .from('profiles')
+          .from('profile_view')
           .select('*')
           .eq('user_id', otherUserId)
           .single();

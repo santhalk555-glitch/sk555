@@ -112,7 +112,7 @@ export const ProfileCreationForm = () => {
     
     try {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('profile_view')
         .select('username')
         .eq('username', username.toLowerCase())
         .maybeSingle();
@@ -162,7 +162,7 @@ export const ProfileCreationForm = () => {
     try {
       // Check if profile already exists
       const { data: existingProfile } = await supabase
-        .from('profiles')
+        .from('profile_view')
         .select('id')
         .eq('user_id', user.id)
         .maybeSingle();

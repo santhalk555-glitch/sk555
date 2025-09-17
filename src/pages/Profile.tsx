@@ -31,7 +31,7 @@ const Profile = () => {
 
     const fetchProfile = async () => {
         const { data, error } = await supabase
-          .from('profiles')
+          .from('profile_view')
           .select('display_user_id, username, course_name, competitive_exams, subjects')
           .eq('user_id', user.id)
           .maybeSingle();
