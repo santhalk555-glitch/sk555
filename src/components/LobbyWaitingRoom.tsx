@@ -68,7 +68,7 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
 
       // Set up real-time subscription for lobby status changes
       const lobbyChannel = supabase
-        .channel(`lobby-${lobby.id}`)
+        .channel(`lobby-status-${lobby.id}`)
         .on(
           'postgres_changes',
           {
@@ -78,13 +78,13 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
             filter: `id=eq.${lobby.id}`
           },
           (payload) => {
-            console.log('Lobby updated:', payload);
+            console.log('Lobby updated via real-time:', payload);
             const updatedLobby = payload.new;
             setLobby(updatedLobby);
             
             // If quiz started, redirect all participants
             if (updatedLobby.status === 'active') {
-              console.log('Quiz status changed to active, starting quiz...');
+              console.log('Quiz status changed to active via real-time, starting quiz...');
               onQuizStarted(updatedLobby);
             }
           }
@@ -93,9 +93,35 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
           console.log('Lobby channel subscription status:', status);
         });
 
+      // Backup polling mechanism to ensure all participants get the update
+      const pollLobbyStatus = setInterval(async () => {
+        try {
+          const { data: currentLobby, error } = await supabase
+            .from('game_lobbies')
+            .select('*')
+            .eq('id', lobby.id)
+            .single();
+
+          if (error) throw error;
+
+          if (currentLobby && currentLobby.status !== lobby.status) {
+            console.log('Lobby status changed via polling:', currentLobby.status);
+            setLobby(currentLobby);
+            
+            if (currentLobby.status === 'active') {
+              console.log('Quiz started via polling, redirecting...');
+              onQuizStarted(currentLobby);
+            }
+          }
+        } catch (error) {
+          console.error('Error polling lobby status:', error);
+        }
+      }, 2000); // Poll every 2 seconds
+
       return () => {
         supabase.removeChannel(participantsChannel);
         supabase.removeChannel(lobbyChannel);
+        clearInterval(pollLobbyStatus);
       };
     }
   }, [lobby, onQuizStarted]);
