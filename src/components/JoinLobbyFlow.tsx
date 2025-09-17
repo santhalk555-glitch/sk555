@@ -54,16 +54,13 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
         .from('lobby_invites')
         .select(`
           *,
-          game_lobbies!lobby_invites_lobby_id_fkey (
+          game_lobbies (
             subject,
             game_mode,
             max_players,
             current_players,
             lobby_code,
             status
-          ),
-          profiles!lobby_invites_sender_id_fkey (
-            username
           )
         `)
         .eq('receiver_id', user.id)
@@ -72,10 +69,17 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
 
       if (error) throw error;
 
+      // Get sender profiles separately
+      const senderIds = data?.map(invite => invite.sender_id) || [];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, username')
+        .in('user_id', senderIds);
+
       // Transform the data to match our interface
       const transformedInvites = data?.map((invite: any) => ({
         ...invite,
-        sender_profile: invite.profiles,
+        sender_profile: profiles?.find(p => p.user_id === invite.sender_id) || { username: 'Unknown' },
       })) || [];
 
       setInvites(transformedInvites);

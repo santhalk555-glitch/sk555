@@ -383,33 +383,6 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
             </Card>
           )}
 
-          {/* Invite Player */}
-          {participants.length < currentLobby.max_players && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <UserPlus className="w-5 h-5 mr-2" />
-                  Invite Player
-                </CardTitle>
-                <CardDescription>
-                  Enter a player's username to invite them
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex space-x-2">
-                  <Input
-                    placeholder="username"
-                    value={inviteUserId}
-                    onChange={(e) => setInviteUserId(e.target.value)}
-                    maxLength={20}
-                  />
-                  <Button onClick={invitePlayer} disabled={!inviteUserId.trim()}>
-                    Invite
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
     );
