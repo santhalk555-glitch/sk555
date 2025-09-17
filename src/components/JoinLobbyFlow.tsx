@@ -166,6 +166,32 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
       console.log('Profile query result:', { profile, profileError });
       if (profileError) throw profileError;
 
+      // Check if user is already in this lobby
+      console.log('Checking if user already in lobby');
+      const { data: existingParticipant, error: checkError } = await supabase
+        .from('lobby_participants')
+        .select('*')
+        .eq('lobby_id', invite.lobby_id)
+        .eq('user_id', user?.id)
+        .single();
+
+      console.log('Existing participant check:', { existingParticipant, checkError });
+      
+      if (existingParticipant) {
+        console.log('User already in lobby, navigating directly');
+        toast({
+          title: 'Already in Lobby',
+          description: 'You are already a participant in this lobby.',
+        });
+        
+        // Navigate to the lobby
+        onJoinLobby({
+          id: invite.lobby_id,
+          ...currentLobby
+        });
+        return;
+      }
+
       // Find next available slot
       console.log('Finding next available slot');
       const { data: participants, error: participantsError } = await supabase
@@ -185,7 +211,7 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
           break;
         }
       }
-      console.log('Next available slot:', nextSlot);
+      console.log('Next available slot:', nextSlot, 'Occupied slots:', occupiedSlots);
 
       // Join the lobby
       console.log('Joining lobby with data:', {

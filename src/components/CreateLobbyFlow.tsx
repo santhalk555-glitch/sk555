@@ -51,7 +51,7 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated, onQuizStarted }: CreateLobbyF
       
       // Set up real-time subscription for participants
       const channel = supabase
-        .channel('lobby-participants')
+        .channel(`lobby-participants-${currentLobby.id}`)
         .on(
           'postgres_changes',
           {
@@ -60,7 +60,21 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated, onQuizStarted }: CreateLobbyF
             table: 'lobby_participants',
             filter: `lobby_id=eq.${currentLobby.id}`
           },
-          () => {
+          (payload) => {
+            console.log('New participant joined:', payload);
+            loadParticipants();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'lobby_participants',
+            filter: `lobby_id=eq.${currentLobby.id}`
+          },
+          (payload) => {
+            console.log('Participant updated:', payload);
             loadParticipants();
           }
         )
@@ -229,12 +243,14 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated, onQuizStarted }: CreateLobbyF
     if (!currentLobby) return;
 
     try {
+      console.log('Loading participants for lobby:', currentLobby.id);
       const { data, error } = await supabase
         .from('lobby_participants')
         .select('*')
         .eq('lobby_id', currentLobby.id)
         .order('slot_number');
 
+      console.log('Participants loaded:', { data, error });
       if (error) throw error;
 
       if (data) {
@@ -242,6 +258,8 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated, onQuizStarted }: CreateLobbyF
         
         // Update current lobby player count
         setCurrentLobby(prev => prev ? { ...prev, current_players: data.length } : null);
+        
+        console.log('Updated participants state:', data);
       }
     } catch (error) {
       console.error('Error loading participants:', error);
@@ -377,44 +395,56 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated, onQuizStarted }: CreateLobbyF
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {participants.map((participant, index) => (
-                  <div
-                    key={participant.user_id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-primary/10 border border-primary/20"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                        <span className="font-bold text-primary">{index + 1}</span>
+                {/* Create an array for all slots */}
+                {Array.from({ length: currentLobby.max_players }, (_, slotIndex) => {
+                  const slotNumber = slotIndex + 1;
+                  const participant = participants.find(p => p.slot_number === slotNumber);
+                  
+                  if (participant) {
+                    // Occupied slot
+                    return (
+                      <div
+                        key={participant.user_id}
+                        className="flex items-center justify-between p-4 rounded-lg bg-primary/10 border border-primary/20"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                            <span className="font-bold text-primary">{slotNumber}</span>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-lg">@{participant.username}</div>
+                            {participant.user_id === user?.id && (
+                              <Badge variant="secondary" className="mt-1">Creator</Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Slot {slotNumber}
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-semibold text-lg">@{participant.username}</div>
-                        {participant.user_id === user?.id && (
-                          <Badge variant="secondary" className="mt-1">Creator</Badge>
-                        )}
+                    );
+                  } else {
+                    // Empty slot
+                    return (
+                      <div
+                        key={`empty-${slotNumber}`}
+                        className="flex items-center justify-between p-4 rounded-lg bg-muted/20 border border-muted/40 border-dashed"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-full bg-muted/40 flex items-center justify-center">
+                            <span className="font-bold text-muted-foreground">{slotNumber}</span>
+                          </div>
+                          <div className="text-muted-foreground">
+                            Waiting for player...
+                          </div>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Slot {slotNumber}
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Joined {new Date().toLocaleTimeString()}
-                    </div>
-                  </div>
-                ))}
-                
-                {/* Empty slots */}
-                {Array.from({ length: currentLobby.max_players - participants.length }, (_, index) => (
-                  <div
-                    key={`empty-${index}`}
-                    className="flex items-center justify-between p-4 rounded-lg bg-muted/20 border border-muted/40 border-dashed"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full bg-muted/40 flex items-center justify-center">
-                        <span className="font-bold text-muted-foreground">{participants.length + index + 1}</span>
-                      </div>
-                      <div className="text-muted-foreground">
-                        Waiting for player...
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  }
+                })}
               </div>
             </CardContent>
           </Card>
