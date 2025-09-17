@@ -8,7 +8,7 @@ interface GameLobbyProps {
   onBack: () => void;
 }
 
-type LobbyView = 'menu' | 'create' | 'join' | 'inLobby';
+type LobbyView = 'menu' | 'create' | 'join';
 
 const GameLobby = ({ onBack }: GameLobbyProps) => {
   const [currentView, setCurrentView] = useState<LobbyView>('menu');
@@ -33,12 +33,12 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
 
   const handleLobbyCreated = (lobby: any) => {
     setCurrentLobby(lobby);
-    setCurrentView('inLobby');
+    // Stay in create view - CreateLobbyFlow handles lobby display
   };
 
   const handleJoinedLobby = (lobby: any) => {
     setCurrentLobby(lobby);
-    setCurrentView('inLobby');
+    setCurrentView('join');
   };
 
   // Render based on current view
@@ -56,17 +56,6 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
           onBack={handleBackToMenu}
           onJoinLobby={handleJoinedLobby}
         />
-      );
-    case 'inLobby':
-      // TODO: Create a dedicated InLobbyView component
-      return (
-        <div className="pt-20 pb-12">
-          <div className="container mx-auto px-6 text-center">
-            <h2 className="text-2xl font-bold mb-4">In Lobby: {currentLobby?.subject}</h2>
-            <p className="text-muted-foreground mb-4">Lobby functionality will be implemented here</p>
-            <Button onClick={handleBackToMenu}>Back to Menu</Button>
-          </div>
-        </div>
       );
     default:
       return (
