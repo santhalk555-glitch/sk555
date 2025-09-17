@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import SubjectSelectionModal from './SubjectSelectionModal';
 interface CreateLobbyFlowProps {
   onBack: () => void;
   onLobbyCreated: (lobby: any) => void;
+  onQuizStarted?: (lobby: any) => void;
 }
 
 interface Lobby {
@@ -32,7 +33,7 @@ interface LobbyParticipant {
   user_id: string;
 }
 
-const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
+const CreateLobbyFlow = ({ onBack, onLobbyCreated, onQuizStarted }: CreateLobbyFlowProps) => {
   const [showSubjectModal, setShowSubjectModal] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedGameMode, setSelectedGameMode] = useState<'study' | 'quiz'>('study');
@@ -42,6 +43,34 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Load participants when lobby changes
+  useEffect(() => {
+    if (currentLobby) {
+      loadParticipants();
+      
+      // Set up real-time subscription for participants
+      const channel = supabase
+        .channel('lobby-participants')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'lobby_participants',
+            filter: `lobby_id=eq.${currentLobby.id}`
+          },
+          () => {
+            loadParticipants();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [currentLobby]);
 
   const handleSubjectSelect = (subject: string, maxPlayers: 2 | 4, gameMode: 'study' | 'quiz') => {
     setSelectedSubject(subject);
@@ -117,6 +146,33 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
     if (!currentLobby || !user) return;
 
     try {
+      // First, create quiz participants for all lobby participants
+      const { data: lobbyParticipants, error: participantsError } = await supabase
+        .from('lobby_participants')
+        .select('*')
+        .eq('lobby_id', currentLobby.id);
+
+      if (participantsError) throw participantsError;
+
+      // Insert into quiz_participants table
+      if (lobbyParticipants) {
+        const quizParticipants = lobbyParticipants.map(p => ({
+          lobby_id: currentLobby.id,
+          user_id: p.user_id,
+          score: 0,
+          answers: []
+        }));
+
+        const { error: insertError } = await supabase
+          .from('quiz_participants')
+          .insert(quizParticipants);
+
+        if (insertError) {
+          console.log('Quiz participants may already exist:', insertError);
+        }
+      }
+
+      // Start the quiz
       const { data, error } = await supabase.rpc('start_quiz_lobby', {
         lobby_id: currentLobby.id
       });
@@ -124,11 +180,18 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
       if (error) throw error;
 
       if (data) {
+        // Update lobby status
+        setCurrentLobby(prev => prev ? { ...prev, status: 'in_progress' } : null);
+        
         toast({
           title: 'Quiz Started!',
           description: 'The quiz has begun for all participants.',
         });
-        loadLobbyData();
+        
+        // Navigate to quiz if callback provided
+        if (onQuizStarted && currentLobby) {
+          onQuizStarted({ ...currentLobby, status: 'in_progress' });
+        }
       } else {
         toast({
           title: 'Access Denied',
@@ -159,6 +222,29 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
       console.error('Error loading lobby:', error);
     } else {
       setCurrentLobby(data);
+    }
+  };
+
+  const loadParticipants = async () => {
+    if (!currentLobby) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('lobby_participants')
+        .select('*')
+        .eq('lobby_id', currentLobby.id)
+        .order('slot_number');
+
+      if (error) throw error;
+
+      if (data) {
+        setParticipants(data);
+        
+        // Update current lobby player count
+        setCurrentLobby(prev => prev ? { ...prev, current_players: data.length } : null);
+      }
+    } catch (error) {
+      console.error('Error loading participants:', error);
     }
   };
 
