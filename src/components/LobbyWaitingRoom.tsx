@@ -66,9 +66,9 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
         )
         .subscribe();
 
-      // Set up real-time subscription for lobby status changes
+      // Set up real-time subscription for lobby status changes with a unique channel name
       const lobbyChannel = supabase
-        .channel(`lobby-status-${lobby.id}`)
+        .channel(`lobby-status-${lobby.id}-${user?.id}`)
         .on(
           'postgres_changes',
           {
@@ -78,23 +78,22 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
             filter: `id=eq.${lobby.id}`
           },
           (payload) => {
-            console.log('Lobby updated via real-time:', payload);
+            console.log('Lobby updated via real-time for user:', user?.id, payload);
             const updatedLobby = payload.new;
             setLobby(updatedLobby);
             
             // If quiz started, redirect all participants
             if (updatedLobby.status === 'active') {
-              console.log('Quiz status changed to active via real-time, starting quiz for participant...');
-              clearInterval(pollLobbyStatus); // Stop polling since real-time worked
+              console.log('Quiz status changed to active via real-time, starting quiz for participant:', user?.id);
               onQuizStarted(updatedLobby);
             }
           }
         )
         .subscribe((status) => {
-          console.log('Lobby channel subscription status:', status);
+          console.log('Lobby channel subscription status for user:', user?.id, status);
         });
 
-      // Backup polling mechanism to ensure all participants get the update
+      // Aggressive polling mechanism to ensure all participants get the update
       const pollLobbyStatus = setInterval(async () => {
         try {
           const { data: currentLobby, error } = await supabase
@@ -103,34 +102,38 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
             .eq('id', lobby.id)
             .single();
 
-          if (error) throw error;
+          if (error) {
+            console.error('Error polling lobby status:', error);
+            return;
+          }
 
           if (currentLobby) {
-            console.log('Polling lobby status - Current:', lobby.status, 'Database:', currentLobby.status);
+            console.log('Polling lobby status for user:', user?.id, '- Current:', lobby.status, 'Database:', currentLobby.status);
             
             if (currentLobby.status !== lobby.status) {
-              console.log('Lobby status changed via polling:', currentLobby.status);
+              console.log('Lobby status changed via polling for user:', user?.id, '- New status:', currentLobby.status);
               setLobby(currentLobby);
               
               if (currentLobby.status === 'active') {
-                console.log('Quiz started via polling, redirecting participant...');
+                console.log('Quiz started via polling, redirecting participant:', user?.id);
                 clearInterval(pollLobbyStatus); // Stop polling once quiz starts
                 onQuizStarted(currentLobby);
               }
             }
           }
         } catch (error) {
-          console.error('Error polling lobby status:', error);
+          console.error('Error polling lobby status for user:', user?.id, error);
         }
-      }, 1000); // Poll every 1 second for faster response
+      }, 500); // Poll every 500ms for very fast response
 
       return () => {
+        console.log('Cleaning up subscriptions for user:', user?.id);
         supabase.removeChannel(participantsChannel);
         supabase.removeChannel(lobbyChannel);
         clearInterval(pollLobbyStatus);
       };
     }
-  }, [lobby, onQuizStarted]);
+  }, [lobby, onQuizStarted, user?.id]);
 
   const loadParticipants = async () => {
     if (!lobby) return;
