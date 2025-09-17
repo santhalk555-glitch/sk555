@@ -135,28 +135,28 @@ export type Database = {
       }
       lobby_participants: {
         Row: {
-          display_user_id: string
           id: string
           joined_at: string
           lobby_id: string
           slot_number: number
           user_id: string
+          username: string
         }
         Insert: {
-          display_user_id: string
           id?: string
           joined_at?: string
           lobby_id: string
           slot_number: number
           user_id: string
+          username: string
         }
         Update: {
-          display_user_id?: string
           id?: string
           joined_at?: string
           lobby_id?: string
           slot_number?: number
           user_id?: string
+          username?: string
         }
         Relationships: [
           {
