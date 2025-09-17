@@ -233,14 +233,12 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
         console.log('Quiz started successfully!');
         toast({
           title: 'Quiz Started!',
-          description: `The quiz has begun${participants.length > 1 ? ' for all participants' : ' in single-player mode'}!`,
+          description: `The quiz has begun for all participants!`,
         });
         
-        // Manually trigger quiz start for creator immediately
-        const updatedLobby = { ...lobby, status: 'active' };
-        setLobby(updatedLobby);
-        console.log('Creator starting quiz immediately...');
-        onQuizStarted(updatedLobby);
+        // Don't immediately start for creator - let real-time handle it
+        // This ensures all participants get synchronized start
+        console.log('Quiz status updated, waiting for real-time notification...');
       } else {
         console.log('Quiz start failed - access denied');
         toast({
