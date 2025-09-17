@@ -25,7 +25,7 @@ interface Lobby {
 
 interface LobbyParticipant {
   slot_number: number;
-  display_user_id: string;
+  username: string;
   user_id: string;
 }
 
@@ -56,7 +56,7 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
       // Get user's profile
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('display_user_id')
+        .select('username')
         .eq('user_id', user.id)
         .single();
 
@@ -82,7 +82,7 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
         .insert({
           lobby_id: lobby.id,
           user_id: user.id,
-          display_user_id: profile.display_user_id,
+          username: profile.username,
           slot_number: 1
         });
 
@@ -91,7 +91,7 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
       setCurrentLobby(lobby);
       setParticipants([{
         slot_number: 1,
-        display_user_id: profile.display_user_id,
+        username: profile.username,
         user_id: user.id
       }]);
       
@@ -120,14 +120,14 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
       // Check if user exists
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('user_id, display_user_id')
-        .eq('display_user_id', inviteUserId.trim())
+        .select('user_id, username')
+        .eq('username', inviteUserId.trim())
         .single();
 
       if (profileError || !profile) {
         toast({
           title: 'User Not Found',
-          description: 'No user found with that User ID.',
+          description: 'No user found with that username.',
           variant: 'destructive'
         });
         return;
@@ -157,7 +157,7 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
       setInviteUserId('');
       toast({
         title: 'Invite Sent!',
-        description: `Sent lobby invite to ${profile.display_user_id}`,
+        description: `Sent lobby invite to @${profile.username}`,
       });
     } catch (error) {
       console.error('Error sending invite:', error);
@@ -174,7 +174,7 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
 
     const { data, error } = await supabase
       .from('lobby_participants')
-      .select('slot_number, display_user_id, user_id')
+      .select('slot_number, username, user_id')
       .eq('lobby_id', currentLobby.id)
       .order('slot_number');
 
@@ -253,7 +253,7 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
                   {selectedSubject ? `Subject: ${selectedSubject}` : 'Waiting for subject selection...'}
                 </div>
                 <p className="text-muted-foreground">
-                  Invite friends using their 8-digit User ID
+                  Invite friends using their username
                 </p>
               </div>
             </CardContent>
@@ -290,8 +290,8 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
                           )}
                         </div>
                         {participant ? (
-                          <div className="text-2xl font-mono font-bold text-primary">
-                            {participant.display_user_id}
+                          <div className="text-2xl font-bold text-primary">
+                            @{participant.username}
                           </div>
                         ) : (
                           <div className="text-muted-foreground">
@@ -315,16 +315,16 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
                   Invite Player
                 </CardTitle>
                 <CardDescription>
-                  Enter a player's 8-digit User ID to invite them
+                  Enter a player's username to invite them
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex space-x-2">
                   <Input
-                    placeholder="12345678"
+                    placeholder="username"
                     value={inviteUserId}
                     onChange={(e) => setInviteUserId(e.target.value)}
-                    maxLength={8}
+                    maxLength={20}
                   />
                   <Button onClick={invitePlayer} disabled={!inviteUserId.trim()}>
                     Invite
@@ -439,7 +439,7 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
                 </div>
                 <h4 className="font-semibold mb-2">Invite Friends</h4>
                 <p className="text-sm text-muted-foreground">
-                  Invite players using their 8-digit User ID for real-time notifications
+                  Invite players using their username for real-time notifications
                 </p>
               </div>
               <div>
