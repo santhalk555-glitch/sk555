@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
@@ -63,10 +64,12 @@ const SUBJECT_OPTIONS = [
 ];
 
 export const ProfileCreationForm = () => {
+  const [username, setUsername] = useState('');
   const [courseName, setCourseName] = useState('');
   const [competitiveExams, setCompetitiveExams] = useState<string[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [usernameError, setUsernameError] = useState('');
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -87,6 +90,49 @@ export const ProfileCreationForm = () => {
     }
   };
 
+  const validateUsername = (value: string) => {
+    if (!value) {
+      setUsernameError('Username is required');
+      return false;
+    }
+    if (value.length < 4 || value.length > 20) {
+      setUsernameError('Username must be 4-20 characters long');
+      return false;
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(value)) {
+      setUsernameError('Username can only contain letters, numbers, and underscores');
+      return false;
+    }
+    setUsernameError('');
+    return true;
+  };
+
+  const checkUsernameAvailability = async (username: string) => {
+    if (!validateUsername(username)) return false;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('username', username.toLowerCase())
+        .maybeSingle();
+      
+      if (error) throw error;
+      
+      if (data) {
+        setUsernameError('Username is already taken');
+        return false;
+      }
+      
+      setUsernameError('');
+      return true;
+    } catch (error) {
+      console.error('Error checking username:', error);
+      setUsernameError('Error checking username availability');
+      return false;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -99,7 +145,7 @@ export const ProfileCreationForm = () => {
       return;
     }
 
-    if (!courseName || competitiveExams.length === 0 || subjects.length === 0) {
+    if (!username || !courseName || competitiveExams.length === 0 || subjects.length === 0) {
       toast({
         title: 'Error',
         description: 'Please fill in all required fields.',
@@ -108,27 +154,25 @@ export const ProfileCreationForm = () => {
       return;
     }
 
+    const isUsernameValid = await checkUsernameAvailability(username);
+    if (!isUsernameValid) return;
+
     setLoading(true);
 
     try {
-      // Generate 8-digit user ID
-      const { data: generatedId, error: idError } = await supabase
-        .rpc('generate_8_digit_user_id');
-
-      if (idError) throw idError;
-
       // Check if profile already exists
       const { data: existingProfile } = await supabase
         .from('profiles')
         .select('id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (existingProfile) {
         // Update existing profile
         const { error } = await supabase
           .from('profiles')
           .update({
+            username: username.toLowerCase(),
             course_name: courseName,
             competitive_exams: competitiveExams,
             subjects: subjects
@@ -137,11 +181,18 @@ export const ProfileCreationForm = () => {
 
         if (error) throw error;
       } else {
+        // Generate 8-digit user ID
+        const { data: generatedId, error: idError } = await supabase
+          .rpc('generate_8_digit_user_id');
+
+        if (idError) throw idError;
+
         // Create new profile
         const { error } = await supabase
           .from('profiles')
           .insert({
             user_id: user.id,
+            username: username.toLowerCase(),
             course_name: courseName,
             competitive_exams: competitiveExams,
             subjects: subjects,
@@ -181,6 +232,28 @@ export const ProfileCreationForm = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Username Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="username">Username *</Label>
+                <Input
+                  id="username"
+                  value={username}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    validateUsername(e.target.value);
+                  }}
+                  onBlur={() => username && checkUsernameAvailability(username)}
+                  placeholder="Enter username (4-20 characters)"
+                  className={usernameError ? "border-destructive" : ""}
+                />
+                {usernameError && (
+                  <p className="text-sm text-destructive">{usernameError}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Only letters, numbers, and underscores allowed
+                </p>
+              </div>
+
               {/* Course Name */}
               <div className="space-y-2">
                 <Label htmlFor="course-name">Course Name *</Label>

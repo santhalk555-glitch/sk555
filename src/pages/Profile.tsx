@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface UserProfile {
   display_user_id: string;
+  username: string;
   course_name: string;
   competitive_exams: string[];
   subjects: string[];
@@ -29,11 +30,11 @@ const Profile = () => {
     }
 
     const fetchProfile = async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('display_user_id, course_name, competitive_exams, subjects')
-        .eq('user_id', user.id)
-        .single();
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('display_user_id, username, course_name, competitive_exams, subjects')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
       if (error) {
         console.error('Error fetching profile:', error);
@@ -150,12 +151,12 @@ const Profile = () => {
           <CardContent className="space-y-8">
             {/* User ID Display */}
             <div className="text-center p-6 bg-gradient-card rounded-lg border border-primary/20">
-              <div className="text-sm text-muted-foreground mb-2">Your User ID</div>
-              <div className="text-4xl font-bold font-mono text-primary">
-                {profile.display_user_id}
+              <div className="text-sm text-muted-foreground mb-2">Username</div>
+              <div className="text-4xl font-bold text-primary">
+                @{profile.username}
               </div>
               <div className="text-sm text-muted-foreground mt-2">
-                Share this ID with friends to connect
+                Your unique username for connecting with friends
               </div>
             </div>
 

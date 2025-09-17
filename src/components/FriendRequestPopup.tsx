@@ -7,12 +7,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface Profile {
-  id: string;
-  user_id: string;
-  course_name: string;
-  subjects: string[];
-  competitive_exams: string[];
   display_user_id: string;
+  username: string;
+  course_name: string;
+  competitive_exams: string[];
+  subjects: string[];
 }
 
 interface FriendRequest {
@@ -50,7 +49,7 @@ const FriendRequestPopup = ({ friendRequest, onClose, onResponse }: FriendReques
       toast({
         title: accept ? '🎉 Friend Added!' : 'Request Rejected',
         description: accept 
-          ? `You and ${friendRequest.sender_profile.display_user_id} are now study partners!`
+          ? `You and @${friendRequest.sender_profile.username} are now study partners!`
           : 'Friend request declined.',
       });
 
@@ -84,13 +83,13 @@ const FriendRequestPopup = ({ friendRequest, onClose, onResponse }: FriendReques
           {/* Profile Info */}
           <div className="text-center p-4 rounded-lg bg-primary/5 border border-primary/20">
             <div className="w-12 h-12 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-3 text-xl">
-              {friendRequest.sender_profile?.display_user_id 
-                ? String(friendRequest.sender_profile.display_user_id).charAt(0) 
+              {friendRequest.sender_profile?.username 
+                ? friendRequest.sender_profile.username.charAt(0).toUpperCase() 
                 : <User className="w-6 h-6" />}
             </div>
             
             <h3 className="font-bold text-lg mb-1">
-              User #{friendRequest.sender_profile?.display_user_id || 'Unknown'}
+              @{friendRequest.sender_profile?.username || 'Unknown'}
             </h3>
             
             <p className="text-sm text-muted-foreground mb-3">

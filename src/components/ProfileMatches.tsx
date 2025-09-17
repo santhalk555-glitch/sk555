@@ -12,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 interface Profile {
   id: string;
   user_id: string;
+  display_user_id: string;
+  username: string;
   course_name: string;
   competitive_exams: string[];
   subjects: string[];
@@ -243,7 +245,7 @@ export const ProfileMatches = () => {
                       <User className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                      <h3 className="font-semibold">Study Partner</h3>
+                      <h3 className="font-semibold">@{match.username}</h3>
                       <p className="text-sm text-muted-foreground">
                         Joined {new Date(match.created_at).toLocaleDateString()}
                       </p>

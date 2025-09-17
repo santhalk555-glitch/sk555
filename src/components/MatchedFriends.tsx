@@ -10,6 +10,7 @@ import Chat from "./Chat";
 interface Profile {
   id: string;
   user_id: string;
+  username: string;
   course_name: string;
   subjects: string[];
   competitive_exams: string[];
@@ -173,11 +174,11 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
               >
                 <CardHeader className="text-center pb-4">
                   <div className="relative w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-4 text-3xl group-hover:scale-110 transition-transform duration-300 shadow-glow">
-                    {match.display_user_id ? String(match.display_user_id).charAt(0) : '👤'}
+                    {match.username ? match.username.charAt(0).toUpperCase() : '👤'}
                   </div>
                   
                   <CardTitle className="text-xl mb-1 group-hover:text-gaming-primary transition-colors duration-300">
-                    User #{match.display_user_id}
+                    @{match.username}
                   </CardTitle>
                   
                   <div className="flex items-center justify-center space-x-1 mb-2">

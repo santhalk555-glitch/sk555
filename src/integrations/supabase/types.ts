@@ -205,6 +205,7 @@ export type Database = {
           subjects: string[]
           updated_at: string
           user_id: string
+          username: string | null
         }
         Insert: {
           competitive_exams?: string[]
@@ -215,6 +216,7 @@ export type Database = {
           subjects?: string[]
           updated_at?: string
           user_id: string
+          username?: string | null
         }
         Update: {
           competitive_exams?: string[]
@@ -225,6 +227,7 @@ export type Database = {
           subjects?: string[]
           updated_at?: string
           user_id?: string
+          username?: string | null
         }
         Relationships: []
       }

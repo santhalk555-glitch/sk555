@@ -21,6 +21,7 @@ interface Profile {
   id: string;
   user_id: string;
   display_user_id: string;
+  username: string;
   course_name: string;
   subjects: string[];
   competitive_exams: string[];
@@ -197,7 +198,7 @@ const Chat = ({ friend, onBack }: ChatProps) => {
           </Button>
           
           <div className="text-center">
-            <h1 className="text-2xl font-bold">Chat with User #{friend.display_user_id}</h1>
+            <h1 className="text-2xl font-bold">Chat with @{friend.username}</h1>
             <p className="text-muted-foreground">{friend.course_name}</p>
           </div>
           
