@@ -16,6 +16,7 @@ const Dashboard = () => {
   const [matchedStudents, setMatchedStudents] = useState<any[]>([]);
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const [profileMatchCount, setProfileMatchCount] = useState(0);
+  const [friendsCount, setFriendsCount] = useState(0);
   
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -40,6 +41,14 @@ const Dashboard = () => {
           .neq('user_id', user.id);
         
         setProfileMatchCount(count || 0);
+
+        // Get count of friends
+        const { count: friendsCount } = await supabase
+          .from('friends')
+          .select('*', { count: 'exact', head: true })
+          .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`);
+        
+        setFriendsCount(friendsCount || 0);
       }
     };
 
@@ -56,7 +65,7 @@ const Dashboard = () => {
   }
 
   if (activeSection === "matches") {
-    return <MatchedFriends onBack={() => setActiveSection("dashboard")} matches={matchedStudents} />;
+    return <MatchedFriends onBack={() => setActiveSection("dashboard")} />;
   }
 
   if (activeSection === "requests") {
@@ -152,9 +161,9 @@ const Dashboard = () => {
               </p>
               <div className="flex items-center justify-center space-x-2 mb-4">
                 <span className="text-2xl font-bold text-gaming-accent">
-                  {matchedStudents.length}
+                  {friendsCount}
                 </span>
-                <span className="text-sm text-muted-foreground">matched partners</span>
+                <span className="text-sm text-muted-foreground">study partners</span>
               </div>
               <Button 
                 variant="outline" 

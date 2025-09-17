@@ -17,10 +17,9 @@ interface Profile {
 
 interface MatchedFriendsProps {
   onBack: () => void;
-  matches: Profile[];
 }
 
-const MatchedFriends = ({ onBack, matches }: MatchedFriendsProps) => {
+const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
   const [selectedMatch, setSelectedMatch] = useState<Profile | null>(null);
   const [friends, setFriends] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +27,41 @@ const MatchedFriends = ({ onBack, matches }: MatchedFriendsProps) => {
 
   useEffect(() => {
     loadFriends();
+    setupRealtimeListeners();
   }, [user]);
+
+  const setupRealtimeListeners = () => {
+    if (!user) return;
+
+    // Listen for changes in friends table
+    const channel = supabase
+      .channel('friends-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'friends',
+          filter: `user1_id=eq.${user.id}`
+        },
+        () => loadFriends()
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'friends',
+          filter: `user2_id=eq.${user.id}`
+        },
+        () => loadFriends()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
 
   const loadFriends = async () => {
     if (!user) return;
