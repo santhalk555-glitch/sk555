@@ -69,13 +69,10 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
     if (!user) return;
 
     try {
-      // Load accepted friends from the friends table
-      const { data, error } = await supabase
+      // Load accepted friends from the friends table (without trying to join profiles)
+      const { data: friendships, error } = await supabase
         .from('friends')
-        .select(`
-          *,
-          profiles!inner(*)
-        `)
+        .select('*')
         .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`);
 
       if (error) throw error;
@@ -83,22 +80,23 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
       // Transform the data to get friend profiles
       const friendProfiles: Profile[] = [];
       
-      // For each friendship, we need to get both user profiles
-      for (const friendship of data || []) {
+      // For each friendship, get the profile of the other user
+      for (const friendship of friendships || []) {
         // Get the profile of the other user (not the current user)
         const otherUserId = friendship.user1_id === user.id ? friendship.user2_id : friendship.user1_id;
         
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('user_id', otherUserId)
           .single();
           
-        if (profile) {
+        if (profile && !profileError) {
           friendProfiles.push(profile);
         }
       }
 
+      console.log('Loaded friends:', friendProfiles);
       setFriends(friendProfiles);
     } catch (error) {
       console.error('Error loading friends:', error);
