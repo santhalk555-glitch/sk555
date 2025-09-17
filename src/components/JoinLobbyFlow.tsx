@@ -95,93 +95,148 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
     }
   };
 
-  const respondToInvite = async (inviteId: string, response: 'accepted' | 'rejected') => {
+  const handleInviteClick = async (invite: LobbyInvite) => {
+    try {
+      // First check if lobby is still valid
+      const { data: currentLobby, error: lobbyError } = await supabase
+        .from('game_lobbies')
+        .select('*')
+        .eq('id', invite.lobby_id)
+        .single();
+
+      if (lobbyError || !currentLobby) {
+        toast({
+          title: 'Lobby No Longer Available',
+          description: 'This lobby is no longer available.',
+          variant: 'destructive'
+        });
+        // Remove the invalid invite from the list
+        setInvites(prevInvites => prevInvites.filter(inv => inv.id !== invite.id));
+        return;
+      }
+
+      // Check if lobby is full
+      if (currentLobby.current_players >= currentLobby.max_players) {
+        toast({
+          title: 'Lobby Full',
+          description: 'This lobby is now full.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Check if lobby is not waiting
+      if (currentLobby.status !== 'waiting') {
+        toast({
+          title: 'Lobby No Longer Available',
+          description: 'This lobby is no longer accepting players.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Get user profile to join lobby
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      // Find next available slot
+      const { data: participants, error: participantsError } = await supabase
+        .from('lobby_participants')
+        .select('slot_number')
+        .eq('lobby_id', invite.lobby_id)
+        .order('slot_number');
+
+      if (participantsError) throw participantsError;
+
+      const occupiedSlots = participants?.map(p => p.slot_number) || [];
+      let nextSlot = 1;
+      for (let i = 1; i <= currentLobby.max_players; i++) {
+        if (!occupiedSlots.includes(i)) {
+          nextSlot = i;
+          break;
+        }
+      }
+
+      // Join the lobby
+      const { error: joinError } = await supabase
+        .from('lobby_participants')
+        .insert({
+          lobby_id: invite.lobby_id,
+          user_id: user?.id,
+          username: profile.username,
+          slot_number: nextSlot
+        });
+
+      if (joinError) throw joinError;
+
+      // Update lobby current players count
+      const { error: lobbyUpdateError } = await supabase
+        .from('game_lobbies')
+        .update({ 
+          current_players: currentLobby.current_players + 1 
+        })
+        .eq('id', invite.lobby_id);
+
+      if (lobbyUpdateError) throw lobbyUpdateError;
+
+      // Update invite status
+      const { error: updateError } = await supabase
+        .from('lobby_invites')
+        .update({ 
+          status: 'accepted',
+          responded_at: new Date().toISOString()
+        })
+        .eq('id', invite.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: 'Joined Lobby!',
+        description: `You've joined ${invite.sender_profile.username}'s lobby.`,
+      });
+
+      // Navigate to the lobby
+      onJoinLobby({
+        id: invite.lobby_id,
+        ...currentLobby
+      });
+
+    } catch (error) {
+      console.error('Error joining lobby:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to join lobby.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const rejectInvite = async (inviteId: string) => {
     try {
       const { error: updateError } = await supabase
         .from('lobby_invites')
         .update({ 
-          status: response,
+          status: 'rejected',
           responded_at: new Date().toISOString()
         })
         .eq('id', inviteId);
 
       if (updateError) throw updateError;
 
-      if (response === 'accepted') {
-        // Find the invite to get lobby details
-        const invite = invites.find(inv => inv.id === inviteId);
-        if (invite) {
-          // Get user profile to join lobby
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('user_id', user?.id)
-            .single();
-
-          if (profileError) throw profileError;
-
-          // Find next available slot
-          const { data: participants, error: participantsError } = await supabase
-            .from('lobby_participants')
-            .select('slot_number')
-            .eq('lobby_id', invite.lobby_id)
-            .order('slot_number');
-
-          if (participantsError) throw participantsError;
-
-          const occupiedSlots = participants?.map(p => p.slot_number) || [];
-          let nextSlot = 1;
-          for (let i = 1; i <= invite.game_lobbies.max_players; i++) {
-            if (!occupiedSlots.includes(i)) {
-              nextSlot = i;
-              break;
-            }
-          }
-
-          // Join the lobby
-          const { error: joinError } = await supabase
-            .from('lobby_participants')
-            .insert({
-              lobby_id: invite.lobby_id,
-              user_id: user?.id,
-              username: profile.username,
-              slot_number: nextSlot
-            });
-
-          if (joinError) throw joinError;
-
-          // Update lobby current players count
-          const { error: lobbyUpdateError } = await supabase
-            .from('game_lobbies')
-            .update({ 
-              current_players: invite.game_lobbies.current_players + 1 
-            })
-            .eq('id', invite.lobby_id);
-
-          if (lobbyUpdateError) throw lobbyUpdateError;
-
-          toast({
-            title: 'Joined Lobby!',
-            description: `You've joined ${invite.sender_profile.username}'s lobby.`,
-          });
-
-          // Navigate to the lobby
-          onJoinLobby({
-            id: invite.lobby_id,
-            ...invite.game_lobbies
-          });
-        }
-      } else {
-        toast({
-          title: 'Invite Rejected',
-          description: 'You have declined the lobby invitation.',
-        });
-      }
+      toast({
+        title: 'Invite Rejected',
+        description: 'You have declined the lobby invitation.',
+      });
 
       // Remove the invite from the list
       setInvites(prevInvites => prevInvites.filter(inv => inv.id !== inviteId));
     } catch (error) {
-      console.error('Error responding to invite:', error);
+      console.error('Error rejecting invite:', error);
       toast({
         title: 'Error',
         description: 'Failed to respond to invitation.',
@@ -240,7 +295,11 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
         ) : (
           <div className="max-w-3xl mx-auto space-y-4">
             {invites.map((invite) => (
-              <Card key={invite.id} className="bg-gradient-card border-primary/20">
+              <Card 
+                key={invite.id} 
+                className="bg-gradient-card border-primary/20 cursor-pointer hover:bg-gradient-card-hover transition-colors"
+                onClick={() => handleInviteClick(invite)}
+              >
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center">
@@ -288,7 +347,10 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
                     {/* Action Buttons */}
                     <div className="flex space-x-3">
                       <Button
-                        onClick={() => respondToInvite(invite.id, 'accepted')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleInviteClick(invite);
+                        }}
                         className="flex-1 bg-gradient-primary hover:opacity-90"
                         disabled={invite.game_lobbies.status !== 'waiting'}
                       >
@@ -297,7 +359,10 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
                       </Button>
                       <Button
                         variant="outline"
-                        onClick={() => respondToInvite(invite.id, 'rejected')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          rejectInvite(invite.id);
+                        }}
                         className="flex-1"
                       >
                         <X className="w-4 h-4 mr-2" />
@@ -310,6 +375,10 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
                         This lobby is no longer accepting players
                       </p>
                     )}
+
+                    <p className="text-sm text-center text-muted-foreground">
+                      Click anywhere on this card to join the lobby
+                    </p>
                   </div>
                 </CardContent>
               </Card>
