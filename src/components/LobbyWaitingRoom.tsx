@@ -84,7 +84,8 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
             
             // If quiz started, redirect all participants
             if (updatedLobby.status === 'active') {
-              console.log('Quiz status changed to active via real-time, starting quiz...');
+              console.log('Quiz status changed to active via real-time, starting quiz for participant...');
+              clearInterval(pollLobbyStatus); // Stop polling since real-time worked
               onQuizStarted(updatedLobby);
             }
           }
@@ -104,19 +105,24 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
 
           if (error) throw error;
 
-          if (currentLobby && currentLobby.status !== lobby.status) {
-            console.log('Lobby status changed via polling:', currentLobby.status);
-            setLobby(currentLobby);
+          if (currentLobby) {
+            console.log('Polling lobby status - Current:', lobby.status, 'Database:', currentLobby.status);
             
-            if (currentLobby.status === 'active') {
-              console.log('Quiz started via polling, redirecting...');
-              onQuizStarted(currentLobby);
+            if (currentLobby.status !== lobby.status) {
+              console.log('Lobby status changed via polling:', currentLobby.status);
+              setLobby(currentLobby);
+              
+              if (currentLobby.status === 'active') {
+                console.log('Quiz started via polling, redirecting participant...');
+                clearInterval(pollLobbyStatus); // Stop polling once quiz starts
+                onQuizStarted(currentLobby);
+              }
             }
           }
         } catch (error) {
           console.error('Error polling lobby status:', error);
         }
-      }, 2000); // Poll every 2 seconds
+      }, 1000); // Poll every 1 second for faster response
 
       return () => {
         supabase.removeChannel(participantsChannel);
@@ -203,13 +209,11 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
           description: `The quiz has begun${participants.length > 1 ? ' for all participants' : ' in single-player mode'}!`,
         });
         
-        // Manually trigger quiz start if real-time doesn't work immediately
+        // Manually trigger quiz start for creator immediately
         const updatedLobby = { ...lobby, status: 'active' };
         setLobby(updatedLobby);
-        setTimeout(() => {
-          console.log('Manually triggering quiz start...');
-          onQuizStarted(updatedLobby);
-        }, 500);
+        console.log('Creator starting quiz immediately...');
+        onQuizStarted(updatedLobby);
       } else {
         console.log('Quiz start failed - access denied');
         toast({
