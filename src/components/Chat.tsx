@@ -42,7 +42,9 @@ const Chat = ({ friend, onBack }: ChatProps) => {
   useEffect(() => {
     if (user && friend) {
       loadMessages();
-      setupRealtimeUpdates();
+      const cleanup = setupRealtimeUpdates();
+      
+      return cleanup;
     }
   }, [user, friend]);
 
@@ -58,26 +60,32 @@ const Chat = ({ friend, onBack }: ChatProps) => {
     if (!user) return;
 
     const channel = supabase
-      .channel('chat-messages')
+      .channel(`chat-${user.id}-${friend.user_id}`)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
-          table: 'messages',
-          filter: `sender_id=eq.${user.id},receiver_id=eq.${friend.user_id}`
+          table: 'messages'
         },
-        () => loadMessages()
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'messages',
-          filter: `sender_id=eq.${friend.user_id},receiver_id=eq.${user.id}`
-        },
-        () => loadMessages()
+        (payload) => {
+          console.log('New message received:', payload);
+          const newMessage = payload.new as Message;
+          
+          // Only add messages that belong to this conversation
+          if (
+            (newMessage.sender_id === user.id && newMessage.receiver_id === friend.user_id) ||
+            (newMessage.sender_id === friend.user_id && newMessage.receiver_id === user.id)
+          ) {
+            setMessages(prev => {
+              // Avoid duplicates
+              if (prev.find(msg => msg.id === newMessage.id)) {
+                return prev;
+              }
+              return [...prev, newMessage];
+            });
+          }
+        }
       )
       .subscribe();
 
@@ -113,20 +121,41 @@ const Chat = ({ friend, onBack }: ChatProps) => {
   const sendMessage = async () => {
     if (!newMessage.trim() || !user) return;
 
+    const messageContent = newMessage.trim();
+    const messageId = crypto.randomUUID();
+    
+    // Create optimistic message for immediate UI update
+    const optimisticMessage: Message = {
+      id: messageId,
+      sender_id: user.id,
+      receiver_id: friend.user_id,
+      content: messageContent,
+      created_at: new Date().toISOString(),
+      read_at: null
+    };
+
+    // Add message immediately to UI
+    setMessages(prev => [...prev, optimisticMessage]);
+    setNewMessage(""); // Clear input immediately
+
     try {
       const { error } = await supabase
         .from('messages')
         .insert({
+          id: messageId,
           sender_id: user.id,
           receiver_id: friend.user_id,
-          content: newMessage.trim()
+          content: messageContent
         });
 
       if (error) throw error;
-      
-      setNewMessage("");
     } catch (error) {
       console.error('Error sending message:', error);
+      
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => msg.id !== messageId));
+      setNewMessage(messageContent); // Restore message content
+      
       toast({
         title: "Error",
         description: "Failed to send message",
@@ -227,6 +256,7 @@ const Chat = ({ friend, onBack }: ChatProps) => {
                   onKeyPress={handleKeyPress}
                   placeholder="Type your message..."
                   className="flex-1"
+                  autoFocus
                 />
                 <Button 
                   onClick={sendMessage}
