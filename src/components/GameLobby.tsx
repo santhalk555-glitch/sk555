@@ -3,13 +3,14 @@ import { Button } from '@/components/ui/button';
 import LobbyMenu from './LobbyMenu';
 import CreateLobbyFlow from './CreateLobbyFlow';
 import JoinLobbyFlow from './JoinLobbyFlow';
+import LobbyWaitingRoom from './LobbyWaitingRoom';
 import QuizSession from './QuizSession';
 
 interface GameLobbyProps {
   onBack: () => void;
 }
 
-type LobbyView = 'menu' | 'create' | 'join' | 'quiz';
+type LobbyView = 'menu' | 'create' | 'join' | 'waiting' | 'quiz';
 
 const GameLobby = ({ onBack }: GameLobbyProps) => {
   const [currentView, setCurrentView] = useState<LobbyView>('menu');
@@ -36,8 +37,9 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
     setCurrentLobby(lobby);
     if (lobby.status === 'in_progress') {
       setCurrentView('quiz');
+    } else {
+      setCurrentView('waiting');
     }
-    // Stay in create view - CreateLobbyFlow handles lobby display
   };
 
   const handleJoinedLobby = (lobby: any) => {
@@ -45,7 +47,7 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
     if (lobby.status === 'in_progress') {
       setCurrentView('quiz');
     } else {
-      setCurrentView('join');
+      setCurrentView('waiting');
     }
   };
 
@@ -56,10 +58,6 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
         <CreateLobbyFlow
           onBack={handleBackToMenu}
           onLobbyCreated={handleLobbyCreated}
-          onQuizStarted={(lobby) => {
-            setCurrentLobby(lobby);
-            setCurrentView('quiz');
-          }}
         />
       );
     case 'join':
@@ -67,6 +65,17 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
         <JoinLobbyFlow
           onBack={handleBackToMenu}
           onJoinLobby={handleJoinedLobby}
+        />
+      );
+    case 'waiting':
+      return (
+        <LobbyWaitingRoom
+          lobby={currentLobby}
+          onBack={handleBackToMenu}
+          onQuizStarted={(lobby) => {
+            setCurrentLobby(lobby);
+            setCurrentView('quiz');
+          }}
         />
       );
     case 'quiz':
