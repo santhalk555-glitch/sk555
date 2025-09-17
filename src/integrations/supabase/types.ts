@@ -67,30 +67,36 @@ export type Database = {
           created_at: string
           creator_id: string
           current_players: number
+          game_mode: string | null
           id: string
           lobby_code: string
           max_players: number
           status: string
+          subject: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           creator_id: string
           current_players?: number
+          game_mode?: string | null
           id?: string
           lobby_code: string
           max_players: number
           status?: string
+          subject?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           creator_id?: string
           current_players?: number
+          game_mode?: string | null
           id?: string
           lobby_code?: string
           max_players?: number
           status?: string
+          subject?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -389,6 +395,10 @@ export type Database = {
       generate_lobby_code: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      start_quiz_lobby: {
+        Args: { lobby_id: string }
+        Returns: boolean
       }
     }
     Enums: {

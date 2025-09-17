@@ -7,7 +7,7 @@ import { X, BookOpen, Users, Crown } from 'lucide-react';
 interface SubjectSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubjectSelect: (subject: string, maxPlayers: 2 | 4) => void;
+  onSubjectSelect: (subject: string, maxPlayers: 2 | 4, gameMode: 'study' | 'quiz') => void;
 }
 
 const subjects = [
@@ -46,14 +46,16 @@ const subjects = [
 const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSelectionModalProps) => {
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedPlayers, setSelectedPlayers] = useState<2 | 4 | null>(null);
+  const [selectedGameMode, setSelectedGameMode] = useState<'study' | 'quiz' | null>(null);
 
   if (!isOpen) return null;
 
   const handleCreate = () => {
-    if (selectedSubject && selectedPlayers) {
-      onSubjectSelect(selectedSubject, selectedPlayers);
+    if (selectedSubject && selectedPlayers && selectedGameMode) {
+      onSubjectSelect(selectedSubject, selectedPlayers, selectedGameMode);
       setSelectedSubject('');
       setSelectedPlayers(null);
+      setSelectedGameMode(null);
     }
   };
 
@@ -99,12 +101,63 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
             </div>
           </div>
 
-          {/* Step 2: Player Count Selection */}
+          {/* Step 2: Game Mode Selection */}
           {selectedSubject && (
             <div className="animate-fade-in">
               <h3 className="text-lg font-semibold mb-3 flex items-center">
+                <Crown className="w-5 h-5 mr-2 text-primary" />
+                Step 2: Choose Game Mode
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card 
+                  className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
+                    selectedGameMode === 'study' 
+                      ? 'border-primary bg-primary/10' 
+                      : 'border-border hover:border-primary/30'
+                  }`}
+                  onClick={() => setSelectedGameMode('study')}
+                >
+                  <CardContent className="p-6 text-center">
+                    <div className="w-12 h-12 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-3">
+                      <BookOpen className="w-6 h-6 text-white" />
+                    </div>
+                    <h4 className="font-bold mb-2">📚 Study Mode</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Collaborative study sessions and group learning
+                    </p>
+                    <Badge variant="secondary" className="mt-2">Learn Together</Badge>
+                  </CardContent>
+                </Card>
+
+                <Card 
+                  className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
+                    selectedGameMode === 'quiz' 
+                      ? 'border-primary bg-primary/10' 
+                      : 'border-border hover:border-primary/30'
+                  }`}
+                  onClick={() => setSelectedGameMode('quiz')}
+                >
+                  <CardContent className="p-6 text-center">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-r from-secondary to-primary flex items-center justify-center mx-auto mb-3">
+                      <Crown className="w-6 h-6 text-white" />
+                    </div>
+                    <h4 className="font-bold mb-2">🏆 Quiz Mode</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Competitive quiz battles with real-time scoring
+                    </p>
+                    <Badge variant="outline" className="mt-2">Challenge Mode</Badge>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Player Count Selection */}
+          {selectedSubject && selectedGameMode && (
+            <div className="animate-fade-in">
+              <h3 className="text-lg font-semibold mb-3 flex items-center">
                 <Users className="w-5 h-5 mr-2 text-primary" />
-                Step 2: Choose Lobby Size
+                Step 3: Choose Lobby Size
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card 
@@ -121,7 +174,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
                     </div>
                     <h4 className="font-bold mb-2">2-Player Lobby</h4>
                     <p className="text-sm text-muted-foreground">
-                      Perfect for focused 1-on-1 study sessions
+                      Perfect for focused 1-on-1 sessions
                     </p>
                     <Badge variant="secondary" className="mt-2">Recommended</Badge>
                   </CardContent>
@@ -141,7 +194,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
                     </div>
                     <h4 className="font-bold mb-2">4-Player Lobby</h4>
                     <p className="text-sm text-muted-foreground">
-                      Great for group study and team challenges
+                      Great for group sessions and team challenges
                     </p>
                     <Badge variant="outline" className="mt-2">Group Fun</Badge>
                   </CardContent>
@@ -151,13 +204,13 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
           )}
 
           {/* Create Button */}
-          {selectedSubject && selectedPlayers && (
+          {selectedSubject && selectedGameMode && selectedPlayers && (
             <div className="animate-fade-in pt-4 border-t">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Creating lobby for:</p>
                   <p className="font-semibold">
-                    {selectedSubject} • {selectedPlayers} Players
+                    {selectedSubject} • {selectedGameMode === 'quiz' ? '🏆 Quiz Mode' : '📚 Study Mode'} • {selectedPlayers} Players
                   </p>
                 </div>
                 <Button 

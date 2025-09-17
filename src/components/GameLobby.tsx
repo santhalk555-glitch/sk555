@@ -21,6 +21,8 @@ interface Lobby {
   current_players: number;
   status: string;
   created_at: string;
+  subject?: string;
+  game_mode?: string;
 }
 
 interface LobbyParticipant {
@@ -32,6 +34,7 @@ interface LobbyParticipant {
 const GameLobby = ({ onBack }: GameLobbyProps) => {
   const [showSubjectModal, setShowSubjectModal] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [selectedGameMode, setSelectedGameMode] = useState<'study' | 'quiz'>('study');
   const [currentLobby, setCurrentLobby] = useState<Lobby | null>(null);
   const [participants, setParticipants] = useState<LobbyParticipant[]>([]);
   const [inviteUserId, setInviteUserId] = useState('');
@@ -39,16 +42,15 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const handleSubjectSelect = (subject: string, maxPlayers: 2 | 4) => {
+  const handleSubjectSelect = (subject: string, maxPlayers: 2 | 4, gameMode: 'study' | 'quiz') => {
     setSelectedSubject(subject);
+    setSelectedGameMode(gameMode);
     setShowSubjectModal(false);
-    toast({
-      title: 'Subject Selected!',
-      description: `Ready to start ${subject} study session with ${maxPlayers} players.`,
-    });
+    // Create lobby with selected options
+    createLobbyWithOptions(subject, maxPlayers, gameMode);
   };
 
-  const createLobby = async (maxPlayers: 2 | 4) => {
+  const createLobbyWithOptions = async (subject: string, maxPlayers: 2 | 4, gameMode: 'study' | 'quiz') => {
     if (!user) return;
 
     setLoading(true);
@@ -62,14 +64,16 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
 
       if (profileError) throw profileError;
 
-      // Create lobby with generated lobby code
+      // Create lobby with generated lobby code and selected options
       const { data: lobby, error: lobbyError } = await supabase
         .from('game_lobbies')
         .insert({
           lobby_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
           creator_id: user.id,
           max_players: maxPlayers,
-          current_players: 1
+          current_players: 1,
+          subject: subject,
+          game_mode: gameMode
         })
         .select()
         .single();
@@ -95,12 +99,9 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
         user_id: user.id
       }]);
       
-      // Show subject selection modal AFTER lobby is created
-      setShowSubjectModal(true);
-      
       toast({
         title: 'Lobby Created!',
-        description: `${maxPlayers}-player lobby created successfully!`,
+        description: `${subject} ${gameMode} lobby created with ${maxPlayers} players!`,
       });
     } catch (error) {
       console.error('Error creating lobby:', error);
@@ -111,6 +112,56 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
       });
     }
     setLoading(false);
+  };
+
+  const startQuiz = async () => {
+    if (!currentLobby || !user) return;
+
+    try {
+      const { data, error } = await supabase.rpc('start_quiz_lobby', {
+        lobby_id: currentLobby.id
+      });
+
+      if (error) throw error;
+
+      if (data) {
+        toast({
+          title: 'Quiz Started!',
+          description: 'The quiz has begun for all participants.',
+        });
+        // Reload lobby to get updated status
+        loadLobbyData();
+      } else {
+        toast({
+          title: 'Access Denied',
+          description: 'Only the lobby creator can start the quiz.',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Error starting quiz:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to start quiz. Please try again.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const loadLobbyData = async () => {
+    if (!currentLobby) return;
+
+    const { data, error } = await supabase
+      .from('game_lobbies')
+      .select('*')
+      .eq('id', currentLobby.id)
+      .single();
+
+    if (error) {
+      console.error('Error loading lobby:', error);
+    } else {
+      setCurrentLobby(data);
+    }
   };
 
   const invitePlayer = async () => {
@@ -250,7 +301,10 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
             <CardContent>
               <div className="text-center">
                 <div className="text-2xl font-bold text-primary mb-2">
-                  {selectedSubject ? `Subject: ${selectedSubject}` : 'Waiting for subject selection...'}
+                  {currentLobby.subject || 'No Subject Selected'}
+                </div>
+                <div className="text-lg text-muted-foreground mb-2">
+                  Mode: {currentLobby.game_mode === 'quiz' ? '🏆 Quiz Mode' : '📚 Study Mode'}
                 </div>
                 <p className="text-muted-foreground">
                   Invite friends using their username
@@ -305,6 +359,30 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Quiz Controls */}
+          {currentLobby.game_mode === 'quiz' && currentLobby.creator_id === user?.id && currentLobby.status === 'waiting' && (
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Crown className="w-5 h-5 mr-2 text-primary" />
+                  Quiz Controls
+                </CardTitle>
+                <CardDescription>
+                  As the lobby creator, you can start the quiz when ready
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  onClick={startQuiz}
+                  className="w-full bg-gradient-primary hover:opacity-90"
+                  disabled={participants.length < 2}
+                >
+                  {participants.length < 2 ? 'Need at least 2 players to start' : 'Start Quiz'}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Invite Player */}
           {participants.length < currentLobby.max_players && (
@@ -364,54 +442,28 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
           <div></div>
         </div>
 
-        {/* Create Lobby Options */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        {/* Create Lobby Button */}
+        <div className="max-w-md mx-auto mb-12">
           <Card 
             className="bg-gradient-card border-primary/20 hover:border-primary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-lg hover:shadow-glow"
-            onClick={() => createLobby(2)}
+            onClick={() => setShowSubjectModal(true)}
           >
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                <Users className="w-8 h-8 text-white" />
+                <Plus className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-2xl font-bold mb-2 group-hover:text-primary transition-colors duration-300">
-                2-Player Lobby
+                Create Lobby
               </h3>
               <p className="text-muted-foreground mb-4">
-                Perfect for 1-on-1 study sessions and quick challenges
+                Choose your subject and game mode to get started
               </p>
-              <Badge variant="secondary" className="mb-4">Recommended</Badge>
               <Button 
                 variant="outline" 
                 className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300"
                 disabled={loading}
               >
-                {loading ? 'Creating...' : 'Create 2-Player Lobby'}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="bg-gradient-card border-secondary/20 hover:border-secondary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-lg hover:shadow-glow"
-            onClick={() => createLobby(4)}
-          >
-            <CardContent className="p-8 text-center">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-secondary to-primary flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                <Crown className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold mb-2 group-hover:text-secondary transition-colors duration-300">
-                4-Player Lobby
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                Great for group study sessions and team challenges
-              </p>
-              <Badge variant="outline" className="mb-4">Group Fun</Badge>
-              <Button 
-                variant="outline" 
-                className="w-full group-hover:bg-secondary group-hover:text-secondary-foreground transition-all duration-300"
-                disabled={loading}
-              >
-                {loading ? 'Creating...' : 'Create 4-Player Lobby'}
+                {loading ? 'Creating...' : 'Get Started'}
               </Button>
             </CardContent>
           </Card>
@@ -455,7 +507,7 @@ const GameLobby = ({ onBack }: GameLobbyProps) => {
           </CardContent>
         </Card>
 
-        {/* Subject Selection Modal - only shown in Create Lobby screen */}
+        {/* Subject Selection Modal */}
         <SubjectSelectionModal 
           isOpen={showSubjectModal}
           onClose={() => setShowSubjectModal(false)}
