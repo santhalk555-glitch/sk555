@@ -49,6 +49,8 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
   const loadInvites = async () => {
     if (!user) return;
 
+    console.log('Loading invites for user:', user.id);
+    
     try {
       const { data, error } = await supabase
         .from('lobby_invites')
@@ -67,14 +69,20 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
+      console.log('Lobby invites query result:', { data, error });
+
       if (error) throw error;
 
       // Get sender profiles separately
       const senderIds = data?.map(invite => invite.sender_id) || [];
+      console.log('Sender IDs:', senderIds);
+      
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, username')
         .in('user_id', senderIds);
+
+      console.log('Profiles query result:', profiles);
 
       // Transform the data to match our interface
       const transformedInvites = data?.map((invite: any) => ({
@@ -82,6 +90,7 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
         sender_profile: profiles?.find(p => p.user_id === invite.sender_id) || { username: 'Unknown' },
       })) || [];
 
+      console.log('Transformed invites:', transformedInvites);
       setInvites(transformedInvites);
     } catch (error) {
       console.error('Error loading invites:', error);
@@ -96,15 +105,22 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
   };
 
   const handleInviteClick = async (invite: LobbyInvite) => {
+    console.log('Invite clicked:', invite);
+    
     try {
       // First check if lobby is still valid
+      console.log('Checking lobby validity for lobby_id:', invite.lobby_id);
+      
       const { data: currentLobby, error: lobbyError } = await supabase
         .from('game_lobbies')
         .select('*')
         .eq('id', invite.lobby_id)
         .single();
 
+      console.log('Current lobby check result:', { currentLobby, lobbyError });
+
       if (lobbyError || !currentLobby) {
+        console.log('Lobby not found or error occurred');
         toast({
           title: 'Lobby No Longer Available',
           description: 'This lobby is no longer available.',
@@ -116,7 +132,9 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
       }
 
       // Check if lobby is full
+      console.log('Checking if lobby is full. Current:', currentLobby.current_players, 'Max:', currentLobby.max_players);
       if (currentLobby.current_players >= currentLobby.max_players) {
+        console.log('Lobby is full');
         toast({
           title: 'Lobby Full',
           description: 'This lobby is now full.',
@@ -126,7 +144,9 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
       }
 
       // Check if lobby is not waiting
+      console.log('Lobby status:', currentLobby.status);
       if (currentLobby.status !== 'waiting') {
+        console.log('Lobby is not waiting for players');
         toast({
           title: 'Lobby No Longer Available',
           description: 'This lobby is no longer accepting players.',
@@ -136,21 +156,25 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
       }
 
       // Get user profile to join lobby
+      console.log('Getting user profile for user_id:', user?.id);
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('username')
         .eq('user_id', user?.id)
         .single();
 
+      console.log('Profile query result:', { profile, profileError });
       if (profileError) throw profileError;
 
       // Find next available slot
+      console.log('Finding next available slot');
       const { data: participants, error: participantsError } = await supabase
         .from('lobby_participants')
         .select('slot_number')
         .eq('lobby_id', invite.lobby_id)
         .order('slot_number');
 
+      console.log('Participants query result:', { participants, participantsError });
       if (participantsError) throw participantsError;
 
       const occupiedSlots = participants?.map(p => p.slot_number) || [];
@@ -161,8 +185,16 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
           break;
         }
       }
+      console.log('Next available slot:', nextSlot);
 
       // Join the lobby
+      console.log('Joining lobby with data:', {
+        lobby_id: invite.lobby_id,
+        user_id: user?.id,
+        username: profile.username,
+        slot_number: nextSlot
+      });
+      
       const { error: joinError } = await supabase
         .from('lobby_participants')
         .insert({
@@ -172,9 +204,11 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
           slot_number: nextSlot
         });
 
+      console.log('Join lobby result:', { joinError });
       if (joinError) throw joinError;
 
       // Update lobby current players count
+      console.log('Updating lobby current players count');
       const { error: lobbyUpdateError } = await supabase
         .from('game_lobbies')
         .update({ 
@@ -182,9 +216,11 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
         })
         .eq('id', invite.lobby_id);
 
+      console.log('Lobby update result:', { lobbyUpdateError });
       if (lobbyUpdateError) throw lobbyUpdateError;
 
       // Update invite status
+      console.log('Updating invite status to accepted');
       const { error: updateError } = await supabase
         .from('lobby_invites')
         .update({ 
@@ -193,11 +229,17 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
         })
         .eq('id', invite.id);
 
+      console.log('Invite update result:', { updateError });
       if (updateError) throw updateError;
 
       toast({
         title: 'Joined Lobby!',
         description: `You've joined ${invite.sender_profile.username}'s lobby.`,
+      });
+
+      console.log('Navigating to lobby:', {
+        id: invite.lobby_id,
+        ...currentLobby
       });
 
       // Navigate to the lobby

@@ -165,6 +165,8 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
   const invitePlayer = async () => {
     if (!currentLobby || !inviteUserId.trim()) return;
 
+    console.log('Inviting player:', inviteUserId.trim(), 'to lobby:', currentLobby.id);
+
     try {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -172,7 +174,10 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
         .eq('username', inviteUserId.trim())
         .single();
 
+      console.log('Profile lookup result:', { profile, profileError });
+
       if (profileError || !profile) {
+        console.log('Profile not found for username:', inviteUserId.trim());
         toast({
           title: 'User Not Found',
           description: 'No user found with that username.',
@@ -181,7 +186,9 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
         return;
       }
 
+      console.log('Checking lobby capacity. Current participants:', participants.length, 'Max:', currentLobby.max_players);
       if (participants.length >= currentLobby.max_players) {
+        console.log('Lobby is full');
         toast({
           title: 'Lobby Full',
           description: 'This lobby is already full.',
@@ -190,6 +197,12 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
         return;
       }
 
+      console.log('Sending invite with data:', {
+        lobby_id: currentLobby.id,
+        sender_id: user?.id,
+        receiver_id: profile.user_id
+      });
+
       const { error: inviteError } = await supabase
         .from('lobby_invites')
         .insert({
@@ -197,6 +210,8 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
           sender_id: user?.id,
           receiver_id: profile.user_id
         });
+
+      console.log('Invite creation result:', { inviteError });
 
       if (inviteError) throw inviteError;
 
