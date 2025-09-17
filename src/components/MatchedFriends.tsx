@@ -5,6 +5,7 @@ import { ArrowLeft, Heart, Star, MapPin, MessageCircle, Video, BookOpen, Users }
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import Chat from "./Chat";
 
 interface Profile {
   id: string;
@@ -21,6 +22,7 @@ interface MatchedFriendsProps {
 
 const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
   const [selectedMatch, setSelectedMatch] = useState<Profile | null>(null);
+  const [chatFriend, setChatFriend] = useState<Profile | null>(null);
   const [friends, setFriends] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -104,6 +106,10 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
       setLoading(false);
     }
   };
+
+  if (chatFriend) {
+    return <Chat friend={chatFriend} onBack={() => setChatFriend(null)} />;
+  }
 
   if (loading) {
     return (
@@ -236,6 +242,7 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
                         variant="gaming" 
                         size="sm" 
                         className="flex-1 group-hover:shadow-glow transition-all duration-300"
+                        onClick={() => setChatFriend(match)}
                       >
                         <MessageCircle className="w-4 h-4 mr-2" />
                         Chat
