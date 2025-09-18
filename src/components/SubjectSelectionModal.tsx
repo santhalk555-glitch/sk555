@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { X, BookOpen, Users, Crown, GraduationCap, Trophy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from './ui/use-toast';
+import { getAllCourseOptions, COMPETITIVE_EXAM_OPTIONS } from '@/constants/profileOptions';
 
 interface SubjectSelectionModalProps {
   isOpen: boolean;
@@ -20,17 +21,12 @@ interface SubjectSelectionModalProps {
   }) => void;
 }
 
-interface Course {
-  id: string;
+interface CourseOption {
   name: string;
-  main_category: string;
-  sub_category: string;
 }
 
-interface CompetitiveExam {
-  id: string;
+interface ExamOption {
   name: string;
-  category: string;
 }
 
 interface Subject {
@@ -50,12 +46,12 @@ interface Topic {
 const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSelectionModalProps) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedSourceType, setSelectedSourceType] = useState<'course' | 'exam' | null>(null);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [exams, setExams] = useState<CompetitiveExam[]>([]);
+  const [courseOptions, setCourseOptions] = useState<CourseOption[]>([]);
+  const [examOptions, setExamOptions] = useState<ExamOption[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const [selectedExam, setSelectedExam] = useState<CompetitiveExam | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<CourseOption | null>(null);
+  const [selectedExam, setSelectedExam] = useState<ExamOption | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [selectedPlayers, setSelectedPlayers] = useState<2 | 4 | null>(null);
@@ -64,41 +60,58 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
 
   useEffect(() => {
     if (isOpen) {
-      fetchInitialData();
+      loadOptions();
     }
   }, [isOpen]);
 
-  const fetchInitialData = async () => {
-    try {
-      const [coursesRes, examsRes] = await Promise.all([
-        supabase.from('courses').select('*').order('name'),
-        supabase.from('competitive_exams_list').select('*').order('name')
-      ]);
-
-      if (coursesRes.data) setCourses(coursesRes.data);
-      if (examsRes.data) setExams(examsRes.data);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load courses and exams',
-        variant: 'destructive'
-      });
-    }
+  const loadOptions = () => {
+    // Load course options from the same source as ProfileCreationForm
+    const courses = getAllCourseOptions().map(name => ({ name }));
+    setCourseOptions(courses);
+    
+    // Load exam options from the same source as ProfileCreationForm
+    const exams = COMPETITIVE_EXAM_OPTIONS.map(name => ({ name }));
+    setExamOptions(exams);
   };
 
-  const fetchSubjects = async (sourceType: 'course' | 'exam', id: string) => {
+  const fetchSubjects = async (sourceType: 'course' | 'exam', selectedName: string) => {
     try {
       setLoading(true);
+      
+      // Find matching course/exam in database by name
+      let sourceId: string | null = null;
+      
+      if (sourceType === 'course') {
+        const { data: courseData } = await supabase
+          .from('courses')
+          .select('id')
+          .eq('name', selectedName)
+          .maybeSingle();
+        sourceId = courseData?.id || null;
+      } else {
+        const { data: examData } = await supabase
+          .from('competitive_exams_list')
+          .select('id')
+          .eq('name', selectedName)
+          .maybeSingle();
+        sourceId = examData?.id || null;
+      }
+
+      if (!sourceId) {
+        // If no matching record found, show empty subjects
+        setSubjects([]);
+        return;
+      }
+
       const query = supabase
         .from('subjects_hierarchy')
         .select('*')
         .eq('source_type', sourceType);
       
       if (sourceType === 'course') {
-        query.eq('course_id', id);
+        query.eq('course_id', sourceId);
       } else {
-        query.eq('exam_id', id);
+        query.eq('exam_id', sourceId);
       }
 
       const { data, error } = await query.order('name');
@@ -152,15 +165,15 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     setCurrentStep(2);
   };
 
-  const handleCourseSelect = (course: Course) => {
+  const handleCourseSelect = (course: CourseOption) => {
     setSelectedCourse(course);
-    fetchSubjects('course', course.id);
+    fetchSubjects('course', course.name);
     setCurrentStep(3);
   };
 
-  const handleExamSelect = (exam: CompetitiveExam) => {
+  const handleExamSelect = (exam: ExamOption) => {
     setSelectedExam(exam);
-    fetchSubjects('exam', exam.id);
+    fetchSubjects('exam', exam.name);
     setCurrentStep(3);
   };
 
@@ -180,12 +193,32 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     setCurrentStep(6);
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (selectedSourceType && selectedSubject && selectedTopic && selectedPlayers && selectedGameMode) {
+      // Get the actual database IDs for course/exam
+      let courseId: string | undefined;
+      let examId: string | undefined;
+      
+      if (selectedSourceType === 'course' && selectedCourse) {
+        const { data: courseData } = await supabase
+          .from('courses')
+          .select('id')
+          .eq('name', selectedCourse.name)
+          .maybeSingle();
+        courseId = courseData?.id;
+      } else if (selectedSourceType === 'exam' && selectedExam) {
+        const { data: examData } = await supabase
+          .from('competitive_exams_list')
+          .select('id')
+          .eq('name', selectedExam.name)
+          .maybeSingle();
+        examId = examData?.id;
+      }
+      
       onSubjectSelect({
         sourceType: selectedSourceType,
-        courseId: selectedCourse?.id,
-        examId: selectedExam?.id,
+        courseId,
+        examId,
         subjectId: selectedSubject.id,
         topicId: selectedTopic.id,
         maxPlayers: selectedPlayers,
@@ -298,22 +331,22 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
                 {selectedSourceType === 'course' ? <GraduationCap className="w-5 h-5 mr-2 text-primary" /> : <Trophy className="w-5 h-5 mr-2 text-primary" />}
                 Step 2: Choose {selectedSourceType === 'course' ? 'Course' : 'Competitive Exam'}
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto">
                 {selectedSourceType === 'course' ? (
-                  courses.map((course) => (
+                  courseOptions.map((course, index) => (
                     <Badge
-                      key={course.id}
+                      key={index}
                       variant="outline"
-                      className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:border-primary/30"
+                      className="p-3 text-left cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:border-primary/30 whitespace-normal"
                       onClick={() => handleCourseSelect(course)}
                     >
                       {course.name}
                     </Badge>
                   ))
                 ) : (
-                  exams.map((exam) => (
+                  examOptions.map((exam, index) => (
                     <Badge
-                      key={exam.id}
+                      key={index}
                       variant="outline"
                       className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:border-primary/30"
                       onClick={() => handleExamSelect(exam)}
