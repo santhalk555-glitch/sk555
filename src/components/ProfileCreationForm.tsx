@@ -155,73 +155,12 @@ const COMPETITIVE_EXAM_OPTIONS = [
   "Other"
 ];
 
-const SUBJECT_OPTIONS = [
-  "Mathematics",
-  "Physics", 
-  "Chemistry",
-  "Biology",
-  "Computer Science",
-  "Mechanical Engineering",
-  "Electrical Engineering", 
-  "Civil Engineering",
-  "Electronics and Communication",
-  "Information Technology",
-  "Chemical Engineering",
-  "Data Science",
-  "Artificial Intelligence",
-  "Machine Learning",
-  "Cybersecurity",
-  "Software Engineering",
-  "Web Development",
-  "Mobile App Development",
-  "Database Management",
-  "Networking",
-  "Cloud Computing",
-  "DevOps",
-  "Statistics",
-  "Economics",
-  "Business Studies",
-  "Accounting",
-  "Finance",
-  "Marketing",
-  "Management",
-  "History",
-  "Geography", 
-  "Political Science",
-  "Psychology",
-  "Sociology",
-  "Philosophy",
-  "English Literature",
-  "Hindi Literature",
-  "Biotechnology",
-  "Microbiology",
-  "Biochemistry",
-  "Environmental Science",
-  "Agriculture",
-  "Law",
-  "Medicine",
-  "Pharmacy",
-  "Nursing",
-  "Architecture",
-  "Design",
-  "Fine Arts",
-  "General Knowledge",
-  "Current Affairs",
-  "Reasoning",
-  "Aptitude",
-  "Quantitative Ability",
-  "Verbal Ability",
-  "English Grammar",
-  "General Science"
-];
-
 export const ProfileCreationForm = () => {
   const [username, setUsername] = useState('');
   const [mainCategory, setMainCategory] = useState('');
   const [subCategory, setSubCategory] = useState('');
   const [courseName, setCourseName] = useState('');
   const [competitiveExams, setCompetitiveExams] = useState<string[]>([]);
-  const [subjects, setSubjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [usernameError, setUsernameError] = useState('');
   const { user } = useAuth();
@@ -233,14 +172,6 @@ export const ProfileCreationForm = () => {
       setCompetitiveExams([...competitiveExams, exam]);
     } else {
       setCompetitiveExams(competitiveExams.filter(e => e !== exam));
-    }
-  };
-
-  const handleSubjectChange = (subject: string, checked: boolean) => {
-    if (checked) {
-      setSubjects([...subjects, subject]);
-    } else {
-      setSubjects(subjects.filter(s => s !== subject));
     }
   };
 
@@ -329,7 +260,7 @@ export const ProfileCreationForm = () => {
       return;
     }
 
-    if (!username || !courseName || competitiveExams.length === 0 || subjects.length === 0) {
+    if (!username || !courseName || competitiveExams.length === 0) {
       toast({
         title: 'Error',
         description: 'Please fill in all required fields.',
@@ -358,8 +289,7 @@ export const ProfileCreationForm = () => {
           .update({
             username: username.toLowerCase(),
             course_name: courseName,
-            competitive_exams: competitiveExams,
-            subjects: subjects
+            competitive_exams: competitiveExams
           })
           .eq('user_id', user.id);
 
@@ -379,7 +309,6 @@ export const ProfileCreationForm = () => {
             username: username.toLowerCase(),
             course_name: courseName,
             competitive_exams: competitiveExams,
-            subjects: subjects,
             display_user_id: generatedId
           });
 
@@ -512,35 +441,6 @@ export const ProfileCreationForm = () => {
                 {competitiveExams.length > 0 && (
                   <p className="text-sm text-muted-foreground">
                     Selected: {competitiveExams.join(', ')}
-                  </p>
-                )}
-              </div>
-
-              {/* Subjects */}
-              <div className="space-y-3">
-                <Label>Subjects *</Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto border rounded-lg p-4">
-                  {SUBJECT_OPTIONS.map((subject) => (
-                    <div key={subject} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`subject-${subject}`}
-                        checked={subjects.includes(subject)}
-                        onCheckedChange={(checked) => 
-                          handleSubjectChange(subject, checked as boolean)
-                        }
-                      />
-                      <Label 
-                        htmlFor={`subject-${subject}`}
-                        className="text-sm font-normal cursor-pointer"
-                      >
-                        {subject}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-                {subjects.length > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Selected: {subjects.join(', ')}
                   </p>
                 )}
               </div>
