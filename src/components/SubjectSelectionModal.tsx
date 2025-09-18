@@ -246,6 +246,11 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
         examId = examData?.id;
       }
       
+      // Store RRB JE topic name for later use in lobby creation
+      if (selectedTopic && selectedTopic.id.includes('rrb_je_')) {
+        sessionStorage.setItem(`rrb_je_topic_${selectedTopic.id}`, selectedTopic.name);
+      }
+      
       onSubjectSelect({
         sourceType: selectedSourceType,
         courseId,

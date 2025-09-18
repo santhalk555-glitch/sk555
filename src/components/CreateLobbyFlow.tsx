@@ -52,14 +52,26 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
 
       if (profileError) throw profileError;
 
-      // Get topic name for display
-      const { data: topicData, error: topicError } = await supabase
-        .from('topics')
-        .select('name')
-        .eq('id', selectionData.topicId)
-        .single();
+      // Get topic name for display - handle RRB JE specially
+      let topicName = '';
+      let isRRBJE = selectionData.topicId.includes('rrb_je_') && selectionData.sourceType === 'exam';
+      
+      if (isRRBJE) {
+        // Extract topic name from the synthetic ID for RRB JE
+        // For RRB JE, we store the actual topic name in a special format
+        const storedTopicName = sessionStorage.getItem(`rrb_je_topic_${selectionData.topicId}`);
+        topicName = storedTopicName || 'RRB JE Topic';
+      } else {
+        // Regular database lookup for other topics
+        const { data: topicData, error: topicError } = await supabase
+          .from('topics')
+          .select('name')
+          .eq('id', selectionData.topicId)
+          .single();
 
-      if (topicError) throw topicError;
+        if (topicError) throw topicError;
+        topicName = topicData.name;
+      }
 
       const { data: lobby, error: lobbyError } = await supabase
         .from('game_lobbies')
@@ -68,13 +80,13 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
           creator_id: user.id,
           max_players: selectionData.maxPlayers,
           current_players: 1,
-          subject: topicData.name, // Use topic name for backward compatibility
+          subject: topicName, // Use topic name for backward compatibility
           game_mode: selectionData.gameMode,
           source_type: selectionData.sourceType,
-          course_id: selectionData.courseId,
-          exam_id: selectionData.examId,
-          subject_id: selectionData.subjectId,
-          topic_id: selectionData.topicId
+          course_id: isRRBJE ? null : selectionData.courseId,
+          exam_id: isRRBJE ? null : selectionData.examId,
+          subject_id: isRRBJE ? null : selectionData.subjectId,
+          topic_id: isRRBJE ? null : selectionData.topicId
         })
         .select()
         .single();
@@ -94,7 +106,7 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
       
       toast({
         title: 'Lobby Created!',
-        description: `${topicData.name} ${selectionData.gameMode} lobby created with ${selectionData.maxPlayers} players!`,
+        description: `${topicName} ${selectionData.gameMode} lobby created with ${selectionData.maxPlayers} players!`,
       });
 
       onLobbyCreated(lobby);

@@ -67,14 +67,36 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
   const loadQuizData = async () => {
     try {
+      // Check if this is RRB JE based on subject name
+      const isRRBJE = lobby.subject && (
+        lobby.subject.includes('Engineering Mechanics') ||
+        lobby.subject.includes('Material Science') ||
+        lobby.subject.includes('Building Construction') ||
+        lobby.subject.includes('Basic Concepts')
+      );
+
       // Fetch questions based on the new hierarchical structure
       let questionsQuery = supabase
         .from('quiz_questions')
         .select('*')
         .limit(15);
 
-      // If lobby has new structure, use it
-      if (lobby.source_type && lobby.subject_id && lobby.topic_id) {
+      if (isRRBJE) {
+        // For RRB JE, try to find questions based on subject name pattern
+        // Map RRB JE topics to database subjects
+        let dbSubject = 'engineering'; // Default fallback
+        
+        if (lobby.subject.includes('Mechanical') || lobby.subject.includes('Material Science') || lobby.subject.includes('Thermal')) {
+          dbSubject = 'mechanical_engineering';
+        } else if (lobby.subject.includes('Civil') || lobby.subject.includes('Building') || lobby.subject.includes('Construction')) {
+          dbSubject = 'civil_engineering';
+        } else if (lobby.subject.includes('Electrical') || lobby.subject.includes('Circuit') || lobby.subject.includes('Basic Concepts')) {
+          dbSubject = 'electrical_engineering';
+        }
+        
+        questionsQuery = questionsQuery.eq('subject', dbSubject as any);
+      } else if (lobby.source_type && lobby.subject_id && lobby.topic_id) {
+        // If lobby has new structure, use it
         questionsQuery = questionsQuery
           .eq('source_type', lobby.source_type)
           .eq('subject_id', lobby.subject_id)
