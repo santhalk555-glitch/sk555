@@ -67,62 +67,78 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
   const loadQuizData = async () => {
     try {
-      // Convert human-readable subject to database format
-      const subjectMapping: { [key: string]: string } = {
-        'Mechanical Engineering': 'mechanical_engineering',
-        'Electrical Engineering': 'electrical_engineering', 
-        'Civil Engineering': 'civil_engineering',
-        'Computer Science': 'computer_science',
-        'Information Technology': 'information_technology',
-        'Mathematics': 'mathematics',
-        'Physics': 'physics',
-        'Chemistry': 'chemistry',
-        'Biology': 'biology',
-        'English': 'english',
-        'History': 'history',
-        'Geography': 'geography',
-        'Economics': 'economics',
-        'Psychology': 'psychology',
-        'Engineering': 'engineering',
-        'Medical': 'medical',
-        'Business Studies': 'business_studies',
-        'Accounting': 'accounting',
-        'Political Science': 'political_science',
-        'Sociology': 'sociology',
-        'Philosophy': 'philosophy',
-        'Statistics': 'statistics',
-        'Data Science': 'data_science',
-        'Marketing': 'marketing',
-        'Finance': 'finance',
-        'Law': 'law',
-        'Environmental Science': 'environmental_science',
-        'Biotechnology': 'biotechnology',
-        'Pharmaceutical': 'pharmaceutical',
-        'Architecture': 'architecture'
-      };
-
-      const dbSubject = subjectMapping[lobby.subject] || lobby.subject.toLowerCase().replace(/\s+/g, '_');
-      
-      // Fetch 15 questions from the selected subject
-      const { data: questionsData, error: questionsError } = await supabase
+      // Fetch questions based on the new hierarchical structure
+      let questionsQuery = supabase
         .from('quiz_questions')
         .select('*')
-        .eq('subject', dbSubject)
         .limit(15);
+
+      // If lobby has new structure, use it
+      if (lobby.source_type && lobby.subject_id && lobby.topic_id) {
+        questionsQuery = questionsQuery
+          .eq('source_type', lobby.source_type)
+          .eq('subject_id', lobby.subject_id)
+          .eq('topic_id', lobby.topic_id);
+
+        if (lobby.source_type === 'course' && lobby.course_id) {
+          questionsQuery = questionsQuery.eq('course_id', lobby.course_id);
+        } else if (lobby.source_type === 'exam' && lobby.exam_id) {
+          questionsQuery = questionsQuery.eq('exam_id', lobby.exam_id);
+        }
+      } else {
+        // Fallback to old subject-based approach for backward compatibility
+        const subjectMapping: { [key: string]: string } = {
+          'Mechanical Engineering': 'mechanical_engineering',
+          'Electrical Engineering': 'electrical_engineering', 
+          'Civil Engineering': 'civil_engineering',
+          'Computer Science': 'computer_science',
+          'Information Technology': 'information_technology',
+          'Mathematics': 'mathematics',
+          'Physics': 'physics',
+          'Chemistry': 'chemistry',
+          'Biology': 'biology',
+          'English': 'english',
+          'History': 'history',
+          'Geography': 'geography',
+          'Economics': 'economics',
+          'Psychology': 'psychology',
+          'Engineering': 'engineering',
+          'Medical': 'medical',
+          'Business Studies': 'business_studies',
+          'Accounting': 'accounting',
+          'Political Science': 'political_science',
+          'Sociology': 'sociology',
+          'Philosophy': 'philosophy',
+          'Statistics': 'statistics',
+          'Data Science': 'data_science',
+          'Marketing': 'marketing',
+          'Finance': 'finance',
+          'Law': 'law',
+          'Environmental Science': 'environmental_science',
+          'Biotechnology': 'biotechnology',
+          'Pharmaceutical': 'pharmaceutical',
+          'Architecture': 'architecture'
+        };
+
+        const dbSubject = subjectMapping[lobby.subject] || lobby.subject.toLowerCase().replace(/\s+/g, '_');
+        questionsQuery = questionsQuery.eq('subject', dbSubject);
+      }
+
+      const { data: questionsData, error: questionsError } = await questionsQuery;
 
       if (questionsError) throw questionsError;
 
-      console.log(`Fetching questions for subject: ${lobby.subject} -> ${dbSubject}`);
+      console.log(`Fetching questions for lobby:`, lobby);
       console.log('Questions found:', questionsData?.length || 0);
 
       if (questionsData && questionsData.length > 0) {
         setQuestions(questionsData);
         setAnswers(new Array(questionsData.length).fill(''));
       } else {
-        console.error(`No questions found for subject: ${lobby.subject} (${dbSubject})`);
+        console.error(`No questions found for the selected topic/subject`);
         toast({
           title: 'No Questions Available',
-          description: `No questions found for ${lobby.subject}. Please contact support or try a different subject.`,
+          description: `No questions found for the selected topic. Please contact support or try a different topic.`,
           variant: 'destructive'
         });
       }

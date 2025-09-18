@@ -18,12 +18,28 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const handleSubjectSelect = (subject: string, maxPlayers: 2 | 4, gameMode: 'study' | 'quiz') => {
+  const handleSubjectSelect = (selectionData: {
+    sourceType: 'course' | 'exam';
+    courseId?: string;
+    examId?: string;
+    subjectId: string;
+    topicId: string;
+    maxPlayers: 2 | 4;
+    gameMode: 'study' | 'quiz';
+  }) => {
     setShowSubjectModal(false);
-    createLobbyWithOptions(subject, maxPlayers, gameMode);
+    createLobbyWithOptions(selectionData);
   };
 
-  const createLobbyWithOptions = async (subject: string, maxPlayers: 2 | 4, gameMode: 'study' | 'quiz') => {
+  const createLobbyWithOptions = async (selectionData: {
+    sourceType: 'course' | 'exam';
+    courseId?: string;
+    examId?: string;
+    subjectId: string;
+    topicId: string;
+    maxPlayers: 2 | 4;
+    gameMode: 'study' | 'quiz';
+  }) => {
     if (!user) return;
 
     setLoading(true);
@@ -36,15 +52,29 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
 
       if (profileError) throw profileError;
 
+      // Get topic name for display
+      const { data: topicData, error: topicError } = await supabase
+        .from('topics')
+        .select('name')
+        .eq('id', selectionData.topicId)
+        .single();
+
+      if (topicError) throw topicError;
+
       const { data: lobby, error: lobbyError } = await supabase
         .from('game_lobbies')
         .insert({
           lobby_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
           creator_id: user.id,
-          max_players: maxPlayers,
+          max_players: selectionData.maxPlayers,
           current_players: 1,
-          subject: subject,
-          game_mode: gameMode
+          subject: topicData.name, // Use topic name for backward compatibility
+          game_mode: selectionData.gameMode,
+          source_type: selectionData.sourceType,
+          course_id: selectionData.courseId,
+          exam_id: selectionData.examId,
+          subject_id: selectionData.subjectId,
+          topic_id: selectionData.topicId
         })
         .select()
         .single();
@@ -64,7 +94,7 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
       
       toast({
         title: 'Lobby Created!',
-        description: `${subject} ${gameMode} lobby created with ${maxPlayers} players!`,
+        description: `${topicData.name} ${selectionData.gameMode} lobby created with ${selectionData.maxPlayers} players!`,
       });
 
       onLobbyCreated(lobby);

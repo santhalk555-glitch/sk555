@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      competitive_exams_list: {
+        Row: {
+          category: string | null
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      courses: {
+        Row: {
+          created_at: string
+          id: string
+          main_category: string
+          name: string
+          sub_category: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          main_category: string
+          name: string
+          sub_category: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          main_category?: string
+          name?: string
+          sub_category?: string
+        }
+        Relationships: []
+      }
       friend_requests: {
         Row: {
           created_at: string
@@ -64,39 +109,54 @@ export type Database = {
       }
       game_lobbies: {
         Row: {
+          course_id: string | null
           created_at: string
           creator_id: string
           current_players: number
+          exam_id: string | null
           game_mode: string | null
           id: string
           lobby_code: string
           max_players: number
+          source_type: string | null
           status: string
           subject: string | null
+          subject_id: string | null
+          topic_id: string | null
           updated_at: string
         }
         Insert: {
+          course_id?: string | null
           created_at?: string
           creator_id: string
           current_players?: number
+          exam_id?: string | null
           game_mode?: string | null
           id?: string
           lobby_code: string
           max_players: number
+          source_type?: string | null
           status?: string
           subject?: string | null
+          subject_id?: string | null
+          topic_id?: string | null
           updated_at?: string
         }
         Update: {
+          course_id?: string | null
           created_at?: string
           creator_id?: string
           current_players?: number
+          exam_id?: string | null
           game_mode?: string | null
           id?: string
           lobby_code?: string
           max_players?: number
+          source_type?: string | null
           status?: string
           subject?: string | null
+          subject_id?: string | null
+          topic_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -344,8 +404,10 @@ export type Database = {
       quiz_questions: {
         Row: {
           correct_answer: string
+          course_id: string | null
           created_at: string
           difficulty: Database["public"]["Enums"]["difficulty_level"]
+          exam_id: string | null
           explanation: string | null
           id: string
           option_a: string
@@ -353,12 +415,17 @@ export type Database = {
           option_c: string
           option_d: string
           question: string
+          source_type: string | null
           subject: Database["public"]["Enums"]["quiz_subject"]
+          subject_id: string | null
+          topic_id: string | null
         }
         Insert: {
           correct_answer: string
+          course_id?: string | null
           created_at?: string
           difficulty: Database["public"]["Enums"]["difficulty_level"]
+          exam_id?: string | null
           explanation?: string | null
           id?: string
           option_a: string
@@ -366,12 +433,17 @@ export type Database = {
           option_c: string
           option_d: string
           question: string
+          source_type?: string | null
           subject: Database["public"]["Enums"]["quiz_subject"]
+          subject_id?: string | null
+          topic_id?: string | null
         }
         Update: {
           correct_answer?: string
+          course_id?: string | null
           created_at?: string
           difficulty?: Database["public"]["Enums"]["difficulty_level"]
+          exam_id?: string | null
           explanation?: string | null
           id?: string
           option_a?: string
@@ -379,9 +451,83 @@ export type Database = {
           option_c?: string
           option_d?: string
           question?: string
+          source_type?: string | null
           subject?: Database["public"]["Enums"]["quiz_subject"]
+          subject_id?: string | null
+          topic_id?: string | null
         }
         Relationships: []
+      }
+      subjects_hierarchy: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          exam_id: string | null
+          id: string
+          name: string
+          source_type: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          exam_id?: string | null
+          id?: string
+          name: string
+          source_type: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          exam_id?: string | null
+          id?: string
+          name?: string
+          source_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subjects_hierarchy_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subjects_hierarchy_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "competitive_exams_list"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      topics: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          subject_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          subject_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topics_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects_hierarchy"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
