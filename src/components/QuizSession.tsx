@@ -84,7 +84,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
       if (isRRBJE) {
         // For RRB JE, try to find questions based on subject name pattern
         // Map RRB JE topics to database subjects
-        let dbSubject = 'engineering'; // Default fallback
+        let dbSubject = 'other_engineering'; // Default fallback to valid enum value
         
         if (lobby.subject.includes('Mechanical') || lobby.subject.includes('Material Science') || lobby.subject.includes('Thermal')) {
           dbSubject = 'mechanical_engineering';
