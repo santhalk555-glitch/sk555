@@ -10,130 +10,133 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
-const COURSE_OPTIONS = [
-  // Engineering and Technology - Core Branches
-  "Engineering and Technology → Mechanical Engineering",
-  "Engineering and Technology → Electrical Engineering",
-  "Engineering and Technology → Civil Engineering",
-  "Engineering and Technology → Computer Science Engineering",
-  "Engineering and Technology → Electronics and Communication Engineering",
-  "Engineering and Technology → Information Technology",
-  "Engineering and Technology → Chemical Engineering",
-  "Engineering and Technology → Aerospace Engineering",
-  "Engineering and Technology → Biomedical Engineering",
-  "Engineering and Technology → Mechatronics Engineering",
-  "Engineering and Technology → Industrial Engineering",
-  
-  // Engineering and Technology - Emerging/Modern Branches
-  "Engineering and Technology → Artificial Intelligence and Machine Learning (AI & ML)",
-  "Engineering and Technology → Data Science",
-  "Engineering and Technology → Cybersecurity",
-  "Engineering and Technology → Robotics Engineering",
-  "Engineering and Technology → Internet of Things (IoT)",
-  "Engineering and Technology → Blockchain Technology",
-  "Engineering and Technology → Cloud Computing",
-  "Engineering and Technology → Software Engineering",
-  "Engineering and Technology → Renewable Energy Engineering",
-  "Engineering and Technology → 3D Printing and Additive Manufacturing",
-  
-  // Medical and Health Sciences
-  "Medical and Health Sciences → MBBS (Medicine)",
-  "Medical and Health Sciences → BDS (Dental Surgery)",
-  "Medical and Health Sciences → BSc Nursing",
-  "Medical and Health Sciences → Pharmacy (BPharm / MPharm)",
-  "Medical and Health Sciences → Physiotherapy",
-  "Medical and Health Sciences → Medical Laboratory Technology",
-  "Medical and Health Sciences → Public Health",
-  "Medical and Health Sciences → Biotechnology",
-  "Medical and Health Sciences → Biomedical Science",
-  "Medical and Health Sciences → Genetic Engineering",
-  "Medical and Health Sciences → Healthcare Informatics",
-  
-  // Commerce and Management
-  "Commerce and Management → BCom / MCom",
-  "Commerce and Management → BBA / MBA",
-  "Commerce and Management → Finance",
-  "Commerce and Management → Marketing",
-  "Commerce and Management → Human Resource Management",
-  "Commerce and Management → International Business",
-  "Commerce and Management → Accounting",
-  "Commerce and Management → Business Analytics",
-  "Commerce and Management → Entrepreneurship",
-  "Commerce and Management → Financial Technology (FinTech)",
-  "Commerce and Management → Digital Marketing",
-  "Commerce and Management → Supply Chain Management",
-  
-  // Science
-  "Science → Physics",
-  "Science → Chemistry",
-  "Science → Mathematics",
-  "Science → Biology",
-  "Science → Statistics",
-  "Science → Environmental Science",
-  "Science → Computer Science",
-  "Science → Data Science",
-  "Science → Microbiology",
-  "Science → Biochemistry",
-  "Science → Artificial Intelligence",
-  "Science → Machine Learning",
-  "Science → Neuroscience",
-  "Science → Quantum Computing",
-  
-  // Arts and Humanities
-  "Arts and Humanities → History",
-  "Arts and Humanities → Political Science",
-  "Arts and Humanities → Sociology",
-  "Arts and Humanities → Psychology",
-  "Arts and Humanities → Philosophy",
-  "Arts and Humanities → Literature (English, Hindi, etc)",
-  "Arts and Humanities → Economics",
-  "Arts and Humanities → Geography",
-  "Arts and Humanities → Anthropology",
-  "Arts and Humanities → Digital Humanities",
-  
-  // Law and Legal Studies
-  "Law and Legal Studies → BA LLB",
-  "Law and Legal Studies → BBA LLB",
-  "Law and Legal Studies → LLB",
-  "Law and Legal Studies → LLM",
-  "Law and Legal Studies → Corporate Law",
-  "Law and Legal Studies → Criminal Law",
-  "Law and Legal Studies → International Law",
-  "Law and Legal Studies → Constitutional Law",
-  "Law and Legal Studies → Cyber Law",
-  "Law and Legal Studies → Intellectual Property Law",
-  
-  // Agriculture and Allied Sciences
-  "Agriculture and Allied Sciences → Agriculture",
-  "Agriculture and Allied Sciences → Horticulture",
-  "Agriculture and Allied Sciences → Forestry",
-  "Agriculture and Allied Sciences → Fisheries Science",
-  "Agriculture and Allied Sciences → Veterinary Science",
-  "Agriculture and Allied Sciences → Dairy Technology",
-  "Agriculture and Allied Sciences → Food Technology",
-  "Agriculture and Allied Sciences → AgriTech",
-  "Agriculture and Allied Sciences → Sustainable Agriculture",
-  
-  // Education and Teaching
-  "Education and Teaching → BEd",
-  "Education and Teaching → MEd",
-  "Education and Teaching → Educational Psychology",
-  "Education and Teaching → Curriculum Development",
-  "Education and Teaching → Teacher Training",
-  "Education and Teaching → Educational Technology (EdTech)",
-  
-  // Design, Architecture and Fine Arts
-  "Design, Architecture and Fine Arts → Architecture (BArch / MArch)",
-  "Design, Architecture and Fine Arts → Interior Design",
-  "Design, Architecture and Fine Arts → Fashion Design",
-  "Design, Architecture and Fine Arts → Graphic Design",
-  "Design, Architecture and Fine Arts → Industrial Design",
-  "Design, Architecture and Fine Arts → Fine Arts",
-  "Design, Architecture and Fine Arts → Animation",
-  "Design, Architecture and Fine Arts → Multimedia",
-  "Design, Architecture and Fine Arts → Game Design",
-  "Design, Architecture and Fine Arts → User Experience Design (UX Design)"
-];
+const COURSE_CATEGORIES = {
+  "🧪 Engineering and Technology": {
+    "Core Branches": [
+      "Mechanical Engineering",
+      "Electrical Engineering", 
+      "Civil Engineering",
+      "Computer Science Engineering",
+      "Electronics and Communication Engineering",
+      "Information Technology",
+      "Chemical Engineering",
+      "Aerospace Engineering",
+      "Biomedical Engineering",
+      "Mechatronics Engineering",
+      "Industrial Engineering"
+    ],
+    "Emerging / Modern Branches": [
+      "Artificial Intelligence and Machine Learning (AI & ML)",
+      "Data Science",
+      "Cybersecurity", 
+      "Robotics Engineering",
+      "Internet of Things (IoT)",
+      "Blockchain Technology",
+      "Cloud Computing",
+      "Software Engineering",
+      "Renewable Energy Engineering",
+      "3D Printing and Additive Manufacturing"
+    ]
+  },
+  "🏥 Medical and Health Sciences": [
+    "MBBS (Medicine)",
+    "BDS (Dental Surgery)",
+    "BSc Nursing",
+    "Pharmacy (BPharm / MPharm)",
+    "Physiotherapy",
+    "Medical Laboratory Technology",
+    "Public Health",
+    "Biotechnology",
+    "Biomedical Science", 
+    "Genetic Engineering",
+    "Healthcare Informatics"
+  ],
+  "💼 Commerce and Management": [
+    "BCom / MCom",
+    "BBA / MBA",
+    "Finance",
+    "Marketing",
+    "Human Resource Management",
+    "International Business",
+    "Accounting",
+    "Business Analytics",
+    "Entrepreneurship",
+    "Financial Technology (FinTech)",
+    "Digital Marketing",
+    "Supply Chain Management"
+  ],
+  "🎓 Science": [
+    "Physics",
+    "Chemistry",
+    "Mathematics",
+    "Biology",
+    "Statistics",
+    "Environmental Science",
+    "Computer Science",
+    "Data Science",
+    "Microbiology",
+    "Biochemistry",
+    "Artificial Intelligence",
+    "Machine Learning",
+    "Neuroscience",
+    "Quantum Computing"
+  ],
+  "🎨 Arts and Humanities": [
+    "History",
+    "Political Science",
+    "Sociology",
+    "Psychology",
+    "Philosophy",
+    "Literature (English, Hindi, etc)",
+    "Economics",
+    "Geography",
+    "Anthropology",
+    "Digital Humanities"
+  ],
+  "⚖️ Law and Legal Studies": [
+    "BA LLB",
+    "BBA LLB",
+    "LLB",
+    "LLM",
+    "Corporate Law",
+    "Criminal Law",
+    "International Law",
+    "Constitutional Law",
+    "Cyber Law",
+    "Intellectual Property Law"
+  ],
+  "🌾 Agriculture and Allied Sciences": [
+    "Agriculture",
+    "Horticulture",
+    "Forestry",
+    "Fisheries Science",
+    "Veterinary Science",
+    "Dairy Technology",
+    "Food Technology",
+    "AgriTech",
+    "Sustainable Agriculture"
+  ],
+  "🏛️ Education and Teaching": [
+    "BEd",
+    "MEd",
+    "Educational Psychology",
+    "Curriculum Development",
+    "Teacher Training",
+    "Educational Technology (EdTech)"
+  ],
+  "🖌️ Design, Architecture and Fine Arts": [
+    "Architecture (BArch / MArch)",
+    "Interior Design",
+    "Fashion Design",
+    "Graphic Design",
+    "Industrial Design",
+    "Fine Arts",
+    "Animation",
+    "Multimedia",
+    "Game Design",
+    "User Experience Design (UX Design)"
+  ]
+};
 
 const COMPETITIVE_EXAM_OPTIONS = [
   "RRB JE",
@@ -214,6 +217,8 @@ const SUBJECT_OPTIONS = [
 
 export const ProfileCreationForm = () => {
   const [username, setUsername] = useState('');
+  const [mainCategory, setMainCategory] = useState('');
+  const [subCategory, setSubCategory] = useState('');
   const [courseName, setCourseName] = useState('');
   const [competitiveExams, setCompetitiveExams] = useState<string[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
@@ -237,6 +242,36 @@ export const ProfileCreationForm = () => {
     } else {
       setSubjects(subjects.filter(s => s !== subject));
     }
+  };
+
+  const handleMainCategoryChange = (category: string) => {
+    setMainCategory(category);
+    setSubCategory('');
+    setCourseName('');
+  };
+
+  const handleSubCategoryChange = (subCat: string) => {
+    setSubCategory(subCat);
+    setCourseName(`${mainCategory} → ${subCat}`);
+  };
+
+  const getSubCategories = () => {
+    if (!mainCategory) return [];
+    
+    const categoryData = COURSE_CATEGORIES[mainCategory as keyof typeof COURSE_CATEGORIES];
+    
+    if (Array.isArray(categoryData)) {
+      return categoryData;
+    }
+    
+    // Handle Engineering and Technology with subcategories
+    if (typeof categoryData === 'object') {
+      return Object.entries(categoryData).flatMap(([groupName, items]) => 
+        items.map(item => `${groupName}: ${item}`)
+      );
+    }
+    
+    return [];
   };
 
   const validateUsername = (value: string) => {
@@ -403,21 +438,53 @@ export const ProfileCreationForm = () => {
                 </p>
               </div>
 
-              {/* Course Name */}
-              <div className="space-y-2">
-                <Label htmlFor="course-name">Course Name *</Label>
-                <Select value={courseName} onValueChange={setCourseName}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your course" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COURSE_OPTIONS.map((course) => (
-                      <SelectItem key={course} value={course}>
-                        {course}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Course Selection - Cascading Dropdowns */}
+              <div className="space-y-4">
+                <Label>Course Selection *</Label>
+                
+                {/* Main Category Dropdown */}
+                <div className="space-y-2">
+                  <Label htmlFor="main-category">Main Category</Label>
+                  <Select value={mainCategory} onValueChange={handleMainCategoryChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select main category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.keys(COURSE_CATEGORIES).map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Subcategory Dropdown */}
+                {mainCategory && (
+                  <div className="space-y-2">
+                    <Label htmlFor="sub-category">Subcategory</Label>
+                    <Select value={subCategory} onValueChange={handleSubCategoryChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select subcategory" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getSubCategories().map((subCat) => (
+                          <SelectItem key={subCat} value={subCat}>
+                            {subCat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Display selected course */}
+                {courseName && (
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">Selected Course:</p>
+                    <p className="font-medium">{courseName}</p>
+                  </div>
+                )}
               </div>
 
               {/* Competitive Exams */}
