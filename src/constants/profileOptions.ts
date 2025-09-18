@@ -143,6 +143,53 @@ export const COMPETITIVE_EXAM_OPTIONS = [
   "Other"
 ];
 
+// RRB JE Engineering Branches and their subjects
+export const RRB_JE_ENGINEERING_BRANCHES = {
+  "Mechanical & Allied Engineering": [
+    "Engineering Mechanics",
+    "Material Science",
+    "Strength of Materials",
+    "Machining",
+    "Welding",
+    "Grinding & Finishing Process",
+    "Metrology",
+    "Fluid Mechanics & Hydraulic Machinery (FM & HM)",
+    "Industrial Management",
+    "Thermal Engineering"
+  ],
+  "Civil & Allied Engineering": [
+    "Engineering Mechanics (Force, Equilibrium, Friction, Centroid, Simple Machines)",
+    "Building Construction (Components, Types of Structure)",
+    "Building Materials (Masonry, Timber, Glass, Plastic, Metals, etc.)",
+    "Construction of Substructure (Job layout, Foundation, Earthwork)",
+    "Construction of Superstructure (Masonry, Doors/Windows, Stairs, Scaffolding)",
+    "Building Finishes (Floors, Walls, Roofs)",
+    "Building Maintenance (Cracks, Settlement, Re-barring)",
+    "Building Drawing (Plan, Elevation, Section, Perspective)",
+    "Concrete Technology (Cement, Aggregates, Concrete Mix Design, Testing)",
+    "Surveying (Chain, Compass, Leveling, Contouring, Theodolite, Plane Table, Curves)",
+    "Computer Aided Design (CAD, 3D modeling, Plan/Elevation/Section generation)",
+    "Geo Technical Engineering (Soil Properties, Foundation, Pavements, Site Investigation)",
+    "Hydraulics & Irrigation Engineering",
+    "Mechanics & Theory of Structures",
+    "Design of Concrete & Steel Structures",
+    "Transportation & Highway Engineering",
+    "Environmental Engineering",
+    "Advanced Construction Techniques & Equipment",
+    "Estimating, Costing, Contracts & Accounts"
+  ],
+  "Electrical & Allied Engineering": [
+    "Basic Concepts (Resistance, Inductance, Capacitance, Current, Voltage, Power)",
+    "Circuit Laws & Magnetic Circuits",
+    "AC Fundamentals, Polyphase System",
+    "Measurement & Measuring Instruments",
+    "Electrical Machines (DC, Transformers, Induction, Synchronous)",
+    "Generation, Transmission, Distribution & Switchgear",
+    "Estimation & Costing",
+    "Utilization of Electrical Energy"
+  ]
+};
+
 // Helper function to get all course options as a flat array
 export const getAllCourseOptions = () => {
   const options: string[] = [];

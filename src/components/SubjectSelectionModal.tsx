@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { X, BookOpen, Users, Crown, GraduationCap, Trophy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from './ui/use-toast';
-import { getAllCourseOptions, COMPETITIVE_EXAM_OPTIONS } from '@/constants/profileOptions';
+import { getAllCourseOptions, COMPETITIVE_EXAM_OPTIONS, RRB_JE_ENGINEERING_BRANCHES } from '@/constants/profileOptions';
 
 interface SubjectSelectionModalProps {
   isOpen: boolean;
@@ -78,6 +78,19 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     try {
       setLoading(true);
       
+      // Special handling for RRB JE - show engineering branches as subjects
+      if (sourceType === 'exam' && selectedName === 'RRB JE') {
+        const rrb_je_subjects = Object.keys(RRB_JE_ENGINEERING_BRANCHES).map((branch, index) => ({
+          id: `rrb_je_${index}`,
+          name: branch,
+          source_type: 'exam' as const,
+          exam_id: 'rrb_je'
+        }));
+        setSubjects(rrb_je_subjects);
+        setLoading(false);
+        return;
+      }
+      
       // Find matching course/exam in database by name
       let sourceId: string | null = null;
       
@@ -140,6 +153,24 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
   const fetchTopics = async (subjectId: string) => {
     try {
       setLoading(true);
+      
+      // Special handling for RRB JE engineering branches - show detailed subjects as topics
+      if (subjectId.startsWith('rrb_je_') && selectedExam?.name === 'RRB JE') {
+        const branchIndex = parseInt(subjectId.replace('rrb_je_', ''));
+        const branchName = Object.keys(RRB_JE_ENGINEERING_BRANCHES)[branchIndex];
+        const branchSubjects = RRB_JE_ENGINEERING_BRANCHES[branchName as keyof typeof RRB_JE_ENGINEERING_BRANCHES];
+        
+        const rrb_je_topics = branchSubjects.map((subject, index) => ({
+          id: `${subjectId}_topic_${index}`,
+          name: subject,
+          subject_id: subjectId
+        }));
+        
+        setTopics(rrb_je_topics);
+        setLoading(false);
+        return;
+      }
+      
       const { data, error } = await supabase
         .from('topics')
         .select('*')
