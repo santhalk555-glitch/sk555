@@ -173,7 +173,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       
       const { data, error } = await supabase
         .from('topics')
-        .select('*')
+        .select('id, name, simple_id, subject_id')
         .eq('subject_id', subjectId)
         .order('name');
       

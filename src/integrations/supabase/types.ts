@@ -131,6 +131,7 @@ export type Database = {
           subject: string | null
           subject_id: string | null
           topic_id: string | null
+          topic_simple_id: string | null
           updated_at: string
         }
         Insert: {
@@ -150,6 +151,7 @@ export type Database = {
           subject?: string | null
           subject_id?: string | null
           topic_id?: string | null
+          topic_simple_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -169,6 +171,7 @@ export type Database = {
           subject?: string | null
           subject_id?: string | null
           topic_id?: string | null
+          topic_simple_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -433,6 +436,7 @@ export type Database = {
           subject: Database["public"]["Enums"]["quiz_subject"]
           subject_id: string | null
           topic_id: string | null
+          topic_simple_id: string | null
         }
         Insert: {
           correct_answer: string
@@ -453,6 +457,7 @@ export type Database = {
           subject: Database["public"]["Enums"]["quiz_subject"]
           subject_id?: string | null
           topic_id?: string | null
+          topic_simple_id?: string | null
         }
         Update: {
           correct_answer?: string
@@ -473,6 +478,7 @@ export type Database = {
           subject?: Database["public"]["Enums"]["quiz_subject"]
           subject_id?: string | null
           topic_id?: string | null
+          topic_simple_id?: string | null
         }
         Relationships: []
       }
@@ -529,18 +535,21 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          simple_id: string
           subject_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          simple_id: string
           subject_id: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          simple_id?: string
           subject_id?: string
         }
         Relationships: [

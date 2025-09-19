@@ -109,7 +109,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
             // Get topic_id for the specific topic
             const topicQuery = await supabase
               .from('topics')
-              .select('id')
+              .select('id, simple_id')
               .eq('name', lobby.subject)
               .eq('subject_id', subjectQuery.data.id)
               .maybeSingle();
@@ -120,7 +120,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
               .eq('source_type', 'exam');
 
             if (topicQuery.data) {
-              questionsQuery = questionsQuery.eq('topic_id', topicQuery.data.id);
+              questionsQuery = questionsQuery.eq('topic_simple_id', topicQuery.data.simple_id);
             } else {
               // Fallback to subject-based filtering if topic not found
               let dbSubject = 'other_engineering';
