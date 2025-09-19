@@ -37,6 +37,38 @@ export const SOURCE_TYPES = {
   EXAM: 'exam'
 } as const;
 
+export const SUBJECT_IDS = {
+  // Course subjects
+  MATHEMATICS_COURSE: 'mathematics-course',
+  PHYSICS_COURSE: 'physics-course',
+  CHEMISTRY_COURSE: 'chemistry-course',
+  ENGLISH_COURSE: 'english-course',
+  
+  // Computer Science subjects
+  DATA_STRUCTURES: 'data-structures',
+  ALGORITHMS: 'algorithms',
+  COMPUTER_NETWORKS: 'computer-networks',
+  OPERATING_SYSTEMS: 'operating-systems',
+  DATABASE_MANAGEMENT: 'database-management',
+  SOFTWARE_ENGINEERING: 'software-engineering',
+  COMPUTER_GRAPHICS: 'computer-graphics',
+  ARTIFICIAL_INTELLIGENCE: 'artificial-intelligence',
+  MACHINE_LEARNING: 'machine-learning',
+  
+  // Mechanical Engineering subjects
+  THERMODYNAMICS: 'thermodynamics',
+  FLUID_MECHANICS_SUBJECT: 'fluid-mechanics',
+  HEAT_TRANSFER: 'heat-transfer',
+  MANUFACTURING: 'manufacturing',
+  MATERIALS_SCIENCE: 'materials-science',
+  
+  // Exam subjects
+  MATHEMATICS_EXAM: 'mathematics-exam',
+  PHYSICS_EXAM: 'physics-exam',
+  CHEMISTRY_EXAM: 'chemistry-exam',
+  ENGLISH_EXAM: 'english-exam'
+} as const;
+
 export const TOPIC_IDS = {
   // RRB JE Mechanical topics
   ENGINEERING_MECHANICS: 'engineering-mechanics',
@@ -82,4 +114,5 @@ export const TOPIC_IDS = {
 export type CourseId = typeof COURSE_IDS[keyof typeof COURSE_IDS];
 export type ExamId = typeof EXAM_IDS[keyof typeof EXAM_IDS];
 export type SourceType = typeof SOURCE_TYPES[keyof typeof SOURCE_TYPES];
+export type SubjectId = typeof SUBJECT_IDS[keyof typeof SUBJECT_IDS];
 export type TopicId = typeof TOPIC_IDS[keyof typeof TOPIC_IDS];

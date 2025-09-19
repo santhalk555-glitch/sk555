@@ -130,6 +130,7 @@ export type Database = {
           status: string
           subject: string | null
           subject_id: string | null
+          subject_simple_id: string | null
           topic_id: string | null
           topic_simple_id: string | null
           updated_at: string
@@ -150,6 +151,7 @@ export type Database = {
           status?: string
           subject?: string | null
           subject_id?: string | null
+          subject_simple_id?: string | null
           topic_id?: string | null
           topic_simple_id?: string | null
           updated_at?: string
@@ -170,6 +172,7 @@ export type Database = {
           status?: string
           subject?: string | null
           subject_id?: string | null
+          subject_simple_id?: string | null
           topic_id?: string | null
           topic_simple_id?: string | null
           updated_at?: string
@@ -435,6 +438,7 @@ export type Database = {
           source_type: string | null
           subject: Database["public"]["Enums"]["quiz_subject"]
           subject_id: string | null
+          subject_simple_id: string | null
           topic_id: string | null
           topic_simple_id: string | null
         }
@@ -456,6 +460,7 @@ export type Database = {
           source_type?: string | null
           subject: Database["public"]["Enums"]["quiz_subject"]
           subject_id?: string | null
+          subject_simple_id?: string | null
           topic_id?: string | null
           topic_simple_id?: string | null
         }
@@ -477,6 +482,7 @@ export type Database = {
           source_type?: string | null
           subject?: Database["public"]["Enums"]["quiz_subject"]
           subject_id?: string | null
+          subject_simple_id?: string | null
           topic_id?: string | null
           topic_simple_id?: string | null
         }
@@ -491,6 +497,7 @@ export type Database = {
           exam_simple_id: string | null
           id: string
           name: string
+          simple_id: string
           source_type: string
         }
         Insert: {
@@ -501,6 +508,7 @@ export type Database = {
           exam_simple_id?: string | null
           id?: string
           name: string
+          simple_id: string
           source_type: string
         }
         Update: {
@@ -511,6 +519,7 @@ export type Database = {
           exam_simple_id?: string | null
           id?: string
           name?: string
+          simple_id?: string
           source_type?: string
         }
         Relationships: [
