@@ -422,11 +422,9 @@ export type Database = {
       quiz_questions: {
         Row: {
           correct_answer: string
-          course_id: string | null
           course_simple_id: string | null
           created_at: string
           difficulty: Database["public"]["Enums"]["difficulty_level"]
-          exam_id: string | null
           exam_simple_id: string | null
           explanation: string | null
           id: string
@@ -437,18 +435,14 @@ export type Database = {
           question: string
           source_type: string | null
           subject: Database["public"]["Enums"]["quiz_subject"]
-          subject_id: string | null
           subject_simple_id: string | null
-          topic_id: string | null
           topic_simple_id: string | null
         }
         Insert: {
           correct_answer: string
-          course_id?: string | null
           course_simple_id?: string | null
           created_at?: string
           difficulty: Database["public"]["Enums"]["difficulty_level"]
-          exam_id?: string | null
           exam_simple_id?: string | null
           explanation?: string | null
           id?: string
@@ -459,18 +453,14 @@ export type Database = {
           question: string
           source_type?: string | null
           subject: Database["public"]["Enums"]["quiz_subject"]
-          subject_id?: string | null
           subject_simple_id?: string | null
-          topic_id?: string | null
           topic_simple_id?: string | null
         }
         Update: {
           correct_answer?: string
-          course_id?: string | null
           course_simple_id?: string | null
           created_at?: string
           difficulty?: Database["public"]["Enums"]["difficulty_level"]
-          exam_id?: string | null
           exam_simple_id?: string | null
           explanation?: string | null
           id?: string
@@ -481,9 +471,7 @@ export type Database = {
           question?: string
           source_type?: string | null
           subject?: Database["public"]["Enums"]["quiz_subject"]
-          subject_id?: string | null
           subject_simple_id?: string | null
-          topic_id?: string | null
           topic_simple_id?: string | null
         }
         Relationships: []
