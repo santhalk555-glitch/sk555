@@ -1,0 +1,43 @@
+/**
+ * Simple identifiers for courses and exams - easier to use than UUIDs
+ */
+
+export const COURSE_IDS = {
+  // Engineering and Technology - Core Branches
+  CSE: 'cse',                    // Computer Science Engineering
+  MECHANICAL: 'mechanical',      // Mechanical Engineering
+  
+  // Engineering and Technology - Emerging Branches  
+  AI_ML: 'ai-ml',               // Artificial Intelligence and Machine Learning
+  
+  // Other categories
+  BBA: 'bba',                   // Business Administration
+  BA_LLB: 'ba-llb',            // Integrated Law
+  MBBS: 'mbbs',                // Medicine
+  PHYSICS: 'physics'            // Pure Sciences
+} as const;
+
+export const EXAM_IDS = {
+  // Engineering
+  RRB_JE: 'rrb-je',            // Railway Recruitment Board Junior Engineer
+  GATE: 'gate',                // Graduate Aptitude Test in Engineering
+  JEE_MAIN: 'jee-main',        // Joint Entrance Examination Main
+  JEE_ADVANCED: 'jee-advanced', // Joint Entrance Examination Advanced
+  
+  // Other categories
+  UPSC_CSE: 'upsc-cse',        // Civil Services Examination
+  SSC_CGL: 'ssc-cgl',          // Staff Selection Commission Combined Graduate Level
+  CLAT: 'clat',                // Common Law Admission Test
+  CAT: 'cat',                  // Common Admission Test
+  NEET: 'neet'                 // National Eligibility cum Entrance Test
+} as const;
+
+export const SOURCE_TYPES = {
+  COURSE: 'course',
+  EXAM: 'exam'
+} as const;
+
+// Type definitions for TypeScript
+export type CourseId = typeof COURSE_IDS[keyof typeof COURSE_IDS];
+export type ExamId = typeof EXAM_IDS[keyof typeof EXAM_IDS];
+export type SourceType = typeof SOURCE_TYPES[keyof typeof SOURCE_TYPES];

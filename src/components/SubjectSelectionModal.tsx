@@ -97,17 +97,17 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       if (sourceType === 'course') {
         const { data: courseData } = await supabase
           .from('courses')
-          .select('id')
+          .select('simple_id')
           .eq('name', selectedName)
           .maybeSingle();
-        sourceId = courseData?.id || null;
+        sourceId = courseData?.simple_id || null;
       } else {
         const { data: examData } = await supabase
           .from('competitive_exams_list')
-          .select('id')
+          .select('simple_id')
           .eq('name', selectedName)
           .maybeSingle();
-        sourceId = examData?.id || null;
+        sourceId = examData?.simple_id || null;
       }
 
       if (!sourceId) {
@@ -122,9 +122,9 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
         .eq('source_type', sourceType);
       
       if (sourceType === 'course') {
-        query.eq('course_id', sourceId);
+        query.eq('course_simple_id', sourceId);
       } else {
-        query.eq('exam_id', sourceId);
+        query.eq('exam_simple_id', sourceId);
       }
 
       const { data, error } = await query.order('name');
@@ -233,17 +233,17 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       if (selectedSourceType === 'course' && selectedCourse) {
         const { data: courseData } = await supabase
           .from('courses')
-          .select('id')
+          .select('simple_id')
           .eq('name', selectedCourse.name)
           .maybeSingle();
-        courseId = courseData?.id;
+        courseId = courseData?.simple_id;
       } else if (selectedSourceType === 'exam' && selectedExam) {
         const { data: examData } = await supabase
           .from('competitive_exams_list')
-          .select('id')
+          .select('simple_id')
           .eq('name', selectedExam.name)
           .maybeSingle();
-        examId = examData?.id;
+        examId = examData?.simple_id;
       }
       
       // Store RRB JE topic name for later use in lobby creation

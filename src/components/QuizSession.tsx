@@ -82,62 +82,56 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         .limit(15);
 
       if (isRRBJE) {
-        // For RRB JE, first get the subject_id and topic_id from subjects_hierarchy and topics tables
-        const rrb_je_exam = await supabase
-          .from('competitive_exams_list')
-          .select('id')
-          .eq('name', 'RRB JE')
-          .single();
+        // For RRB JE, use simple exam identifier
+        const examSimpleId = 'rrb-je';
+        
+        // Find the subject based on RRB JE branch mapping
+        let subjectName = '';
+        if (lobby.subject.includes('Mechanical') || lobby.subject.includes('Material Science') || lobby.subject.includes('Thermal') || lobby.subject.includes('Machining') || lobby.subject.includes('Engineering Mechanics') || lobby.subject.includes('Strength of Materials') || lobby.subject.includes('Welding') || lobby.subject.includes('Grinding') || lobby.subject.includes('Metrology') || lobby.subject.includes('Fluid Mechanics') || lobby.subject.includes('Industrial Management')) {
+          subjectName = 'Mechanical & Allied Engineering';
+        } else if (lobby.subject.includes('Civil') || lobby.subject.includes('Building') || lobby.subject.includes('Construction') || lobby.subject.includes('Surveying') || lobby.subject.includes('Concrete') || lobby.subject.includes('Masonry') || lobby.subject.includes('Foundation') || lobby.subject.includes('Drawing') || lobby.subject.includes('Hydraulics') || lobby.subject.includes('Transportation') || lobby.subject.includes('Environmental') || lobby.subject.includes('Geotechnical') || lobby.subject.includes('Structural') || lobby.subject.includes('Estimating')) {
+          subjectName = 'Civil & Allied Engineering';
+        } else if (lobby.subject.includes('Electrical') || lobby.subject.includes('Circuit') || lobby.subject.includes('Basic Concepts') || lobby.subject.includes('AC Fundamentals') || lobby.subject.includes('Measurement') || lobby.subject.includes('Machines') || lobby.subject.includes('Generation') || lobby.subject.includes('Transmission') || lobby.subject.includes('Distribution') || lobby.subject.includes('Switchgear') || lobby.subject.includes('Estimation') || lobby.subject.includes('Utilization')) {
+          subjectName = 'Electrical & Allied Engineering';
+        }
 
-        if (rrb_je_exam.data) {
-          // Find the subject based on RRB JE branch mapping
-          let subjectName = '';
-          if (lobby.subject.includes('Mechanical') || lobby.subject.includes('Material Science') || lobby.subject.includes('Thermal') || lobby.subject.includes('Machining') || lobby.subject.includes('Engineering Mechanics') || lobby.subject.includes('Strength of Materials') || lobby.subject.includes('Welding') || lobby.subject.includes('Grinding') || lobby.subject.includes('Metrology') || lobby.subject.includes('Fluid Mechanics') || lobby.subject.includes('Industrial Management')) {
-            subjectName = 'Mechanical & Allied Engineering';
-          } else if (lobby.subject.includes('Civil') || lobby.subject.includes('Building') || lobby.subject.includes('Construction') || lobby.subject.includes('Surveying') || lobby.subject.includes('Concrete') || lobby.subject.includes('Masonry') || lobby.subject.includes('Foundation') || lobby.subject.includes('Drawing') || lobby.subject.includes('Hydraulics') || lobby.subject.includes('Transportation') || lobby.subject.includes('Environmental') || lobby.subject.includes('Geotechnical') || lobby.subject.includes('Structural') || lobby.subject.includes('Estimating')) {
-            subjectName = 'Civil & Allied Engineering';
-          } else if (lobby.subject.includes('Electrical') || lobby.subject.includes('Circuit') || lobby.subject.includes('Basic Concepts') || lobby.subject.includes('AC Fundamentals') || lobby.subject.includes('Measurement') || lobby.subject.includes('Machines') || lobby.subject.includes('Generation') || lobby.subject.includes('Transmission') || lobby.subject.includes('Distribution') || lobby.subject.includes('Switchgear') || lobby.subject.includes('Estimation') || lobby.subject.includes('Utilization')) {
-            subjectName = 'Electrical & Allied Engineering';
-          }
+        if (subjectName) {
+          // Get subject_id using simple exam identifier
+          const subjectQuery = await supabase
+            .from('subjects_hierarchy')
+            .select('id')
+            .eq('name', subjectName)
+            .eq('source_type', 'exam')
+            .eq('exam_simple_id', examSimpleId)
+            .single();
 
-          if (subjectName) {
-            // Get subject_id
-            const subjectQuery = await supabase
-              .from('subjects_hierarchy')
+          if (subjectQuery.data) {
+            // Get topic_id for the specific topic
+            const topicQuery = await supabase
+              .from('topics')
               .select('id')
-              .eq('name', subjectName)
-              .eq('source_type', 'exam')
-              .eq('exam_id', rrb_je_exam.data.id)
-              .single();
+              .eq('name', lobby.subject)
+              .eq('subject_id', subjectQuery.data.id)
+              .maybeSingle();
 
-            if (subjectQuery.data) {
-              // Get topic_id for the specific topic
-              const topicQuery = await supabase
-                .from('topics')
-                .select('id')
-                .eq('name', lobby.subject)
-                .eq('subject_id', subjectQuery.data.id)
-                .maybeSingle();
+            // Filter questions by simple exam identifier
+            questionsQuery = questionsQuery
+              .eq('exam_simple_id', examSimpleId)
+              .eq('source_type', 'exam');
 
-              // Filter questions by exam_id, subject_id, and topic_id if available
-              questionsQuery = questionsQuery
-                .eq('exam_id', rrb_je_exam.data.id)
-                .eq('source_type', 'exam');
-
-              if (topicQuery.data) {
-                questionsQuery = questionsQuery.eq('topic_id', topicQuery.data.id);
-              } else {
-                // Fallback to subject-based filtering if topic not found
-                let dbSubject = 'other_engineering';
-                if (subjectName.includes('Mechanical')) {
-                  dbSubject = 'mechanical_engineering';
-                } else if (subjectName.includes('Civil')) {
-                  dbSubject = 'civil_engineering';
-                } else if (subjectName.includes('Electrical')) {
-                  dbSubject = 'electrical_engineering';
-                }
-                questionsQuery = questionsQuery.eq('subject', dbSubject as any);
+            if (topicQuery.data) {
+              questionsQuery = questionsQuery.eq('topic_id', topicQuery.data.id);
+            } else {
+              // Fallback to subject-based filtering if topic not found
+              let dbSubject = 'other_engineering';
+              if (subjectName.includes('Mechanical')) {
+                dbSubject = 'mechanical_engineering';
+              } else if (subjectName.includes('Civil')) {
+                dbSubject = 'civil_engineering';
+              } else if (subjectName.includes('Electrical')) {
+                dbSubject = 'electrical_engineering';
               }
+              questionsQuery = questionsQuery.eq('subject', dbSubject as any);
             }
           }
         }
@@ -148,10 +142,10 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
           .eq('subject_id', lobby.subject_id)
           .eq('topic_id', lobby.topic_id);
 
-        if (lobby.source_type === 'course' && lobby.course_id) {
-          questionsQuery = questionsQuery.eq('course_id', lobby.course_id);
-        } else if (lobby.source_type === 'exam' && lobby.exam_id) {
-          questionsQuery = questionsQuery.eq('exam_id', lobby.exam_id);
+        if (lobby.source_type === 'course' && lobby.course_simple_id) {
+          questionsQuery = questionsQuery.eq('course_simple_id', lobby.course_simple_id);
+        } else if (lobby.source_type === 'exam' && lobby.exam_simple_id) {
+          questionsQuery = questionsQuery.eq('exam_simple_id', lobby.exam_simple_id);
         }
       } else {
         // Fallback to old subject-based approach for backward compatibility

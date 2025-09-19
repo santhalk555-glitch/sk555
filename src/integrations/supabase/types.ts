@@ -20,18 +20,21 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          simple_id: string
         }
         Insert: {
           category?: string | null
           created_at?: string
           id?: string
           name: string
+          simple_id: string
         }
         Update: {
           category?: string | null
           created_at?: string
           id?: string
           name?: string
+          simple_id?: string
         }
         Relationships: []
       }
@@ -41,6 +44,7 @@ export type Database = {
           id: string
           main_category: string
           name: string
+          simple_id: string
           sub_category: string
         }
         Insert: {
@@ -48,6 +52,7 @@ export type Database = {
           id?: string
           main_category: string
           name: string
+          simple_id: string
           sub_category: string
         }
         Update: {
@@ -55,6 +60,7 @@ export type Database = {
           id?: string
           main_category?: string
           name?: string
+          simple_id?: string
           sub_category?: string
         }
         Relationships: []
@@ -110,10 +116,12 @@ export type Database = {
       game_lobbies: {
         Row: {
           course_id: string | null
+          course_simple_id: string | null
           created_at: string
           creator_id: string
           current_players: number
           exam_id: string | null
+          exam_simple_id: string | null
           game_mode: string | null
           id: string
           lobby_code: string
@@ -127,10 +135,12 @@ export type Database = {
         }
         Insert: {
           course_id?: string | null
+          course_simple_id?: string | null
           created_at?: string
           creator_id: string
           current_players?: number
           exam_id?: string | null
+          exam_simple_id?: string | null
           game_mode?: string | null
           id?: string
           lobby_code: string
@@ -144,10 +154,12 @@ export type Database = {
         }
         Update: {
           course_id?: string | null
+          course_simple_id?: string | null
           created_at?: string
           creator_id?: string
           current_players?: number
           exam_id?: string | null
+          exam_simple_id?: string | null
           game_mode?: string | null
           id?: string
           lobby_code?: string
@@ -405,9 +417,11 @@ export type Database = {
         Row: {
           correct_answer: string
           course_id: string | null
+          course_simple_id: string | null
           created_at: string
           difficulty: Database["public"]["Enums"]["difficulty_level"]
           exam_id: string | null
+          exam_simple_id: string | null
           explanation: string | null
           id: string
           option_a: string
@@ -423,9 +437,11 @@ export type Database = {
         Insert: {
           correct_answer: string
           course_id?: string | null
+          course_simple_id?: string | null
           created_at?: string
           difficulty: Database["public"]["Enums"]["difficulty_level"]
           exam_id?: string | null
+          exam_simple_id?: string | null
           explanation?: string | null
           id?: string
           option_a: string
@@ -441,9 +457,11 @@ export type Database = {
         Update: {
           correct_answer?: string
           course_id?: string | null
+          course_simple_id?: string | null
           created_at?: string
           difficulty?: Database["public"]["Enums"]["difficulty_level"]
           exam_id?: string | null
+          exam_simple_id?: string | null
           explanation?: string | null
           id?: string
           option_a?: string
@@ -461,24 +479,30 @@ export type Database = {
       subjects_hierarchy: {
         Row: {
           course_id: string | null
+          course_simple_id: string | null
           created_at: string
           exam_id: string | null
+          exam_simple_id: string | null
           id: string
           name: string
           source_type: string
         }
         Insert: {
           course_id?: string | null
+          course_simple_id?: string | null
           created_at?: string
           exam_id?: string | null
+          exam_simple_id?: string | null
           id?: string
           name: string
           source_type: string
         }
         Update: {
           course_id?: string | null
+          course_simple_id?: string | null
           created_at?: string
           exam_id?: string | null
+          exam_simple_id?: string | null
           id?: string
           name?: string
           source_type?: string
