@@ -279,6 +279,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          metadata: Json | null
+          read: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          metadata?: Json | null
+          read?: boolean
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          metadata?: Json | null
+          read?: boolean
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           competitive_exams: string[]
@@ -286,10 +319,12 @@ export type Database = {
           created_at: string
           display_user_id: string | null
           id: string
+          quiz_points: number
           subjects: string[]
           updated_at: string
           user_id: string
           username: string | null
+          victory_count: number
         }
         Insert: {
           competitive_exams?: string[]
@@ -297,10 +332,12 @@ export type Database = {
           created_at?: string
           display_user_id?: string | null
           id?: string
+          quiz_points?: number
           subjects?: string[]
           updated_at?: string
           user_id: string
           username?: string | null
+          victory_count?: number
         }
         Update: {
           competitive_exams?: string[]
@@ -308,10 +345,12 @@ export type Database = {
           created_at?: string
           display_user_id?: string | null
           id?: string
+          quiz_points?: number
           subjects?: string[]
           updated_at?: string
           user_id?: string
           username?: string | null
+          victory_count?: number
         }
         Relationships: []
       }
@@ -473,6 +512,33 @@ export type Database = {
           subject?: Database["public"]["Enums"]["quiz_subject"]
           subject_simple_id?: string | null
           topic_simple_id?: string | null
+        }
+        Relationships: []
+      }
+      recent_activities: {
+        Row: {
+          activity_type: string
+          created_at: string
+          description: string
+          id: string
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          description: string
+          id?: string
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          description?: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string
         }
         Relationships: []
       }

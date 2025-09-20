@@ -17,7 +17,8 @@ export const SignInForm = ({ onSwitchToSignUp }: SignInFormProps) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const { signIn, resetPassword } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -42,6 +43,36 @@ export const SignInForm = ({ onSwitchToSignUp }: SignInFormProps) => {
       navigate('/');
     }
     
+    setLoading(false);
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast({
+        title: 'Email Required',
+        description: 'Please enter your email address to reset your password.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await resetPassword(email);
+
+    if (error) {
+      toast({
+        title: 'Reset Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Reset Email Sent',
+        description: 'Check your email for password reset instructions.',
+      });
+      setShowForgotPassword(false);
+    }
     setLoading(false);
   };
 
@@ -101,7 +132,54 @@ export const SignInForm = ({ onSwitchToSignUp }: SignInFormProps) => {
           >
             {loading ? 'Signing In...' : 'Sign In'}
           </Button>
+          
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full"
+            onClick={() => setShowForgotPassword(true)}
+          >
+            Forgot Password?
+          </Button>
         </form>
+
+        {showForgotPassword && (
+          <div className="mt-4 p-4 border rounded-lg bg-muted/50">
+            <form onSubmit={handleForgotPassword} className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="reset-email">Email Address</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  type="submit" 
+                  className="flex-1" 
+                  disabled={loading}
+                >
+                  {loading ? 'Sending...' : 'Send Reset Email'}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowForgotPassword(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
+        )}
 
         <div className="text-center">
           <button

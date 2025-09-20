@@ -9,6 +9,7 @@ import SwipeMatching from "./SwipeMatching";
 import GameLobby from "./GameLobby";
 import MatchedFriends from "./MatchedFriends";
 import FriendRequests from "./FriendRequests";
+import { RecentActivity } from "./RecentActivity";
 
 
 const Dashboard = () => {
@@ -17,6 +18,8 @@ const Dashboard = () => {
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const [profileMatchCount, setProfileMatchCount] = useState(0);
   const [friendsCount, setFriendsCount] = useState(0);
+  const [quizPoints, setQuizPoints] = useState(0);
+  const [victoryCount, setVictoryCount] = useState(0);
   
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -49,6 +52,18 @@ const Dashboard = () => {
           .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`);
         
         setFriendsCount(friendsCount || 0);
+
+        // Get user's quiz points and victory count
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('quiz_points, victory_count')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profileData) {
+          setQuizPoints(profileData.quiz_points || 0);
+          setVictoryCount(profileData.victory_count || 0);
+        }
       }
     };
 
@@ -103,7 +118,7 @@ const Dashboard = () => {
           <Card className="bg-gradient-card border-border hover:shadow-gaming transition-all duration-300">
             <CardContent className="p-6 text-center">
               <Zap className="w-8 h-8 text-gaming-warning mx-auto mb-3" />
-              <div className="text-2xl font-bold text-gaming-warning">847</div>
+              <div className="text-2xl font-bold text-gaming-warning">{quizPoints}</div>
               <div className="text-sm text-muted-foreground">Quiz Points</div>
             </CardContent>
           </Card>
@@ -111,7 +126,7 @@ const Dashboard = () => {
           <Card className="bg-gradient-card border-border hover:shadow-gaming transition-all duration-300">
             <CardContent className="p-6 text-center">
               <Crown className="w-8 h-8 text-gaming-success mx-auto mb-3" />
-              <div className="text-2xl font-bold text-gaming-success">5</div>
+              <div className="text-2xl font-bold text-gaming-success">{victoryCount}</div>
               <div className="text-sm text-muted-foreground">Victories</div>
             </CardContent>
           </Card>
@@ -216,38 +231,8 @@ const Dashboard = () => {
         </div>
 
         {/* Recent Activity */}
-        <div className="mt-16">
-          <h2 className="text-2xl font-bold mb-6 text-center">Recent Activity</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[
-              { type: "match", user: "Alex Chen", subject: "Computer Science", time: "2 hours ago" },
-              { type: "victory", opponent: "Sarah K.", points: 150, time: "1 day ago" },
-              { type: "match", user: "Miguel R.", subject: "Mathematics", time: "3 days ago" },
-            ].map((activity, index) => (
-              <Card key={index} className="bg-gradient-card border-border animate-slide-in" style={{animationDelay: `${index * 100}ms`}}>
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-3">
-                    {activity.type === "match" ? (
-                      <Users className="w-5 h-5 text-gaming-primary" />
-                    ) : (
-                      <Crown className="w-5 h-5 text-gaming-warning" />
-                    )}
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">
-                        {activity.type === "match" 
-                          ? `Matched with ${activity.user}` 
-                          : `Victory vs ${activity.opponent}`
-                        }
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {activity.type === "match" ? activity.subject : `+${activity.points} points`} • {activity.time}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+        <div className="mt-16 max-w-2xl mx-auto">
+          <RecentActivity />
         </div>
 
       </div>

@@ -256,6 +256,16 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
       }
     });
 
+    // Calculate point changes
+    const correctCount = score;
+    const wrongCount = questions.length - correctCount;
+    const correctPoints = correctCount * 1; // +1 per correct
+    const wrongPoints = Math.round(wrongCount * -0.33 * 100) / 100; // -0.33 per wrong
+    const scorePercentage = Math.round((score / questions.length) * 100);
+    const isWinner = scorePercentage >= 70; // Consider 70%+ as victory
+    const victoryBonus = isWinner ? 10 : 0;
+    const totalPointsEarned = correctPoints + wrongPoints + victoryBonus;
+
     try {
       // Update participant score
       const { error } = await supabase
@@ -269,12 +279,56 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
       if (error) throw error;
 
+      // Update user's quiz points and victory count if user is authenticated
+      if (user) {
+        const { data: currentProfile } = await supabase
+          .from('profiles')
+          .select('quiz_points, victory_count')
+          .eq('user_id', user.id)
+          .single();
+
+        if (currentProfile) {
+          const newQuizPoints = Math.max(0, currentProfile.quiz_points + totalPointsEarned);
+          const newVictoryCount = currentProfile.victory_count + (isWinner ? 1 : 0);
+
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({ 
+              quiz_points: newQuizPoints,
+              victory_count: newVictoryCount
+            })
+            .eq('user_id', user.id);
+
+          if (!profileError) {
+            // Add recent activity
+            await supabase
+              .from('recent_activities')
+              .insert({
+                user_id: user.id,
+                activity_type: 'quiz_completed',
+                description: `Completed quiz with ${scorePercentage}% score${isWinner ? ' - Victory!' : ''}`,
+                metadata: {
+                  score: scorePercentage,
+                  points_earned: totalPointsEarned,
+                  correct_answers: correctCount,
+                  total_questions: questions.length,
+                  victory: isWinner
+                }
+              });
+          }
+        }
+      }
+
+      toast({
+        title: 'Quiz Completed!',
+        description: `You scored ${score}/${questions.length}${user ? ` (+${totalPointsEarned.toFixed(1)} points)` : ''}`,
+      });
+    } catch (error) {
+      console.error('Error updating score:', error);
       toast({
         title: 'Quiz Completed!',
         description: `You scored ${score}/${questions.length} questions correctly.`,
       });
-    } catch (error) {
-      console.error('Error updating score:', error);
     }
   };
 

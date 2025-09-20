@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Users, Gamepad2, Trophy, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { NotificationBell } from "@/components/NotificationBell";
 
 const Navigation = () => {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ const Navigation = () => {
           </div>
           
           <div className="flex items-center space-x-2">
+            <NotificationBell />
             <Button 
               variant="ghost" 
               size="sm" 
