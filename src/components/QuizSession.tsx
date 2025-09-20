@@ -135,12 +135,12 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
             }
           }
         }
-      } else if (lobby.source_type && lobby.subject_id && lobby.topic_id) {
+      } else if (lobby.source_type && lobby.subject_simple_id && lobby.topic_simple_id) {
         // If lobby has new structure, use it
         questionsQuery = questionsQuery
           .eq('source_type', lobby.source_type)
-          .eq('subject_id', lobby.subject_id)
-          .eq('topic_id', lobby.topic_id);
+          .eq('subject_simple_id', lobby.subject_simple_id)
+          .eq('topic_simple_id', lobby.topic_simple_id);
 
         if (lobby.source_type === 'course' && lobby.course_simple_id) {
           questionsQuery = questionsQuery.eq('course_simple_id', lobby.course_simple_id);
