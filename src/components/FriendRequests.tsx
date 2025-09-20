@@ -13,7 +13,8 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Send
+  Send,
+  Trash2
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -176,6 +177,31 @@ const FriendRequests = ({ onBack }: FriendRequestsProps) => {
       toast({
         title: 'Error',
         description: 'Failed to respond to friend request.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleWithdraw = async (requestId: string) => {
+    try {
+      const { error } = await supabase
+        .from('friend_requests')
+        .delete()
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Request Withdrawn',
+        description: 'Friend request has been successfully withdrawn.',
+      });
+
+      loadFriendRequests();
+    } catch (error) {
+      console.error('Error withdrawing friend request:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to withdraw friend request.',
         variant: 'destructive'
       });
     }
@@ -408,8 +434,18 @@ const FriendRequests = ({ onBack }: FriendRequestsProps) => {
                         </div>
                       </div>
                       
-                      <div className="flex items-center">
+                      <div className="flex items-center space-x-2">
                         {getStatusBadge(request.status)}
+                        {request.status === 'pending' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-600"
+                            onClick={() => handleWithdraw(request.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>
