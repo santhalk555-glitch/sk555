@@ -354,6 +354,36 @@ export type Database = {
         }
         Relationships: []
       }
+      question_reports: {
+        Row: {
+          additional_comments: string | null
+          created_at: string
+          id: string
+          question_id: string
+          reason: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          additional_comments?: string | null
+          created_at?: string
+          id?: string
+          question_id: string
+          reason: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          additional_comments?: string | null
+          created_at?: string
+          id?: string
+          question_id?: string
+          reason?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       quiz_categories: {
         Row: {
           created_at: string

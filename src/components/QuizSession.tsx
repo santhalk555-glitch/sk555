@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, Clock, Users, CheckCircle, Crown, Trophy } from 'lucide-react';
+import ReportQuestionDialog from './ReportQuestionDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -505,11 +506,17 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
                   <div key={question.id} className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-semibold">Question {index + 1}</span>
-                      {answers[index] === question.correct_answer ? (
-                        <CheckCircle className="w-5 h-5 text-green-500" />
-                      ) : (
-                        <span className="text-red-500">✗</span>
-                      )}
+                      <div className="flex items-center space-x-2">
+                        {answers[index] === question.correct_answer ? (
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                        ) : (
+                          <span className="text-red-500">✗</span>
+                        )}
+                        <ReportQuestionDialog 
+                          questionId={question.id}
+                          questionText={question.question}
+                        />
+                      </div>
                     </div>
                     <p className="mb-2">{question.question}</p>
                     <div className="text-sm">
