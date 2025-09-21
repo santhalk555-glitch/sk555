@@ -245,8 +245,8 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
       console.log('Lobby update result:', { lobbyUpdateError });
       if (lobbyUpdateError) throw lobbyUpdateError;
 
-      // Update invite status
-      console.log('Updating invite status to accepted');
+      // Update invite status and reward inviter
+      console.log('Updating invite status to accepted and rewarding inviter');
       const { error: updateError } = await supabase
         .from('lobby_invites')
         .update({ 
@@ -257,6 +257,43 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
 
       console.log('Invite update result:', { updateError });
       if (updateError) throw updateError;
+
+      // Reward the inviter with +50 points
+      try {
+        const { data: inviterProfile, error: inviterProfileError } = await supabase
+          .from('profiles')
+          .select('quiz_points, username')
+          .eq('user_id', invite.sender_id)
+          .single();
+
+        if (!inviterProfileError && inviterProfile) {
+          const newPoints = inviterProfile.quiz_points + 50;
+          
+          await supabase
+            .from('profiles')
+            .update({ quiz_points: newPoints })
+            .eq('user_id', invite.sender_id);
+
+          // Add activity for the inviter
+          await supabase
+            .from('recent_activities')
+            .insert({
+              user_id: invite.sender_id,
+              activity_type: 'invite_reward',
+              description: `@${profile.username} joined your lobby - Invitation bonus earned!`,
+              metadata: {
+                points_earned: 50,
+                invited_user: profile.username,
+                lobby_id: invite.lobby_id
+              }
+            });
+
+          console.log(`Rewarded inviter ${invite.sender_id} with 50 points`);
+        }
+      } catch (error) {
+        console.error('Error rewarding inviter:', error);
+        // Don't fail the join process if reward fails
+      }
 
       toast({
         title: 'Joined Lobby!',

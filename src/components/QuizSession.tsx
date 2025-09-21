@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Clock, Users, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Clock, Users, CheckCircle, Crown, Trophy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +28,7 @@ interface Participant {
   user_id: string;
   username: string;
   score: number;
+  isWinner?: boolean;
 }
 
 const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
@@ -248,7 +249,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   const handleQuizEnd = async () => {
     setShowResults(true);
     
-    // Calculate score
+    // Calculate current user's score
     let score = 0;
     answers.forEach((answer, index) => {
       if (questions[index] && answer === questions[index].correct_answer) {
@@ -256,19 +257,9 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
       }
     });
 
-    // Calculate point changes
-    const correctCount = score;
-    const wrongCount = questions.length - correctCount;
-    const correctPoints = correctCount * 1; // +1 per correct
-    const wrongPoints = Math.round(wrongCount * -0.33 * 100) / 100; // -0.33 per wrong
-    const scorePercentage = Math.round((score / questions.length) * 100);
-    const isWinner = scorePercentage >= 70; // Consider 70%+ as victory
-    const victoryBonus = isWinner ? 10 : 0;
-    const totalPointsEarned = correctPoints + wrongPoints + victoryBonus;
-
     try {
-      // Update participant score
-      const { error } = await supabase
+      // Update current user's score first
+      const { error: updateError } = await supabase
         .from('quiz_participants')
         .update({ 
           score,
@@ -277,54 +268,95 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         .eq('lobby_id', lobby.id)
         .eq('user_id', user?.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      // Update user's quiz points and victory count if user is authenticated
-      if (user) {
-        const { data: currentProfile } = await supabase
+      // Wait a moment for score to be updated
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Get all participants' scores to determine winner(s)
+      const { data: allParticipants, error: participantsError } = await supabase
+        .from('quiz_participants')
+        .select('user_id, score')
+        .eq('lobby_id', lobby.id);
+
+      if (participantsError) throw participantsError;
+
+      // Get profiles for all participants
+      const userIds = allParticipants.map(p => p.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, username, quiz_points, victory_count')
+        .in('user_id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Combine participant data with profiles
+      const participantsWithProfiles = allParticipants.map(participant => {
+        const profile = profiles.find(p => p.user_id === participant.user_id);
+        return {
+          ...participant,
+          profile: profile || { username: 'Unknown', quiz_points: 100, victory_count: 0 }
+        };
+      });
+
+      // Determine winner(s) - highest score wins
+      const maxScore = Math.max(...participantsWithProfiles.map(p => p.score));
+      const winners = participantsWithProfiles.filter(p => p.score === maxScore);
+      const isCurrentUserWinner = winners.some(w => w.user_id === user?.id);
+
+      // New points system: -5 for all players, +10 additional for winner(s)
+      const participationPenalty = -5;
+      const winnerBonus = 10;
+      const totalPointsEarned = participationPenalty + (isCurrentUserWinner ? winnerBonus : 0);
+
+      // Update all participants' points
+      for (const participant of participantsWithProfiles) {
+        const isWinner = winners.some(w => w.user_id === participant.user_id);
+        const participantPoints = participationPenalty + (isWinner ? winnerBonus : 0);
+        const newQuizPoints = Math.max(0, participant.profile.quiz_points + participantPoints);
+        const newVictoryCount = participant.profile.victory_count + (isWinner ? 1 : 0);
+
+        await supabase
           .from('profiles')
-          .select('quiz_points, victory_count')
-          .eq('user_id', user.id)
-          .single();
+          .update({ 
+            quiz_points: newQuizPoints,
+            victory_count: newVictoryCount
+          })
+          .eq('user_id', participant.user_id);
 
-        if (currentProfile) {
-          const newQuizPoints = Math.max(0, currentProfile.quiz_points + totalPointsEarned);
-          const newVictoryCount = currentProfile.victory_count + (isWinner ? 1 : 0);
-
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .update({ 
-              quiz_points: newQuizPoints,
-              victory_count: newVictoryCount
-            })
-            .eq('user_id', user.id);
-
-          if (!profileError) {
-            // Add recent activity
-            await supabase
-              .from('recent_activities')
-              .insert({
-                user_id: user.id,
-                activity_type: 'quiz_completed',
-                description: `Completed quiz with ${scorePercentage}% score${isWinner ? ' - Victory!' : ''}`,
-                metadata: {
-                  score: scorePercentage,
-                  points_earned: totalPointsEarned,
-                  correct_answers: correctCount,
-                  total_questions: questions.length,
-                  victory: isWinner
-                }
-              });
-          }
-        }
+        // Add activity for each participant
+        await supabase
+          .from('recent_activities')
+          .insert({
+            user_id: participant.user_id,
+            activity_type: 'quiz_completed',
+            description: `Completed multiplayer quiz${isWinner ? ' - Victory!' : ''}`,
+            metadata: {
+              score: participant.score,
+              max_score: questions.length,
+              points_earned: participantPoints,
+              victory: isWinner,
+              participants_count: participantsWithProfiles.length
+            }
+          });
       }
 
+      // Update participants state with winner info
+      setParticipants(prev => prev.map(p => ({
+        ...p,
+        score: participantsWithProfiles.find(pp => pp.user_id === p.user_id)?.score || 0,
+        isWinner: winners.some(w => w.user_id === p.user_id)
+      })));
+
+      const scorePercentage = Math.round((score / questions.length) * 100);
+      
       toast({
-        title: 'Quiz Completed!',
-        description: `You scored ${score}/${questions.length}${user ? ` (+${totalPointsEarned.toFixed(1)} points)` : ''}`,
+        title: isCurrentUserWinner ? '🎉 You Won!' : 'Quiz Completed!',
+        description: `You scored ${score}/${questions.length} (${isCurrentUserWinner ? `Winner! +${totalPointsEarned}` : `${totalPointsEarned}`} points)`,
+        className: isCurrentUserWinner ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-300' : undefined
       });
     } catch (error) {
-      console.error('Error updating score:', error);
+      console.error('Error updating scores:', error);
       toast({
         title: 'Quiz Completed!',
         description: `You scored ${score}/${questions.length} questions correctly.`,
@@ -360,22 +392,108 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
       questions[index] && answer === questions[index].correct_answer
     ).length;
 
+    const currentUserParticipant = participants.find(p => p.user_id === user?.id);
+    const isWinner = currentUserParticipant?.isWinner || false;
+
     return (
       <div className="pt-20 pb-12">
         <div className="container mx-auto px-6 max-w-4xl">
+          {/* Winner Animation */}
+          {isWinner && (
+            <div className="fixed inset-0 pointer-events-none z-50">
+              <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-yellow-300/20 to-yellow-400/20 animate-pulse"></div>
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                <div className="animate-bounce">
+                  <Trophy className="w-32 h-32 text-yellow-500 drop-shadow-2xl" />
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">
-              Quiz Results
-            </h1>
+            {isWinner ? (
+              <>
+                <div className="mb-4 animate-pulse">
+                  <Crown className="w-16 h-16 text-yellow-500 mx-auto mb-2" />
+                </div>
+                <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent animate-pulse">
+                  🎉 WINNER! 🎉
+                </h1>
+              </>
+            ) : (
+              <h1 className="text-3xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">
+                Quiz Results
+              </h1>
+            )}
             <div className="text-6xl font-bold text-primary mb-4">
               {score}/{questions.length}
             </div>
             <p className="text-xl text-muted-foreground">
-              {score >= questions.length * 0.8 ? 'Excellent work!' : 
+              {isWinner ? 'Congratulations! You won the quiz!' :
+               score >= questions.length * 0.8 ? 'Excellent work!' : 
                score >= questions.length * 0.6 ? 'Good job!' : 
                'Keep practicing!'}
             </p>
           </div>
+
+          {/* Leaderboard */}
+          <Card className="mb-8 bg-gradient-card border-primary/20">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-center">
+                <Trophy className="w-5 h-5 mr-2" />
+                Final Leaderboard
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {participants
+                  .sort((a, b) => (b.score || 0) - (a.score || 0))
+                  .map((participant, index) => (
+                    <div 
+                      key={participant.user_id}
+                      className={`flex items-center justify-between p-4 rounded-lg ${
+                        participant.isWinner 
+                          ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 border-2 border-yellow-300' 
+                          : 'bg-muted/20 border border-muted/40'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          participant.isWinner 
+                            ? 'bg-yellow-500 text-white' 
+                            : 'bg-primary/20 text-primary'
+                        }`}>
+                          {participant.isWinner ? (
+                            <Crown className="w-5 h-5" />
+                          ) : (
+                            <span className="font-bold">#{index + 1}</span>
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-semibold flex items-center">
+                            @{participant.username}
+                            {participant.user_id === user?.id && (
+                              <Badge variant="outline" className="ml-2">You</Badge>
+                            )}
+                            {participant.isWinner && (
+                              <Badge variant="secondary" className="ml-2 bg-yellow-100 text-yellow-800">Winner</Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-primary">
+                          {participant.score || 0}/{questions.length}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {Math.round(((participant.score || 0) / questions.length) * 100)}%
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
 
           <Card className="mb-8">
             <CardHeader>
