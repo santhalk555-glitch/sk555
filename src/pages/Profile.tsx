@@ -7,12 +7,13 @@ import { ArrowLeft, LogOut, User, BookOpen, Target } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { CompetitiveExam, parseCompetitiveExams } from '@/types/profile';
 
 interface UserProfile {
   display_user_id: string;
   username: string;
   course_name: string;
-  competitive_exams: string[];
+  competitive_exams: CompetitiveExam[];
   subjects: string[];
 }
 
@@ -43,8 +44,14 @@ const Profile = () => {
           description: 'Failed to load profile data.',
           variant: 'destructive'
         });
-      } else {
-        setProfile(data);
+      } else if (data) {
+        // Parse competitive_exams from JSONB to CompetitiveExam[]
+        const profileData: UserProfile = {
+          ...data,
+          competitive_exams: parseCompetitiveExams(data.competitive_exams),
+          subjects: data.subjects || []
+        };
+        setProfile(profileData);
       }
       setLoading(false);
     };
@@ -181,8 +188,8 @@ const Profile = () => {
               </div>
               <div className="pl-7 flex flex-wrap gap-2">
                 {profile.competitive_exams.map((exam) => (
-                  <Badge key={exam} variant="outline">
-                    {exam}
+                  <Badge key={exam.simple_id} variant="outline">
+                    {exam.name}
                   </Badge>
                 ))}
               </div>

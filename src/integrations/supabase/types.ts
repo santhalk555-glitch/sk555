@@ -635,7 +635,7 @@ export type Database = {
     Views: {
       profile_view: {
         Row: {
-          competitive_exams: string[] | null
+          competitive_exams: Json | null
           course_name: string | null
           created_at: string | null
           display_user_id: string | null
@@ -646,23 +646,23 @@ export type Database = {
           username: string | null
         }
         Insert: {
-          competitive_exams?: never
-          course_name?: never
+          competitive_exams?: Json | null
+          course_name?: string | null
           created_at?: string | null
           display_user_id?: string | null
           id?: string | null
-          subjects?: never
+          subjects?: string[] | null
           updated_at?: string | null
           user_id?: string | null
           username?: string | null
         }
         Update: {
-          competitive_exams?: never
-          course_name?: never
+          competitive_exams?: Json | null
+          course_name?: string | null
           created_at?: string | null
           display_user_id?: string | null
           id?: string | null
-          subjects?: never
+          subjects?: string[] | null
           updated_at?: string | null
           user_id?: string | null
           username?: string | null
