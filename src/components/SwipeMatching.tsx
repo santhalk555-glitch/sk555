@@ -16,16 +16,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-// Removed FriendRequestPopup import - no longer using instant popups
-
-interface Profile {
-  id: string;
-  user_id: string;
-  course_name: string;
-  subjects: string[];
-  competitive_exams: string[];
-  display_user_id: string;
-}
+import { Profile, parseCompetitiveExams } from '@/types/profile';
 
 interface SwipeMatchingProps {
   onBack: () => void;
@@ -60,7 +51,10 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
 
       if (error) throw error;
 
-      setProfiles(profilesData || []);
+      setProfiles((profilesData || []).map(profile => ({
+        ...profile,
+        competitive_exams: parseCompetitiveExams(profile.competitive_exams)
+      })));
     } catch (error) {
       console.error('Error loading profiles:', error);
       toast({
@@ -304,11 +298,11 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
                         <div className="flex flex-wrap gap-2">
                           {currentProfile.competitive_exams.slice(0, 2).map((exam, idx) => (
                             <Badge 
-                              key={idx}
+                              key={exam.simple_id || idx}
                               variant="outline"
                               className="bg-secondary/10 border-secondary/20"
                             >
-                              {exam}
+                              {exam.name}
                             </Badge>
                           ))}
                           {currentProfile.competitive_exams.length > 2 && (

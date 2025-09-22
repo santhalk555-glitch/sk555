@@ -8,17 +8,7 @@ import { ArrowLeft, User, BookOpen, Target, GraduationCap } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-
-interface Profile {
-  id: string;
-  user_id: string;
-  display_user_id: string;
-  username: string;
-  course_name: string;
-  competitive_exams: string[];
-  subjects: string[];
-  created_at: string;
-}
+import { Profile, parseCompetitiveExams } from '@/types/profile';
 
 interface ProfileMatch extends Profile {
   matchScore: number;
@@ -70,7 +60,7 @@ export const ProfileMatches = () => {
     return Math.round((score / maxScore) * 100);
   };
 
-  const fetchCurrentUserProfile = async () => {
+  const fetchCurrentUserProfile = async (): Promise<Profile | null> => {
     if (!user) return null;
 
     const { data, error } = await supabase
@@ -84,7 +74,14 @@ export const ProfileMatches = () => {
       return null;
     }
 
-    return data;
+    if (data) {
+      return {
+        ...data,
+        competitive_exams: parseCompetitiveExams(data.competitive_exams)
+      };
+    }
+    
+    return null;
   };
 
   const fetchMatches = async (currentProfile: Profile, pageNum: number = 1) => {
@@ -110,8 +107,15 @@ export const ProfileMatches = () => {
 
     const matchesWithScores: ProfileMatch[] = data.map(profile => ({
       ...profile,
-      matchScore: calculateMatchScore(currentProfile, profile),
-      matchPercentage: calculateMatchScore(currentProfile, profile)
+      competitive_exams: parseCompetitiveExams(profile.competitive_exams),
+      matchScore: calculateMatchScore(currentProfile, {
+        ...profile,
+        competitive_exams: parseCompetitiveExams(profile.competitive_exams)
+      }),
+      matchPercentage: calculateMatchScore(currentProfile, {
+        ...profile,
+        competitive_exams: parseCompetitiveExams(profile.competitive_exams)
+      })
     }));
 
     // Sort by match score (highest first)
@@ -272,11 +276,11 @@ export const ProfileMatches = () => {
                       <div className="flex flex-wrap gap-1 mt-1">
                         {match.competitive_exams.map((exam) => (
                           <Badge 
-                            key={exam} 
-                            variant={currentUserProfile?.competitive_exams.includes(exam) ? "default" : "outline"}
+                            key={exam.simple_id || exam.name} 
+                            variant={currentUserProfile?.competitive_exams.some(userExam => userExam.simple_id === exam.simple_id) ? "default" : "outline"}
                             className="text-xs"
                           >
-                            {exam}
+                            {exam.name}
                           </Badge>
                         ))}
                       </div>

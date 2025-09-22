@@ -6,16 +6,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import Chat from "./Chat";
-
-interface Profile {
-  id: string;
-  user_id: string;
-  username: string;
-  course_name: string;
-  subjects: string[];
-  competitive_exams: string[];
-  display_user_id: string;
-}
+import { Profile, parseCompetitiveExams } from '@/types/profile';
 
 interface MatchedFriendsProps {
   onBack: () => void;
@@ -93,7 +84,11 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
           .single();
           
         if (profile && !profileError) {
-          friendProfiles.push(profile);
+          const parsedProfile = {
+            ...profile,
+            competitive_exams: parseCompetitiveExams(profile.competitive_exams)
+          };
+          friendProfiles.push(parsedProfile);
         }
       }
 
@@ -107,7 +102,7 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
   };
 
   if (chatFriend) {
-    return <Chat friend={chatFriend} onBack={() => setChatFriend(null)} />;
+    return <Chat friend={chatFriend as any} onBack={() => setChatFriend(null)} />;
   }
 
   if (loading) {
@@ -220,15 +215,15 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
                   <div>
                     <h4 className="text-sm font-semibold mb-2">Exams:</h4>
                     <div className="flex flex-wrap gap-2 mb-4">
-                      {match.competitive_exams && match.competitive_exams.slice(0, 1).map((exam, idx) => (
-                        <Badge 
-                          key={idx} 
-                          variant="outline"
-                          className="text-xs bg-gaming-secondary/10 border-gaming-secondary/20"
-                        >
-                          {exam}
-                        </Badge>
-                      ))}
+                        {match.competitive_exams && match.competitive_exams.slice(0, 1).map((exam, idx) => (
+                          <Badge 
+                            key={exam.simple_id || idx} 
+                            variant="outline"
+                            className="text-xs bg-gaming-secondary/10 border-gaming-secondary/20"
+                          >
+                            {exam.name}
+                          </Badge>
+                        ))}
                       {match.competitive_exams && match.competitive_exams.length > 1 && (
                         <Badge variant="outline" className="text-xs">
                           +{match.competitive_exams.length - 1}

@@ -19,14 +19,16 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Profile, parseCompetitiveExams, CompetitiveExam } from '@/types/profile';
 
-interface Profile {
+interface FriendRequestProfile {
   id: string;
   user_id: string;
   course_name: string;
   subjects: string[];
-  competitive_exams: string[];
+  competitive_exams: CompetitiveExam[];
   display_user_id: string;
+  username?: string;
 }
 
 interface FriendRequest {
@@ -90,7 +92,13 @@ const FriendRequests = ({ onBack }: FriendRequestsProps) => {
             .select('*')
             .eq('user_id', request.sender_id)
             .single();
-          return { ...request, sender_profile: profile };
+          return { 
+            ...request, 
+            sender_profile: profile ? {
+              ...profile,
+              competitive_exams: parseCompetitiveExams(profile.competitive_exams)
+            } : null
+          };
         })
       );
 
@@ -102,7 +110,13 @@ const FriendRequests = ({ onBack }: FriendRequestsProps) => {
             .select('*')
             .eq('user_id', request.receiver_id)
             .single();
-          return { ...request, receiver_profile: profile };
+          return { 
+            ...request, 
+            receiver_profile: profile ? {
+              ...profile,
+              competitive_exams: parseCompetitiveExams(profile.competitive_exams)
+            } : null
+          };
         })
       );
 
@@ -345,11 +359,11 @@ const FriendRequests = ({ onBack }: FriendRequestsProps) => {
                               <div className="flex flex-wrap gap-1">
                                 {request.sender_profile.competitive_exams.slice(0, 2).map((exam, idx) => (
                                   <Badge 
-                                    key={idx}
+                                    key={exam.simple_id || idx}
                                     variant="outline"
                                     className="text-xs bg-secondary/10 border-secondary/20"
                                   >
-                                    {exam}
+                                    {exam.name}
                                   </Badge>
                                 ))}
                                 {request.sender_profile.competitive_exams.length > 2 && (
