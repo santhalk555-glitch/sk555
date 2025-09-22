@@ -16,21 +16,18 @@ export type Database = {
     Tables: {
       competitive_exams_list: {
         Row: {
-          category: string | null
           created_at: string
           id: string
           name: string
           simple_id: string
         }
         Insert: {
-          category?: string | null
           created_at?: string
           id?: string
           name: string
           simple_id: string
         }
         Update: {
-          category?: string | null
           created_at?: string
           id?: string
           name?: string
@@ -42,26 +39,20 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          main_category: string
           name: string
           simple_id: string
-          sub_category: string
         }
         Insert: {
           created_at?: string
           id?: string
-          main_category: string
           name: string
           simple_id: string
-          sub_category: string
         }
         Update: {
           created_at?: string
           id?: string
-          main_category?: string
           name?: string
           simple_id?: string
-          sub_category?: string
         }
         Relationships: []
       }
@@ -381,30 +372,6 @@ export type Database = {
           reason?: string
           status?: string
           user_id?: string
-        }
-        Relationships: []
-      }
-      quiz_categories: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          name: string
-          subject: Database["public"]["Enums"]["quiz_subject"]
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          name: string
-          subject: Database["public"]["Enums"]["quiz_subject"]
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          name?: string
-          subject?: Database["public"]["Enums"]["quiz_subject"]
         }
         Relationships: []
       }
