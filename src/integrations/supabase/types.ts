@@ -18,20 +18,26 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          main_category: string
           name: string
           simple_id: string
+          sub_category: string
         }
         Insert: {
           created_at?: string
           id?: string
+          main_category?: string
           name: string
           simple_id: string
+          sub_category?: string
         }
         Update: {
           created_at?: string
           id?: string
+          main_category?: string
           name?: string
           simple_id?: string
+          sub_category?: string
         }
         Relationships: []
       }
@@ -305,7 +311,8 @@ export type Database = {
       }
       profiles: {
         Row: {
-          competitive_exams: string[]
+          competitive_exams: Json | null
+          competitive_exams_old: string[]
           course_name: string
           created_at: string
           display_user_id: string | null
@@ -318,7 +325,8 @@ export type Database = {
           victory_count: number
         }
         Insert: {
-          competitive_exams?: string[]
+          competitive_exams?: Json | null
+          competitive_exams_old?: string[]
           course_name: string
           created_at?: string
           display_user_id?: string | null
@@ -331,7 +339,8 @@ export type Database = {
           victory_count?: number
         }
         Update: {
-          competitive_exams?: string[]
+          competitive_exams?: Json | null
+          competitive_exams_old?: string[]
           course_name?: string
           created_at?: string
           display_user_id?: string | null
