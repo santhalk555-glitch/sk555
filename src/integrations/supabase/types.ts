@@ -497,10 +497,10 @@ export type Database = {
           exam_simple_id: string | null
           explanation: string | null
           id: string
-          option_a: string
-          option_b: string
-          option_c: string
-          option_d: string
+          option_1: string
+          option_2: string
+          option_3: string
+          option_4: string
           question: string
           source_type: string | null
           subject: Database["public"]["Enums"]["quiz_subject"]
@@ -515,10 +515,10 @@ export type Database = {
           exam_simple_id?: string | null
           explanation?: string | null
           id?: string
-          option_a: string
-          option_b: string
-          option_c: string
-          option_d: string
+          option_1: string
+          option_2: string
+          option_3: string
+          option_4: string
           question: string
           source_type?: string | null
           subject: Database["public"]["Enums"]["quiz_subject"]
@@ -533,10 +533,10 @@ export type Database = {
           exam_simple_id?: string | null
           explanation?: string | null
           id?: string
-          option_a?: string
-          option_b?: string
-          option_c?: string
-          option_d?: string
+          option_1?: string
+          option_2?: string
+          option_3?: string
+          option_4?: string
           question?: string
           source_type?: string | null
           subject?: Database["public"]["Enums"]["quiz_subject"]

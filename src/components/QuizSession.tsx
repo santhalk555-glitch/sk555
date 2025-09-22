@@ -17,10 +17,10 @@ interface QuizSessionProps {
 interface Question {
   id: string;
   question: string;
-  option_a: string;
-  option_b: string;
-  option_c: string;
-  option_d: string;
+  option_1: string;
+  option_2: string;
+  option_3: string;
+  option_4: string;
   correct_answer: string;
   explanation?: string;
 }
@@ -610,16 +610,16 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {['a', 'b', 'c', 'd'].map((option) => (
+              {[1, 2, 3, 4].map((option) => (
                 <Button
                   key={option}
-                  variant={selectedAnswer === option ? "default" : "outline"}
+                  variant={selectedAnswer === option.toString() ? "default" : "outline"}
                   className={`w-full text-left justify-start p-4 h-auto ${
-                    selectedAnswer === option ? 'bg-gradient-primary text-white' : ''
+                    selectedAnswer === option.toString() ? 'bg-gradient-primary text-white' : ''
                   }`}
-                  onClick={() => handleAnswerSelect(option)}
+                  onClick={() => handleAnswerSelect(option.toString())}
                 >
-                  <span className="font-semibold mr-3">{option.toUpperCase()}.</span>
+                  <span className="font-semibold mr-3">{option}.</span>
                   <span>{currentQuestion[`option_${option}` as keyof Question]}</span>
                 </Button>
               ))}
