@@ -21,7 +21,7 @@ interface Question {
   option_2: string;
   option_3: string;
   option_4: string;
-  correct_answer: string;
+  correct_answer: number;
   explanation?: string;
 }
 
@@ -253,7 +253,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     // Calculate current user's score
     let score = 0;
     answers.forEach((answer, index) => {
-      if (questions[index] && answer === questions[index].correct_answer) {
+      if (questions[index] && parseInt(answer) === questions[index].correct_answer) {
         score++;
       }
     });
@@ -390,7 +390,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
   if (showResults) {
     const score = answers.filter((answer, index) => 
-      questions[index] && answer === questions[index].correct_answer
+      questions[index] && parseInt(answer) === questions[index].correct_answer
     ).length;
 
     const currentUserParticipant = participants.find(p => p.user_id === user?.id);
@@ -506,12 +506,12 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
                   <div key={question.id} className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-semibold">Question {index + 1}</span>
-                      <div className="flex items-center space-x-2">
-                        {answers[index] === question.correct_answer ? (
-                          <CheckCircle className="w-5 h-5 text-green-500" />
-                        ) : (
-                          <span className="text-red-500">✗</span>
-                        )}
+                       <div className="flex items-center space-x-2">
+                         {parseInt(answers[index]) === question.correct_answer ? (
+                           <CheckCircle className="w-5 h-5 text-green-500" />
+                         ) : (
+                           <span className="text-red-500">✗</span>
+                         )}
                         <ReportQuestionDialog 
                           questionId={question.id}
                           questionText={question.question}
@@ -520,7 +520,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
                     </div>
                     <p className="mb-2">{question.question}</p>
                     <div className="text-sm">
-                      <p>Your answer: <span className={answers[index] === question.correct_answer ? 'text-green-600' : 'text-red-600'}>{answers[index]}</span></p>
+                      <p>Your answer: <span className={parseInt(answers[index]) === question.correct_answer ? 'text-green-600' : 'text-red-600'}>{answers[index]}</span></p>
                       <p>Correct answer: <span className="text-green-600">{question.correct_answer}</span></p>
                       {question.explanation && (
                         <p className="text-muted-foreground mt-1">{question.explanation}</p>

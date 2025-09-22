@@ -490,7 +490,7 @@ export type Database = {
       }
       quiz_questions: {
         Row: {
-          correct_answer: string
+          correct_answer: number
           course_simple_id: string | null
           created_at: string
           difficulty: Database["public"]["Enums"]["difficulty_level"]
@@ -508,7 +508,7 @@ export type Database = {
           topic_simple_id: string | null
         }
         Insert: {
-          correct_answer: string
+          correct_answer: number
           course_simple_id?: string | null
           created_at?: string
           difficulty: Database["public"]["Enums"]["difficulty_level"]
@@ -526,7 +526,7 @@ export type Database = {
           topic_simple_id?: string | null
         }
         Update: {
-          correct_answer?: string
+          correct_answer?: number
           course_simple_id?: string | null
           created_at?: string
           difficulty?: Database["public"]["Enums"]["difficulty_level"]
