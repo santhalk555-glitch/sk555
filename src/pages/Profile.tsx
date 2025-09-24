@@ -3,7 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, LogOut, User, BookOpen, Target } from 'lucide-react';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle, 
+  AlertDialogTrigger 
+} from '@/components/ui/alert-dialog';
+import { ArrowLeft, LogOut, User, BookOpen, Target, Trash2, Mail, Instagram } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +31,7 @@ interface UserProfile {
 const Profile = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -76,6 +88,46 @@ const Profile = () => {
         description: 'Failed to log out. Please try again.',
         variant: 'destructive'
       });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    
+    setIsDeleting(true);
+    try {
+      // Delete user profile and related data
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      // Delete the user account from auth
+      const { error: authError } = await supabase.auth.admin.deleteUser(user.id);
+      
+      if (authError) {
+        throw authError;
+      }
+
+      toast({
+        title: 'Account Deleted',
+        description: 'Your account has been permanently deleted.'
+      });
+      
+      navigate('/auth');
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete account. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -225,6 +277,68 @@ const Profile = () => {
               >
                 Find Study Partners
               </Button>
+              
+              {/* Delete Account */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="destructive" 
+                    className="w-full"
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Account
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure you want to delete your account?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleDeleteAccount}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? 'Deleting...' : 'Yes, Delete'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+
+            {/* Connect With Us Section */}
+            <div className="pt-8 mt-8 border-t border-border">
+              <h3 className="text-lg font-semibold mb-4 text-center">Connect With Us</h3>
+              <div className="space-y-3">
+                <a 
+                  href="mailto:studymatesmeet@gmail.com"
+                  className="flex items-center justify-center gap-3 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 hover:border-primary/40 transition-all duration-200 hover:scale-105 group"
+                >
+                  <Mail className="w-5 h-5 text-primary group-hover:animate-pulse" />
+                  <div className="text-center">
+                    <div className="font-medium">Email</div>
+                    <div className="text-sm text-muted-foreground">studymatesmeet@gmail.com</div>
+                  </div>
+                </a>
+                
+                <a 
+                  href="https://instagram.com/studymatesmeet"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-3 p-4 rounded-lg bg-gradient-to-r from-pink-500/10 to-purple-500/10 border border-pink-500/20 hover:border-pink-500/40 transition-all duration-200 hover:scale-105 group"
+                >
+                  <Instagram className="w-5 h-5 text-pink-500 group-hover:animate-pulse" />
+                  <div className="text-center">
+                    <div className="font-medium">Instagram</div>
+                    <div className="text-sm text-muted-foreground">@studymatesmeet</div>
+                  </div>
+                </a>
+              </div>
             </div>
           </CardContent>
         </Card>
