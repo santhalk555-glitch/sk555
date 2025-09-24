@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { X, BookOpen, Users, Crown, GraduationCap, Trophy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from './ui/use-toast';
-import { getAllCourseOptions, COMPETITIVE_EXAM_OPTIONS, RRB_JE_ENGINEERING_BRANCHES } from '@/constants/profileOptions';
+import { COMPETITIVE_EXAM_OPTIONS, RRB_JE_ENGINEERING_BRANCHES } from '@/constants/profileOptions';
 
 interface SubjectSelectionModalProps {
   isOpen: boolean;
@@ -19,10 +19,6 @@ interface SubjectSelectionModalProps {
     maxPlayers: 2 | 4;
     gameMode: 'study' | 'quiz';
   }) => void;
-}
-
-interface CourseOption {
-  name: string;
 }
 
 interface ExamOption {
@@ -45,17 +41,13 @@ interface Topic {
 
 const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSelectionModalProps) => {
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedSourceType, setSelectedSourceType] = useState<'course' | 'exam' | null>(null);
-  const [courseOptions, setCourseOptions] = useState<CourseOption[]>([]);
   const [examOptions, setExamOptions] = useState<ExamOption[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
-  const [selectedCourse, setSelectedCourse] = useState<CourseOption | null>(null);
   const [selectedExam, setSelectedExam] = useState<ExamOption | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [selectedPlayers, setSelectedPlayers] = useState<2 | 4 | null>(null);
-  const [selectedGameMode, setSelectedGameMode] = useState<'study' | 'quiz' | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -64,11 +56,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     }
   }, [isOpen]);
 
-  const loadOptions = () => {
-    // Load course options from the same source as ProfileCreationForm
-    const courses = getAllCourseOptions().map(name => ({ name }));
-    setCourseOptions(courses);
-    
+  const loadOptions = () => {    
     // Load exam options from the same source as ProfileCreationForm
     const exams = COMPETITIVE_EXAM_OPTIONS.map(name => ({ name }));
     setExamOptions(exams);
@@ -191,53 +179,29 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     }
   };
 
-  const handleSourceTypeSelect = (type: 'course' | 'exam') => {
-    setSelectedSourceType(type);
-    setCurrentStep(2);
-  };
-
-  const handleCourseSelect = (course: CourseOption) => {
-    setSelectedCourse(course);
-    fetchSubjects('course', course.name);
-    setCurrentStep(3);
-  };
-
   const handleExamSelect = (exam: ExamOption) => {
     setSelectedExam(exam);
     fetchSubjects('exam', exam.name);
-    setCurrentStep(3);
+    setCurrentStep(2);
   };
 
   const handleSubjectSelect = (subject: Subject) => {
     setSelectedSubject(subject);
     fetchTopics(subject.id);
-    setCurrentStep(4);
+    setCurrentStep(3);
   };
 
   const handleTopicSelect = (topic: Topic) => {
     setSelectedTopic(topic);
-    setCurrentStep(5);
-  };
-
-  const handleGameModeSelect = (mode: 'study' | 'quiz') => {
-    setSelectedGameMode(mode);
-    setCurrentStep(6);
+    setCurrentStep(4);
   };
 
   const handleCreate = async () => {
-    if (selectedSourceType && selectedSubject && selectedTopic && selectedPlayers && selectedGameMode) {
-      // Get the actual database IDs for course/exam
-      let courseId: string | undefined;
+    if (selectedSubject && selectedTopic && selectedPlayers) {
+      // Get the actual database IDs for exam
       let examId: string | undefined;
       
-      if (selectedSourceType === 'course' && selectedCourse) {
-        const { data: courseData } = await supabase
-          .from('courses')
-          .select('simple_id')
-          .eq('name', selectedCourse.name)
-          .maybeSingle();
-        courseId = courseData?.simple_id;
-      } else if (selectedSourceType === 'exam' && selectedExam) {
+      if (selectedExam) {
         const { data: examData } = await supabase
           .from('competitive_exams_list')
           .select('simple_id')
@@ -252,13 +216,12 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       }
       
       onSubjectSelect({
-        sourceType: selectedSourceType,
-        courseId,
+        sourceType: 'exam',
         examId,
         subjectId: selectedSubject.id,
         topicId: selectedTopic.id,
         maxPlayers: selectedPlayers,
-        gameMode: selectedGameMode
+        gameMode: 'quiz'
       });
       resetModal();
     }
@@ -266,13 +229,10 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
 
   const resetModal = () => {
     setCurrentStep(1);
-    setSelectedSourceType(null);
-    setSelectedCourse(null);
     setSelectedExam(null);
     setSelectedSubject(null);
     setSelectedTopic(null);
     setSelectedPlayers(null);
-    setSelectedGameMode(null);
     setSubjects([]);
     setTopics([]);
   };
@@ -283,18 +243,14 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       
       // Reset subsequent selections
       if (currentStep === 2) {
-        setSelectedSourceType(null);
-      } else if (currentStep === 3) {
-        setSelectedCourse(null);
         setSelectedExam(null);
         setSubjects([]);
-      } else if (currentStep === 4) {
+      } else if (currentStep === 3) {
         setSelectedSubject(null);
         setTopics([]);
-      } else if (currentStep === 5) {
+      } else if (currentStep === 4) {
         setSelectedTopic(null);
-      } else if (currentStep === 6) {
-        setSelectedGameMode(null);
+        setSelectedPlayers(null);
       }
     }
   };
@@ -306,7 +262,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-gradient-card border-primary/20">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-2xl bg-gradient-primary bg-clip-text text-transparent">
-            Create Study Lobby - Step {currentStep} of 6
+            Create Quiz Lobby - Step {currentStep} of 4
           </CardTitle>
           <Button 
             variant="ghost" 
@@ -323,87 +279,30 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
           {currentStep === 1 && (
             <div>
               <h3 className="text-lg font-semibold mb-3 flex items-center">
-                <BookOpen className="w-5 h-5 mr-2 text-primary" />
-                Step 1: Choose Source Type
+                <Trophy className="w-5 h-5 mr-2 text-primary" />
+                Step 1: Choose Competitive Exam
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card 
-                  className="cursor-pointer transition-all duration-200 hover:scale-105 hover:border-primary/30"
-                  onClick={() => handleSourceTypeSelect('course')}
-                >
-                  <CardContent className="p-6 text-center">
-                    <div className="w-12 h-12 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-3">
-                      <GraduationCap className="w-6 h-6 text-white" />
-                    </div>
-                    <h4 className="font-bold mb-2">📚 Course</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Study topics from your academic course
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  className="cursor-pointer transition-all duration-200 hover:scale-105 hover:border-primary/30"
-                  onClick={() => handleSourceTypeSelect('exam')}
-                >
-                  <CardContent className="p-6 text-center">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-r from-secondary to-primary flex items-center justify-center mx-auto mb-3">
-                      <Trophy className="w-6 h-6 text-white" />
-                    </div>
-                    <h4 className="font-bold mb-2">🏆 Competitive Exam</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Prepare for competitive examinations
-                    </p>
-                  </CardContent>
-                </Card>
+              <div className="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto">
+                {examOptions.map((exam, index) => (
+                  <Badge
+                    key={index}
+                    variant="outline"
+                    className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:border-primary/30"
+                    onClick={() => handleExamSelect(exam)}
+                  >
+                    {exam.name}
+                  </Badge>
+                ))}
               </div>
             </div>
           )}
 
-          {/* Step 2: Course/Exam Selection */}
+          {/* Step 2: Subject Selection */}
           {currentStep === 2 && (
             <div>
               <h3 className="text-lg font-semibold mb-3 flex items-center">
-                {selectedSourceType === 'course' ? <GraduationCap className="w-5 h-5 mr-2 text-primary" /> : <Trophy className="w-5 h-5 mr-2 text-primary" />}
-                Step 2: Choose {selectedSourceType === 'course' ? 'Course' : 'Competitive Exam'}
-              </h3>
-              <div className="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto">
-                {selectedSourceType === 'course' ? (
-                  courseOptions.map((course, index) => (
-                    <Badge
-                      key={index}
-                      variant="outline"
-                      className="p-3 text-left cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:border-primary/30 whitespace-normal"
-                      onClick={() => handleCourseSelect(course)}
-                    >
-                      {course.name}
-                    </Badge>
-                  ))
-                ) : (
-                  examOptions.map((exam, index) => (
-                    <Badge
-                      key={index}
-                      variant="outline"
-                      className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:border-primary/30"
-                      onClick={() => handleExamSelect(exam)}
-                    >
-                      {exam.name}
-                    </Badge>
-                  ))
-                )}
-              </div>
-              <Button variant="outline" onClick={handleBack} className="mt-4">
-                Back
-              </Button>
-            </div>
-          )}
-
-          {/* Step 3: Subject Selection */}
-          {currentStep === 3 && (
-            <div>
-              <h3 className="text-lg font-semibold mb-3 flex items-center">
                 <BookOpen className="w-5 h-5 mr-2 text-primary" />
-                Step 3: Choose Subject
+                Step 2: Choose Subject
               </h3>
               {loading ? (
                 <p className="text-center text-muted-foreground">Loading subjects...</p>
@@ -427,12 +326,12 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
             </div>
           )}
 
-          {/* Step 4: Topic Selection */}
-          {currentStep === 4 && (
+          {/* Step 3: Topic Selection */}
+          {currentStep === 3 && (
             <div>
               <h3 className="text-lg font-semibold mb-3 flex items-center">
                 <BookOpen className="w-5 h-5 mr-2 text-primary" />
-                Step 4: Choose Topic
+                Step 3: Choose Topic
               </h3>
               {loading ? (
                 <p className="text-center text-muted-foreground">Loading topics...</p>
@@ -456,56 +355,12 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
             </div>
           )}
 
-          {/* Step 5: Game Mode Selection */}
-          {currentStep === 5 && (
-            <div>
-              <h3 className="text-lg font-semibold mb-3 flex items-center">
-                <Crown className="w-5 h-5 mr-2 text-primary" />
-                Step 5: Choose Game Mode
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card 
-                  className="cursor-pointer transition-all duration-200 hover:scale-105 hover:border-primary/30"
-                  onClick={() => handleGameModeSelect('study')}
-                >
-                  <CardContent className="p-6 text-center">
-                    <div className="w-12 h-12 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-3">
-                      <BookOpen className="w-6 h-6 text-white" />
-                    </div>
-                    <h4 className="font-bold mb-2">📚 Study Mode</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Collaborative study sessions and group learning
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  className="cursor-pointer transition-all duration-200 hover:scale-105 hover:border-primary/30"
-                  onClick={() => handleGameModeSelect('quiz')}
-                >
-                  <CardContent className="p-6 text-center">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-r from-secondary to-primary flex items-center justify-center mx-auto mb-3">
-                      <Crown className="w-6 h-6 text-white" />
-                    </div>
-                    <h4 className="font-bold mb-2">🏆 Quiz Mode</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Competitive quiz battles with real-time scoring
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-              <Button variant="outline" onClick={handleBack} className="mt-4">
-                Back
-              </Button>
-            </div>
-          )}
-
-          {/* Step 6: Player Count Selection */}
-          {currentStep === 6 && (
+          {/* Step 4: Player Count Selection */}
+          {currentStep === 4 && (
             <div>
               <h3 className="text-lg font-semibold mb-3 flex items-center">
                 <Users className="w-5 h-5 mr-2 text-primary" />
-                Step 6: Choose Lobby Size
+                Step 4: Choose Lobby Size
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card 
@@ -557,7 +412,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
                     <div>
                       <p className="text-sm text-muted-foreground">Creating lobby for:</p>
                       <p className="font-semibold text-sm">
-                        {selectedTopic?.name} • {selectedGameMode === 'quiz' ? '🏆 Quiz' : '📚 Study'} • {selectedPlayers} Players
+                        {selectedTopic?.name} • 🏆 Quiz • {selectedPlayers} Players
                       </p>
                     </div>
                     <Button 
@@ -571,6 +426,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
               </div>
             </div>
           )}
+
         </CardContent>
       </Card>
     </div>
