@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      branches: {
+        Row: {
+          course_id: string | null
+          course_simple_id: string | null
+          created_at: string
+          exam_id: string | null
+          exam_simple_id: string | null
+          id: string
+          name: string
+          simple_id: string
+          source_type: string
+        }
+        Insert: {
+          course_id?: string | null
+          course_simple_id?: string | null
+          created_at?: string
+          exam_id?: string | null
+          exam_simple_id?: string | null
+          id?: string
+          name: string
+          simple_id: string
+          source_type: string
+        }
+        Update: {
+          course_id?: string | null
+          course_simple_id?: string | null
+          created_at?: string
+          exam_id?: string | null
+          exam_simple_id?: string | null
+          id?: string
+          name?: string
+          simple_id?: string
+          source_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branches_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branches_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "competitive_exams_list"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       competitive_exams_list: {
         Row: {
           created_at: string
@@ -112,6 +163,8 @@ export type Database = {
       }
       game_lobbies: {
         Row: {
+          branch_id: string | null
+          branch_simple_id: string | null
           course_id: string | null
           course_simple_id: string | null
           created_at: string
@@ -133,6 +186,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          branch_id?: string | null
+          branch_simple_id?: string | null
           course_id?: string | null
           course_simple_id?: string | null
           created_at?: string
@@ -154,6 +209,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          branch_id?: string | null
+          branch_simple_id?: string | null
           course_id?: string | null
           course_simple_id?: string | null
           created_at?: string
@@ -174,7 +231,15 @@ export type Database = {
           topic_simple_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "game_lobbies_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lobby_invites: {
         Row: {
@@ -547,6 +612,38 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      subjects: {
+        Row: {
+          branch_id: string
+          created_at: string
+          id: string
+          name: string
+          simple_id: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          id?: string
+          name: string
+          simple_id: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          simple_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subjects_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subjects_hierarchy: {
         Row: {

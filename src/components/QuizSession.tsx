@@ -98,22 +98,22 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         }
 
         if (subjectName) {
-          // Get subject_id using simple exam identifier
-          const subjectQuery = await supabase
-            .from('subjects_hierarchy')
+          // Get branch_id using simple exam identifier
+          const branchQuery = await supabase
+            .from('branches')
             .select('id')
             .eq('name', subjectName)
             .eq('source_type', 'exam')
             .eq('exam_simple_id', examSimpleId)
             .single();
 
-          if (subjectQuery.data) {
-            // Get topic_id for the specific topic
-            const topicQuery = await supabase
-              .from('topics')
+          if (branchQuery.data) {
+            // Get subject_id for the specific subject
+            const subjectQuery = await supabase
+              .from('subjects')
               .select('id, simple_id')
               .eq('name', lobby.subject)
-              .eq('subject_id', subjectQuery.data.id)
+              .eq('branch_id', branchQuery.data.id)
               .maybeSingle();
 
             // Filter questions by simple exam identifier
@@ -121,8 +121,8 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
               .eq('exam_simple_id', examSimpleId)
               .eq('source_type', 'exam');
 
-            if (topicQuery.data) {
-              questionsQuery = questionsQuery.eq('topic_simple_id', topicQuery.data.simple_id);
+            if (subjectQuery.data) {
+              questionsQuery = questionsQuery.eq('topic_simple_id', subjectQuery.data.simple_id);
             } else {
               // Fallback to subject-based filtering if topic not found
               let dbSubject = 'other_engineering';

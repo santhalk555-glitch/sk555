@@ -14,8 +14,8 @@ interface SubjectSelectionModalProps {
     sourceType: 'course' | 'exam';
     courseId?: string;
     examId?: string;
+    branchId: string;
     subjectId: string;
-    topicId: string;
     maxPlayers: 2 | 4;
     gameMode: 'study' | 'quiz';
   }) => void;
@@ -25,7 +25,7 @@ interface ExamOption {
   name: string;
 }
 
-interface Subject {
+interface Branch {
   id: string;
   name: string;
   source_type: 'course' | 'exam';
@@ -33,20 +33,20 @@ interface Subject {
   exam_id?: string;
 }
 
-interface Topic {
+interface Subject {
   id: string;
   name: string;
-  subject_id: string;
+  branch_id: string;
 }
 
 const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSelectionModalProps) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [examOptions, setExamOptions] = useState<ExamOption[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [topics, setTopics] = useState<Topic[]>([]);
   const [selectedExam, setSelectedExam] = useState<ExamOption | null>(null);
+  const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
-  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [selectedPlayers, setSelectedPlayers] = useState<2 | 4 | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -62,19 +62,19 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     setExamOptions(exams);
   };
 
-  const fetchSubjects = async (sourceType: 'course' | 'exam', selectedName: string) => {
+  const fetchBranches = async (sourceType: 'course' | 'exam', selectedName: string) => {
     try {
       setLoading(true);
       
-      // Special handling for RRB JE - show engineering branches as subjects
+      // Special handling for RRB JE - show engineering branches as branches
       if (sourceType === 'exam' && selectedName === 'RRB JE') {
-        const rrb_je_subjects = Object.keys(RRB_JE_ENGINEERING_BRANCHES).map((branch, index) => ({
+        const rrb_je_branches = Object.keys(RRB_JE_ENGINEERING_BRANCHES).map((branch, index) => ({
           id: `rrb_je_${index}`,
           name: branch,
           source_type: 'exam' as const,
           exam_id: 'rrb_je'
         }));
-        setSubjects(rrb_je_subjects);
+        setBranches(rrb_je_branches);
         setLoading(false);
         return;
       }
@@ -99,13 +99,13 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       }
 
       if (!sourceId) {
-        // If no matching record found, show empty subjects
-        setSubjects([]);
+        // If no matching record found, show empty branches
+        setBranches([]);
         return;
       }
 
       const query = supabase
-        .from('subjects_hierarchy')
+        .from('branches')
         .select('*')
         .eq('source_type', sourceType);
       
@@ -120,12 +120,53 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       if (error) throw error;
       
       // Type cast the data to ensure proper typing
-      const typedSubjects = (data || []).map(subject => ({
-        ...subject,
-        source_type: subject.source_type as 'course' | 'exam'
+      const typedBranches = (data || []).map(branch => ({
+        ...branch,
+        source_type: branch.source_type as 'course' | 'exam'
       }));
       
-      setSubjects(typedSubjects);
+      setBranches(typedBranches);
+    } catch (error) {
+      console.error('Error fetching branches:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load branches',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSubjects = async (branchId: string) => {
+    try {
+      setLoading(true);
+      
+      // Special handling for RRB JE engineering branches - show detailed subjects
+      if (branchId.startsWith('rrb_je_') && selectedExam?.name === 'RRB JE') {
+        const branchIndex = parseInt(branchId.replace('rrb_je_', ''));
+        const branchName = Object.keys(RRB_JE_ENGINEERING_BRANCHES)[branchIndex];
+        const branchSubjects = RRB_JE_ENGINEERING_BRANCHES[branchName as keyof typeof RRB_JE_ENGINEERING_BRANCHES];
+        
+        const rrb_je_subjects = branchSubjects.map((subject, index) => ({
+          id: `${branchId}_subject_${index}`,
+          name: subject,
+          branch_id: branchId
+        }));
+        
+        setSubjects(rrb_je_subjects);
+        setLoading(false);
+        return;
+      }
+      
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('id, name, simple_id, branch_id')
+        .eq('branch_id', branchId)
+        .order('name');
+      
+      if (error) throw error;
+      setSubjects(data || []);
     } catch (error) {
       console.error('Error fetching subjects:', error);
       toast({
@@ -138,66 +179,25 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     }
   };
 
-  const fetchTopics = async (subjectId: string) => {
-    try {
-      setLoading(true);
-      
-      // Special handling for RRB JE engineering branches - show detailed subjects as topics
-      if (subjectId.startsWith('rrb_je_') && selectedExam?.name === 'RRB JE') {
-        const branchIndex = parseInt(subjectId.replace('rrb_je_', ''));
-        const branchName = Object.keys(RRB_JE_ENGINEERING_BRANCHES)[branchIndex];
-        const branchSubjects = RRB_JE_ENGINEERING_BRANCHES[branchName as keyof typeof RRB_JE_ENGINEERING_BRANCHES];
-        
-        const rrb_je_topics = branchSubjects.map((subject, index) => ({
-          id: `${subjectId}_topic_${index}`,
-          name: subject,
-          subject_id: subjectId
-        }));
-        
-        setTopics(rrb_je_topics);
-        setLoading(false);
-        return;
-      }
-      
-      const { data, error } = await supabase
-        .from('topics')
-        .select('id, name, simple_id, subject_id')
-        .eq('subject_id', subjectId)
-        .order('name');
-      
-      if (error) throw error;
-      setTopics(data || []);
-    } catch (error) {
-      console.error('Error fetching topics:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load topics',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleExamSelect = (exam: ExamOption) => {
     setSelectedExam(exam);
-    fetchSubjects('exam', exam.name);
+    fetchBranches('exam', exam.name);
     setCurrentStep(2);
+  };
+
+  const handleBranchSelect = (branch: Branch) => {
+    setSelectedBranch(branch);
+    fetchSubjects(branch.id);
+    setCurrentStep(3);
   };
 
   const handleSubjectSelect = (subject: Subject) => {
     setSelectedSubject(subject);
-    fetchTopics(subject.id);
-    setCurrentStep(3);
-  };
-
-  const handleTopicSelect = (topic: Topic) => {
-    setSelectedTopic(topic);
     setCurrentStep(4);
   };
 
   const handleCreate = async () => {
-    if (selectedSubject && selectedTopic && selectedPlayers) {
+    if (selectedBranch && selectedSubject && selectedPlayers) {
       // Get the actual database IDs for exam
       let examId: string | undefined;
       
@@ -210,16 +210,16 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
         examId = examData?.simple_id;
       }
       
-      // Store RRB JE topic name for later use in lobby creation
-      if (selectedTopic && selectedTopic.id.includes('rrb_je_')) {
-        sessionStorage.setItem(`rrb_je_topic_${selectedTopic.id}`, selectedTopic.name);
+      // Store RRB JE subject name for later use in lobby creation
+      if (selectedSubject && selectedSubject.id.includes('rrb_je_')) {
+        sessionStorage.setItem(`rrb_je_subject_${selectedSubject.id}`, selectedSubject.name);
       }
       
       onSubjectSelect({
         sourceType: 'exam',
         examId,
+        branchId: selectedBranch.id,
         subjectId: selectedSubject.id,
-        topicId: selectedTopic.id,
         maxPlayers: selectedPlayers,
         gameMode: 'quiz'
       });
@@ -230,11 +230,11 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
   const resetModal = () => {
     setCurrentStep(1);
     setSelectedExam(null);
+    setSelectedBranch(null);
     setSelectedSubject(null);
-    setSelectedTopic(null);
     setSelectedPlayers(null);
+    setBranches([]);
     setSubjects([]);
-    setTopics([]);
   };
 
   const handleBack = () => {
@@ -244,12 +244,12 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       // Reset subsequent selections
       if (currentStep === 2) {
         setSelectedExam(null);
-        setSubjects([]);
+        setBranches([]);
       } else if (currentStep === 3) {
-        setSelectedSubject(null);
-        setTopics([]);
+        setSelectedBranch(null);
+        setSubjects([]);
       } else if (currentStep === 4) {
-        setSelectedTopic(null);
+        setSelectedSubject(null);
         setSelectedPlayers(null);
       }
     }
@@ -308,14 +308,14 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
                 <p className="text-center text-muted-foreground">Loading branches...</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {subjects.map((subject) => (
+                  {branches.map((branch) => (
                     <Badge
-                      key={subject.id}
+                      key={branch.id}
                       variant="outline"
                       className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:border-primary/30"
-                      onClick={() => handleSubjectSelect(subject)}
+                      onClick={() => handleBranchSelect(branch)}
                     >
-                      {subject.name}
+                      {branch.name}
                     </Badge>
                   ))}
                 </div>
@@ -337,14 +337,14 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
                 <p className="text-center text-muted-foreground">Loading subjects...</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {topics.map((topic) => (
+                  {subjects.map((subject) => (
                     <Badge
-                      key={topic.id}
+                      key={subject.id}
                       variant="outline"
                       className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:border-primary/30"
-                      onClick={() => handleTopicSelect(topic)}
+                      onClick={() => handleSubjectSelect(subject)}
                     >
-                      {topic.name}
+                      {subject.name}
                     </Badge>
                   ))}
                 </div>
@@ -412,7 +412,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
                     <div>
                       <p className="text-sm text-muted-foreground">Creating lobby for:</p>
                       <p className="font-semibold text-sm">
-                        {selectedTopic?.name} • 🏆 Quiz • {selectedPlayers} Players
+                        {selectedSubject?.name} • 🏆 Quiz • {selectedPlayers} Players
                       </p>
                     </div>
                     <Button 
