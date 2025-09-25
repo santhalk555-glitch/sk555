@@ -297,15 +297,15 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
             </div>
           )}
 
-          {/* Step 2: Subject Selection */}
+          {/* Step 2: Branch Selection */}
           {currentStep === 2 && (
             <div>
               <h3 className="text-lg font-semibold mb-3 flex items-center">
                 <BookOpen className="w-5 h-5 mr-2 text-primary" />
-                Step 2: Choose Subject
+                Step 2: Choose Branch
               </h3>
               {loading ? (
-                <p className="text-center text-muted-foreground">Loading subjects...</p>
+                <p className="text-center text-muted-foreground">Loading branches...</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {subjects.map((subject) => (
@@ -326,15 +326,15 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
             </div>
           )}
 
-          {/* Step 3: Topic Selection */}
+          {/* Step 3: Subject Selection */}
           {currentStep === 3 && (
             <div>
               <h3 className="text-lg font-semibold mb-3 flex items-center">
                 <BookOpen className="w-5 h-5 mr-2 text-primary" />
-                Step 3: Choose Topic
+                Step 3: Choose Subject
               </h3>
               {loading ? (
-                <p className="text-center text-muted-foreground">Loading topics...</p>
+                <p className="text-center text-muted-foreground">Loading subjects...</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {topics.map((topic) => (
