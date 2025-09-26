@@ -24,8 +24,9 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
     examId?: string;
     branchId: string;
     subjectId: string;
-    maxPlayers: 2 | 4;
-    gameMode: 'study' | 'quiz';
+    topicId?: string;
+    maxPlayers: 1 | 2 | 4;
+    lobbyType: 'quiz' | 'practice';
   }) => {
     setShowSubjectModal(false);
     createLobbyWithOptions(selectionData);
@@ -37,8 +38,9 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
     examId?: string;
     branchId: string;
     subjectId: string;
-    maxPlayers: 2 | 4;
-    gameMode: 'study' | 'quiz';
+    topicId?: string;
+    maxPlayers: 1 | 2 | 4;
+    lobbyType: 'quiz' | 'practice';
   }) => {
     if (!user) return;
 
@@ -81,12 +83,13 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
           max_players: selectionData.maxPlayers,
           current_players: 1,
           subject: subjectName, // Use subject name for backward compatibility
-          game_mode: selectionData.gameMode,
+          lobby_type: selectionData.lobbyType,
           source_type: selectionData.sourceType,
           course_id: isRRBJE ? null : selectionData.courseId,
           exam_id: isRRBJE ? null : selectionData.examId,
           branch_id: isRRBJE ? null : selectionData.branchId,
-          subject_id: isRRBJE ? null : selectionData.subjectId
+          subject_id: isRRBJE ? null : selectionData.subjectId,
+          topic_id: selectionData.topicId || null
         })
         .select()
         .single();
@@ -106,7 +109,7 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
       
       toast({
         title: 'Lobby Created!',
-        description: `${subjectName} ${selectionData.gameMode} lobby created with ${selectionData.maxPlayers} players!`,
+        description: `${subjectName} ${selectionData.lobbyType} lobby created with ${selectionData.maxPlayers} players!`,
       });
 
       onLobbyCreated(lobby);

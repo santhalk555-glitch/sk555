@@ -175,6 +175,7 @@ export type Database = {
           game_mode: string | null
           id: string
           lobby_code: string
+          lobby_type: string
           max_players: number
           source_type: string | null
           status: string
@@ -198,6 +199,7 @@ export type Database = {
           game_mode?: string | null
           id?: string
           lobby_code: string
+          lobby_type?: string
           max_players: number
           source_type?: string | null
           status?: string
@@ -221,6 +223,7 @@ export type Database = {
           game_mode?: string | null
           id?: string
           lobby_code?: string
+          lobby_type?: string
           max_players?: number
           source_type?: string | null
           status?: string
