@@ -148,7 +148,7 @@ const Dashboard = () => {
               </h3>
               <p className="text-muted-foreground mb-4">
                 {hasProfile 
-                  ? `Swipe through ${profileMatchCount} study partners` 
+                  ? 'Swipe through study partners and send friend requests' 
                   : 'Set up your profile to find study partners'
                 }
               </p>
@@ -170,7 +170,7 @@ const Dashboard = () => {
               <h3 className="text-xl font-bold mb-2 group-hover:text-gaming-accent transition-colors duration-300">My Study Squad</h3>
               <p className="text-muted-foreground mb-4">
                 {hasProfile 
-                  ? 'View your matched study partners' 
+                  ? 'View your accepted study partners (friends)' 
                   : 'Create profile to find matches'
                 }
               </p>
@@ -200,7 +200,7 @@ const Dashboard = () => {
                 <Gamepad2 className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-xl font-bold mb-2 group-hover:text-gaming-secondary transition-colors duration-300">Create Lobby</h3>
-              <p className="text-muted-foreground mb-4">Create 2 or 4 player lobbies for study sessions</p>
+              <p className="text-muted-foreground mb-4">Create a 2-player, 4-player, or practice lobby for quizzes</p>
               <Button variant="outline" className="w-full bg-gaming-secondary/10 border-gaming-secondary/30 hover:bg-gaming-secondary/20 group-hover:shadow-glow transition-all duration-300">
                 Create Lobby
               </Button>
