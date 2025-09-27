@@ -386,7 +386,6 @@ export type Database = {
           display_user_id: string | null
           id: string
           quiz_points: number
-          subjects: string[]
           updated_at: string
           user_id: string
           username: string | null
@@ -400,7 +399,6 @@ export type Database = {
           display_user_id?: string | null
           id?: string
           quiz_points?: number
-          subjects?: string[]
           updated_at?: string
           user_id: string
           username?: string | null
@@ -414,7 +412,6 @@ export type Database = {
           display_user_id?: string | null
           id?: string
           quiz_points?: number
-          subjects?: string[]
           updated_at?: string
           user_id?: string
           username?: string | null
@@ -740,7 +737,6 @@ export type Database = {
           created_at: string | null
           display_user_id: string | null
           id: string | null
-          subjects: string[] | null
           updated_at: string | null
           user_id: string | null
           username: string | null
@@ -751,7 +747,6 @@ export type Database = {
           created_at?: string | null
           display_user_id?: string | null
           id?: string | null
-          subjects?: string[] | null
           updated_at?: string | null
           user_id?: string | null
           username?: string | null
@@ -762,7 +757,6 @@ export type Database = {
           created_at?: string | null
           display_user_id?: string | null
           id?: string | null
-          subjects?: string[] | null
           updated_at?: string | null
           user_id?: string | null
           username?: string | null
