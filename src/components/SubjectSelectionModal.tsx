@@ -7,6 +7,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from './ui/use-toast';
 import { COMPETITIVE_EXAM_OPTIONS, RRB_JE_ENGINEERING_BRANCHES } from '@/constants/profileOptions';
 
+// Define exams with technical + general streams
+const EXAMS_WITH_TECHNICAL_BRANCHES = [
+  'RRB JE', 'RRB SSE', 'ISRO', 'DRDO', 'GATE', 'ESE/IES'
+];
+
+// Define general subjects for all exams
+const GENERAL_SUBJECTS = [
+  'Quantitative Aptitude',
+  'Reasoning Ability', 
+  'Physics',
+  'Chemistry',
+  'Biology'
+];
+
 interface SubjectSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -76,66 +90,70 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     try {
       setLoading(true);
       
-      // Special handling for RRB JE - show engineering branches as branches
-      if (sourceType === 'exam' && selectedName === 'RRB JE') {
-        const rrb_je_branches = Object.keys(RRB_JE_ENGINEERING_BRANCHES).map((branch, index) => ({
-          id: `rrb_je_${index}`,
-          name: branch,
-          source_type: 'exam' as const,
-          exam_id: 'rrb_je'
-        }));
-        setBranches(rrb_je_branches);
-        setLoading(false);
-        return;
-      }
+      // Check if this exam has technical + general streams
+      const hasTechnicalBranches = EXAMS_WITH_TECHNICAL_BRANCHES.includes(selectedName);
       
-      // Find matching course/exam in database by name
-      let sourceId: string | null = null;
-      
-      if (sourceType === 'course') {
-        const { data: courseData } = await supabase
-          .from('courses')
-          .select('simple_id')
-          .eq('name', selectedName)
-          .maybeSingle();
-        sourceId = courseData?.simple_id || null;
-      } else {
+      if (sourceType === 'exam' && hasTechnicalBranches) {
+        // For exams with technical branches (like RRB JE), show branch selection
+        if (selectedName === 'RRB JE') {
+          // Special handling for RRB JE - show engineering branches + General
+          const rrb_je_branches = [
+            ...Object.keys(RRB_JE_ENGINEERING_BRANCHES).map((branch, index) => ({
+              id: `rrb_je_${index}`,
+              name: branch,
+              source_type: 'exam' as const,
+              exam_id: 'rrb_je'
+            })),
+            {
+              id: 'rrb_je_general',
+              name: 'General',
+              source_type: 'exam' as const,
+              exam_id: 'rrb_je'
+            }
+          ];
+          setBranches(rrb_je_branches);
+          setLoading(false);
+          return;
+        }
+        
+        // For other technical exams, fetch from database
         const { data: examData } = await supabase
           .from('competitive_exams_list')
           .select('simple_id')
           .eq('name', selectedName)
           .maybeSingle();
-        sourceId = examData?.simple_id || null;
-      }
-
-      if (!sourceId) {
-        // If no matching record found, show empty branches
-        setBranches([]);
-        return;
-      }
-
-      const query = supabase
-        .from('branches')
-        .select('*')
-        .eq('source_type', sourceType);
-      
-      if (sourceType === 'course') {
-        query.eq('course_simple_id', sourceId);
+        
+        if (examData?.simple_id) {
+          const { data, error } = await supabase
+            .from('branches')
+            .select('*')
+            .eq('source_type', 'exam')
+            .eq('exam_simple_id', examData.simple_id)
+            .order('name');
+          
+          if (error) throw error;
+          
+          const typedBranches = (data || []).map(branch => ({
+            ...branch,
+            source_type: branch.source_type as 'course' | 'exam'
+          }));
+          
+          setBranches(typedBranches);
+        } else {
+          setBranches([]);
+        }
       } else {
-        query.eq('exam_simple_id', sourceId);
+        // For exams with only general subjects, skip to subject selection
+        setBranches([]);
+        // Directly show general subjects
+        const generalSubjects = GENERAL_SUBJECTS.map((subject, index) => ({
+          id: `general_${index}`,
+          name: subject,
+          branch_id: 'general'
+        }));
+        setSubjects(generalSubjects);
+        setCurrentStep(4); // Skip branch selection, go directly to subject selection
       }
-
-      const { data, error } = await query.order('name');
-      
-      if (error) throw error;
-      
-      // Type cast the data to ensure proper typing
-      const typedBranches = (data || []).map(branch => ({
-        ...branch,
-        source_type: branch.source_type as 'course' | 'exam'
-      }));
-      
-      setBranches(typedBranches);
     } catch (error) {
       console.error('Error fetching branches:', error);
       toast({
@@ -152,7 +170,19 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     try {
       setLoading(true);
       
-      // Special handling for RRB JE engineering branches - show detailed subjects
+      // Handle General branch - show general subjects
+      if (branchId === 'rrb_je_general' || branchId === 'general') {
+        const generalSubjects = GENERAL_SUBJECTS.map((subject, index) => ({
+          id: `general_${index}`,
+          name: subject,
+          branch_id: branchId
+        }));
+        setSubjects(generalSubjects);
+        setLoading(false);
+        return;
+      }
+      
+      // Handle RRB JE technical branches - show technical subjects
       if (branchId.startsWith('rrb_je_') && selectedExam?.name === 'RRB JE') {
         const branchIndex = parseInt(branchId.replace('rrb_je_', ''));
         const branchName = Object.keys(RRB_JE_ENGINEERING_BRANCHES)[branchIndex];
@@ -169,6 +199,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
         return;
       }
       
+      // For other branches, fetch from database
       const { data, error } = await supabase
         .from('subjects')
         .select('id, name, simple_id, branch_id')
@@ -220,8 +251,18 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
 
   const handleExamSelect = (exam: ExamOption) => {
     setSelectedExam(exam);
-    fetchBranches('exam', exam.name);
-    setCurrentStep(3);
+    
+    // Check if this exam has technical branches or only general subjects
+    const hasTechnicalBranches = EXAMS_WITH_TECHNICAL_BRANCHES.includes(exam.name);
+    
+    if (hasTechnicalBranches) {
+      // Show branch selection for technical exams
+      fetchBranches('exam', exam.name);
+      setCurrentStep(3);
+    } else {
+      // Skip branch selection and go directly to general subjects
+      fetchBranches('exam', exam.name); // This will skip to subjects automatically
+    }
   };
 
   const handleBranchSelect = (branch: Branch) => {
@@ -330,7 +371,8 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
   if (!isOpen) return null;
 
   const getStepTitle = () => {
-    const totalSteps = selectedLobbyType === 'practice' ? 6 : 5;
+    const hasTechnicalBranches = selectedExam ? EXAMS_WITH_TECHNICAL_BRANCHES.includes(selectedExam.name) : false;
+    const totalSteps = selectedLobbyType === 'practice' ? (hasTechnicalBranches ? 6 : 5) : (hasTechnicalBranches ? 5 : 4);
     return `Create ${selectedLobbyType?.charAt(0).toUpperCase() + selectedLobbyType?.slice(1) || ''} Lobby - Step ${currentStep} of ${totalSteps}`;
   };
 

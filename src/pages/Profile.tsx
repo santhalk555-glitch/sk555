@@ -25,7 +25,6 @@ interface UserProfile {
   username: string;
   course_name: string;
   competitive_exams: CompetitiveExam[];
-  subjects: string[];
 }
 
 const Profile = () => {
@@ -45,7 +44,7 @@ const Profile = () => {
     const fetchProfile = async () => {
         const { data, error } = await supabase
           .from('profile_view')
-          .select('display_user_id, username, course_name, competitive_exams, subjects')
+          .select('display_user_id, username, course_name, competitive_exams')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -59,9 +58,10 @@ const Profile = () => {
       } else if (data) {
         // Parse competitive_exams from JSONB to CompetitiveExam[]
         const profileData: UserProfile = {
-          ...data,
-          competitive_exams: parseCompetitiveExams(data.competitive_exams),
-          subjects: data.subjects || []
+          display_user_id: data.display_user_id,
+          username: data.username,
+          course_name: data.course_name,
+          competitive_exams: parseCompetitiveExams(data.competitive_exams)
         };
         setProfile(profileData);
       }
@@ -248,20 +248,6 @@ const Profile = () => {
             </div>
 
             {/* Subjects */}
-            <div className="space-y-3">
-              <div className="flex items-center">
-                <User className="w-5 h-5 mr-2 text-primary" />
-                <h3 className="text-lg font-semibold">Subjects</h3>
-              </div>
-              <div className="pl-7 flex flex-wrap gap-2">
-                {profile.subjects.map((subject) => (
-                  <Badge key={subject} variant="outline">
-                    {subject}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
             {/* Actions */}
             <div className="pt-4 space-y-3">
               <Button 

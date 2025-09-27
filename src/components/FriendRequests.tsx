@@ -323,32 +323,6 @@ const FriendRequests = ({ onBack }: FriendRequestsProps) => {
                             {request.sender_profile?.course_name || 'Student'}
                           </p>
                           
-                          {/* Subjects */}
-                          {request.sender_profile?.subjects && request.sender_profile.subjects.length > 0 && (
-                            <div className="mb-2">
-                              <div className="flex items-center gap-1 mb-1">
-                                <BookOpen className="w-3 h-3" />
-                                <span className="text-xs font-semibold">Subjects</span>
-                              </div>
-                              <div className="flex flex-wrap gap-1">
-                                {request.sender_profile.subjects.slice(0, 3).map((subject, idx) => (
-                                  <Badge 
-                                    key={idx}
-                                    variant="secondary"
-                                    className="text-xs bg-primary/10 text-primary border-primary/20"
-                                  >
-                                    {subject}
-                                  </Badge>
-                                ))}
-                                {request.sender_profile.subjects.length > 3 && (
-                                  <Badge variant="outline" className="text-xs">
-                                    +{request.sender_profile.subjects.length - 3}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
                           {/* Exams */}
                           {request.sender_profile?.competitive_exams && request.sender_profile.competitive_exams.length > 0 && (
                             <div className="mb-2">

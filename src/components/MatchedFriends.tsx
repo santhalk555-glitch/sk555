@@ -193,26 +193,6 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-semibold mb-2">Subjects:</h4>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {match.subjects && match.subjects.slice(0, 2).map((subject, idx) => (
-                        <Badge 
-                          key={idx} 
-                          variant="secondary"
-                          className="text-xs bg-gaming-primary/10 text-gaming-primary border-gaming-primary/20"
-                        >
-                          {subject}
-                        </Badge>
-                      ))}
-                      {match.subjects && match.subjects.length > 2 && (
-                        <Badge variant="secondary" className="text-xs">
-                          +{match.subjects.length - 2}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
                     <h4 className="text-sm font-semibold mb-2">Exams:</h4>
                     <div className="flex flex-wrap gap-2 mb-4">
                         {match.competitive_exams && match.competitive_exams.slice(0, 1).map((exam, idx) => (

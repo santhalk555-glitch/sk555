@@ -47,16 +47,6 @@ export const ProfileMatches = () => {
       score += examScore;
     }
 
-    // Subject overlap (medium weight = 30 points)
-    maxScore += 30;
-    const subjectOverlap = userProfile.subjects.filter(subject => 
-      otherProfile.subjects.includes(subject)
-    ).length;
-    if (subjectOverlap > 0) {
-      const subjectScore = Math.min(30, (subjectOverlap / Math.max(userProfile.subjects.length, otherProfile.subjects.length)) * 30);
-      score += subjectScore;
-    }
-
     return Math.round((score / maxScore) * 100);
   };
 
@@ -229,10 +219,6 @@ export const ProfileMatches = () => {
                   <Target className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">{currentUserProfile.competitive_exams.join(', ')}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{currentUserProfile.subjects.join(', ')}</span>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -281,24 +267,6 @@ export const ProfileMatches = () => {
                             className="text-xs"
                           >
                             {exam.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-2">
-                    <BookOpen className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <div>
-                      <span className="text-sm font-medium">Subjects:</span>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {match.subjects.map((subject) => (
-                          <Badge 
-                            key={subject} 
-                            variant={currentUserProfile?.subjects.includes(subject) ? "default" : "outline"}
-                            className="text-xs"
-                          >
-                            {subject}
                           </Badge>
                         ))}
                       </div>

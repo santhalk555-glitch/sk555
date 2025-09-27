@@ -262,32 +262,6 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
                       </div>
                     </div>
 
-                    {/* Subjects */}
-                    {currentProfile?.subjects && currentProfile.subjects.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-semibold mb-2 flex items-center">
-                          <BookOpen className="w-4 h-4 mr-2" />
-                          Subjects
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {currentProfile.subjects.slice(0, 3).map((subject, idx) => (
-                            <Badge 
-                              key={idx}
-                              variant="secondary"
-                              className="bg-primary/10 text-primary border-primary/20"
-                            >
-                              {subject}
-                            </Badge>
-                          ))}
-                          {currentProfile.subjects.length > 3 && (
-                            <Badge variant="outline">
-                              +{currentProfile.subjects.length - 3}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
                     {/* Competitive Exams */}
                     {currentProfile?.competitive_exams && currentProfile.competitive_exams.length > 0 && (
                       <div>
