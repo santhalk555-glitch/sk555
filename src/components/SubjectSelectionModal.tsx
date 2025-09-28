@@ -199,15 +199,24 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
         return;
       }
       
-      // For other branches, fetch from database
+      // For other branches, fetch from subjects_hierarchy
       const { data, error } = await supabase
-        .from('subjects')
-        .select('id, name, simple_id, branch_id')
-        .eq('branch_id', branchId)
+        .from('subjects_hierarchy')
+        .select('id, name, simple_id')
+        .eq('source_type', selectedExam?.name === 'RRB JE' ? 'exam' : 'course')
         .order('name');
       
       if (error) throw error;
-      setSubjects(data || []);
+      
+      // Map to match expected structure
+      const mappedSubjects = (data || []).map(subject => ({
+        id: subject.id,
+        name: subject.name,
+        simple_id: subject.simple_id,
+        branch_id: branchId
+      }));
+      
+      setSubjects(mappedSubjects);
     } catch (error) {
       console.error('Error fetching subjects:', error);
       toast({

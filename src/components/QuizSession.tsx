@@ -110,10 +110,10 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
           if (branchQuery.data) {
             // Get subject_id for the specific subject
             const subjectQuery = await supabase
-              .from('subjects')
+              .from('subjects_hierarchy')
               .select('id, simple_id')
               .eq('name', lobby.subject)
-              .eq('branch_id', branchQuery.data.id)
+              .eq('source_type', 'exam')
               .maybeSingle();
 
             // Filter questions by simple exam identifier
