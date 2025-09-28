@@ -613,38 +613,6 @@ export type Database = {
         }
         Relationships: []
       }
-      subjects: {
-        Row: {
-          branch_id: string
-          created_at: string
-          id: string
-          name: string
-          simple_id: string
-        }
-        Insert: {
-          branch_id: string
-          created_at?: string
-          id?: string
-          name: string
-          simple_id: string
-        }
-        Update: {
-          branch_id?: string
-          created_at?: string
-          id?: string
-          name?: string
-          simple_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "subjects_branch_id_fkey"
-            columns: ["branch_id"]
-            isOneToOne: false
-            referencedRelation: "branches"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       subjects_hierarchy: {
         Row: {
           course_id: string | null
