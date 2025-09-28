@@ -1,113 +1,116 @@
 import { useState, useEffect } from 'react';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { X, BookOpen, Users, Crown, GraduationCap, Trophy, Target, Gamepad2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from './ui/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { COMPETITIVE_EXAM_OPTIONS, RRB_JE_ENGINEERING_BRANCHES } from '@/constants/profileOptions';
+import { ArrowLeft } from 'lucide-react';
 
-// Define exams with technical + general streams
-const EXAMS_WITH_TECHNICAL_BRANCHES = [
-  'RRB JE', 'RRB SSE', 'ISRO', 'DRDO', 'GATE', 'ESE/IES'
-];
-
-// Define general subjects for all exams
+// General subjects for exams without technical branches
 const GENERAL_SUBJECTS = [
   'Quantitative Aptitude',
-  'Reasoning Ability', 
+  'Reasoning Ability',
   'Physics',
   'Chemistry',
   'Biology'
 ];
 
+// Exams that have technical + general streams (require branch selection)
+const EXAMS_WITH_TECHNICAL_BRANCHES = ['RRB JE'];
+
+export interface SelectionData {
+  examId: string;
+  branchId?: string;
+  subjectId: string;
+  topicId?: string;
+  maxPlayers: number;
+  lobbyType: 'quiz' | 'practice';
+}
+
 interface SubjectSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubjectSelect: (selectionData: {
-    sourceType: 'course' | 'exam';
-    courseId?: string;
-    examId?: string;
-    branchId: string;
-    subjectId: string;
-    topicId?: string;
-    maxPlayers: 1 | 2 | 4;
-    lobbyType: 'quiz' | 'practice';
-  }) => void;
+  onSubjectSelect: (selectionData: SelectionData) => void;
 }
 
 interface ExamOption {
   name: string;
+  simple_id?: string;
 }
 
 interface Branch {
   id: string;
   name: string;
-  source_type: 'course' | 'exam';
-  course_id?: string;
   exam_id?: string;
+  exam_simple_id?: string;
 }
 
 interface Subject {
   id: string;
   name: string;
-  branch_id: string;
+  simple_id?: string;
+  branch_id?: string;
 }
 
 interface Topic {
   id: string;
   name: string;
-  subject_id: string;
+  simple_id?: string;
+  subject_id?: string;
 }
 
 const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSelectionModalProps) => {
   const [currentStep, setCurrentStep] = useState(1);
-  const [examOptions, setExamOptions] = useState<ExamOption[]>([]);
-  const [branches, setBranches] = useState<Branch[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [topics, setTopics] = useState<Topic[]>([]);
   const [selectedLobbyType, setSelectedLobbyType] = useState<'quiz' | 'practice' | null>(null);
   const [selectedExam, setSelectedExam] = useState<ExamOption | null>(null);
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
-  const [selectedPlayers, setSelectedPlayers] = useState<2 | 4 | null>(null);
+  const [selectedPlayerCount, setSelectedPlayerCount] = useState<number>(2);
+  const [examOptions, setExamOptions] = useState<ExamOption[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
+  // Reset modal state when it opens
   useEffect(() => {
     if (isOpen) {
+      resetModal();
       loadOptions();
     }
   }, [isOpen]);
 
-  const loadOptions = () => {    
-    // Load exam options from the same source as ProfileCreationForm
-    const exams = COMPETITIVE_EXAM_OPTIONS.map(name => ({ name }));
+  const loadOptions = () => {
+    // Load exam options
+    const exams = COMPETITIVE_EXAM_OPTIONS.map(name => ({ 
+      name,
+      simple_id: name.toLowerCase().replace(/\s+/g, '_')
+    }));
     setExamOptions(exams);
   };
 
-  const fetchBranches = async (sourceType: 'course' | 'exam', selectedName: string) => {
+  const fetchBranches = async (examName: string) => {
     try {
       setLoading(true);
       
       // Check if this exam has technical + general streams
-      const hasTechnicalBranches = EXAMS_WITH_TECHNICAL_BRANCHES.includes(selectedName);
+      const hasTechnicalBranches = EXAMS_WITH_TECHNICAL_BRANCHES.includes(examName);
       
-      if (sourceType === 'exam' && hasTechnicalBranches) {
-        // For exams with technical branches (like RRB JE), show branch selection
-        if (selectedName === 'RRB JE') {
-          // Special handling for RRB JE - show engineering branches + General
+      if (hasTechnicalBranches) {
+        // Special handling for RRB JE - create synthetic branches
+        if (examName === 'RRB JE') {
           const rrb_je_branches = [
             ...Object.keys(RRB_JE_ENGINEERING_BRANCHES).map((branch, index) => ({
               id: `rrb_je_${index}`,
               name: branch,
-              source_type: 'exam' as const,
               exam_id: 'rrb_je'
             })),
             {
               id: 'rrb_je_general',
               name: 'General',
-              source_type: 'exam' as const,
               exam_id: 'rrb_je'
             }
           ];
@@ -120,25 +123,18 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
         const { data: examData } = await supabase
           .from('competitive_exams_list')
           .select('simple_id')
-          .eq('name', selectedName)
+          .eq('name', examName)
           .maybeSingle();
         
         if (examData?.simple_id) {
           const { data, error } = await supabase
             .from('branches')
             .select('*')
-            .eq('source_type', 'exam')
             .eq('exam_simple_id', examData.simple_id)
             .order('name');
           
           if (error) throw error;
-          
-          const typedBranches = (data || []).map(branch => ({
-            ...branch,
-            source_type: branch.source_type as 'course' | 'exam'
-          }));
-          
-          setBranches(typedBranches);
+          setBranches(data || []);
         } else {
           setBranches([]);
         }
@@ -203,7 +199,6 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       const { data, error } = await supabase
         .from('subjects_hierarchy')
         .select('id, name, simple_id')
-        .eq('source_type', selectedExam?.name === 'RRB JE' ? 'exam' : 'course')
         .order('name');
       
       if (error) throw error;
@@ -260,18 +255,8 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
 
   const handleExamSelect = (exam: ExamOption) => {
     setSelectedExam(exam);
-    
-    // Check if this exam has technical branches or only general subjects
-    const hasTechnicalBranches = EXAMS_WITH_TECHNICAL_BRANCHES.includes(exam.name);
-    
-    if (hasTechnicalBranches) {
-      // Show branch selection for technical exams
-      fetchBranches('exam', exam.name);
-      setCurrentStep(3);
-    } else {
-      // Skip branch selection and go directly to general subjects
-      fetchBranches('exam', exam.name); // This will skip to subjects automatically
-    }
+    fetchBranches(exam.name);
+    setCurrentStep(3);
   };
 
   const handleBranchSelect = (branch: Branch) => {
@@ -283,57 +268,39 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
   const handleSubjectSelect = (subject: Subject) => {
     setSelectedSubject(subject);
     
+    // Store subject name for RRB JE subjects (synthetic IDs)
+    if (subject.id.startsWith('rrb_je_') || subject.id.startsWith('general_')) {
+      sessionStorage.setItem(`rrb_je_subject_${subject.id}`, subject.name);
+    }
+    
     if (selectedLobbyType === 'practice') {
-      // For practice lobbies, fetch topics for detailed selection
       fetchTopics(subject.id);
       setCurrentStep(5);
     } else {
-      // For quiz lobbies, skip topic selection and go to player count
-      setCurrentStep(6);
+      setCurrentStep(6); // Go to player count selection for quiz
     }
   };
 
   const handleTopicSelect = (topic: Topic) => {
     setSelectedTopic(topic);
-    setCurrentStep(6);
+    setCurrentStep(6); // Go to player count selection
   };
 
-  const handleCreate = async () => {
-    if (!selectedBranch || !selectedSubject || !selectedLobbyType) return;
-    
-    // For practice lobbies, topic is required
-    if (selectedLobbyType === 'practice' && !selectedTopic) return;
-    
-    // For quiz lobbies, player count is required
-    if (selectedLobbyType === 'quiz' && !selectedPlayers) return;
-
-    // Get the actual database IDs for exam
-    let examId: string | undefined;
-    
-    if (selectedExam) {
-      const { data: examData } = await supabase
-        .from('competitive_exams_list')
-        .select('simple_id')
-        .eq('name', selectedExam.name)
-        .maybeSingle();
-      examId = examData?.simple_id;
+  const handleCreate = () => {
+    if (selectedExam && selectedSubject) {
+      const selectionData: SelectionData = {
+        examId: selectedExam.simple_id || selectedExam.name.toLowerCase().replace(/\s+/g, '_'),
+        branchId: selectedBranch?.id,
+        subjectId: selectedSubject.id,
+        topicId: selectedTopic?.id,
+        maxPlayers: selectedPlayerCount,
+        lobbyType: selectedLobbyType!
+      };
+      
+      onSubjectSelect(selectionData);
+      resetModal();
+      onClose();
     }
-    
-    // Store RRB JE subject name for later use in lobby creation
-    if (selectedSubject && selectedSubject.id.includes('rrb_je_')) {
-      sessionStorage.setItem(`rrb_je_subject_${selectedSubject.id}`, selectedSubject.name);
-    }
-    
-    onSubjectSelect({
-      sourceType: 'exam',
-      examId,
-      branchId: selectedBranch.id,
-      subjectId: selectedSubject.id,
-      topicId: selectedTopic?.id,
-      maxPlayers: selectedLobbyType === 'practice' ? 1 : (selectedPlayers || 2),
-      lobbyType: selectedLobbyType
-    });
-    resetModal();
   };
 
   const resetModal = () => {
@@ -343,7 +310,8 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     setSelectedBranch(null);
     setSelectedSubject(null);
     setSelectedTopic(null);
-    setSelectedPlayers(null);
+    setSelectedPlayerCount(2);
+    setExamOptions([]);
     setBranches([]);
     setSubjects([]);
     setTopics([]);
@@ -352,11 +320,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
-      
-      // Reset subsequent selections
-      if (currentStep === 2) {
-        setSelectedLobbyType(null);
-      } else if (currentStep === 3) {
+      if (currentStep === 3) {
         setSelectedExam(null);
         setBranches([]);
       } else if (currentStep === 4) {
@@ -370,85 +334,77 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
           setSelectedTopic(null);
         } else {
           setSelectedSubject(null);
-          setTopics([]);
         }
-        setSelectedPlayers(null);
       }
+    }
+  };
+
+  const getStepTitle = () => {
+    switch (currentStep) {
+      case 1:
+        return 'Select Lobby Type';
+      case 2:
+        return 'Select Exam';
+      case 3:
+        return 'Select Branch';
+      case 4:
+        return 'Select Subject';
+      case 5:
+        return 'Select Topic';
+      case 6:
+        return 'Select Players';
+      default:
+        return 'Create Lobby';
     }
   };
 
   if (!isOpen) return null;
 
-  const getStepTitle = () => {
-    const hasTechnicalBranches = selectedExam ? EXAMS_WITH_TECHNICAL_BRANCHES.includes(selectedExam.name) : false;
-    const totalSteps = selectedLobbyType === 'practice' ? (hasTechnicalBranches ? 6 : 5) : (hasTechnicalBranches ? 5 : 4);
-    return `Create ${selectedLobbyType?.charAt(0).toUpperCase() + selectedLobbyType?.slice(1) || ''} Lobby - Step ${currentStep} of ${totalSteps}`;
-  };
-
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-gradient-card border-primary/20">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-2xl bg-gradient-primary bg-clip-text text-transparent">
-            {getStepTitle()}
-          </CardTitle>
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={onClose}
-            className="hover:bg-destructive/10 hover:text-destructive"
-          >
-            <X className="w-5 h-5" />
-          </Button>
-        </CardHeader>
-        
-        <CardContent className="space-y-6">
+      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-gaming-dark via-gaming-darker to-black border-gaming-primary/30">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              {currentStep > 1 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleBack}
+                  className="text-gaming-accent hover:text-white hover:bg-gaming-accent/20"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+              )}
+              <h2 className="text-2xl font-bold text-white">{getStepTitle()}</h2>
+            </div>
+            <Button 
+              variant="ghost" 
+              onClick={onClose}
+              className="text-gaming-accent hover:text-white hover:bg-gaming-accent/20"
+            >
+              ×
+            </Button>
+          </div>
+
           {/* Step 1: Lobby Type Selection */}
           {currentStep === 1 && (
-            <div>
-              <h3 className="text-lg font-semibold mb-3 flex items-center">
-                <Gamepad2 className="w-5 h-5 mr-2 text-primary" />
-                Step 1: Choose Lobby Type
-              </h3>
+            <div className="space-y-4">
+              <p className="text-gray-300 mb-6">Choose your lobby type:</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card 
-                  className="cursor-pointer transition-all duration-200 hover:scale-105 hover:border-primary/30"
+                  className="p-6 cursor-pointer hover:bg-gaming-primary/10 border-gaming-primary/30 bg-gaming-darker/50 transition-all duration-300"
                   onClick={() => handleLobbyTypeSelect('quiz')}
                 >
-                  <CardContent className="p-6 text-center">
-                    <div className="w-12 h-12 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-3">
-                      <Trophy className="w-6 h-6 text-white" />
-                    </div>
-                    <h4 className="font-bold mb-2">Quiz Lobby</h4>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Multiplayer competitive quiz sessions
-                    </p>
-                    <div className="text-xs text-muted-foreground">
-                      <p>• Exam → Subject</p>
-                      <p>• All topics included</p>
-                      <p>• 2-4 players</p>
-                    </div>
-                  </CardContent>
+                  <h3 className="text-xl font-bold text-white mb-2">Quiz Lobby</h3>
+                  <p className="text-gray-300">Competitive quiz with scoring and leaderboards</p>
                 </Card>
-
                 <Card 
-                  className="cursor-pointer transition-all duration-200 hover:scale-105 hover:border-primary/30"
+                  className="p-6 cursor-pointer hover:bg-gaming-secondary/10 border-gaming-secondary/30 bg-gaming-darker/50 transition-all duration-300"
                   onClick={() => handleLobbyTypeSelect('practice')}
                 >
-                  <CardContent className="p-6 text-center">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-r from-secondary to-primary flex items-center justify-center mx-auto mb-3">
-                      <Target className="w-6 h-6 text-white" />
-                    </div>
-                    <h4 className="font-bold mb-2">Practice Lobby</h4>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Single player focused learning
-                    </p>
-                    <div className="text-xs text-muted-foreground">
-                      <p>• Exam → Subject → Topic</p>
-                      <p>• Specific topic only</p>
-                      <p>• Single player</p>
-                    </div>
-                  </CardContent>
+                  <h3 className="text-xl font-bold text-white mb-2">Practice Lobby</h3>
+                  <p className="text-gray-300">Study mode with detailed explanations</p>
                 </Card>
               </div>
             </div>
@@ -456,216 +412,121 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
 
           {/* Step 2: Exam Selection */}
           {currentStep === 2 && (
-            <div>
-              <h3 className="text-lg font-semibold mb-3 flex items-center">
-                <Trophy className="w-5 h-5 mr-2 text-primary" />
-                Step 2: Choose Competitive Exam
-              </h3>
-              <div className="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto">
-                {examOptions.map((exam, index) => (
-                  <Badge
-                    key={index}
-                    variant="outline"
-                    className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:border-primary/30"
+            <div className="space-y-4">
+              <p className="text-gray-300 mb-4">Select an exam:</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                {examOptions.map((exam) => (
+                  <Card
+                    key={exam.name}
+                    className="p-4 cursor-pointer hover:bg-gaming-primary/10 border-gaming-primary/30 bg-gaming-darker/50 transition-all duration-300"
                     onClick={() => handleExamSelect(exam)}
                   >
-                    {exam.name}
-                  </Badge>
+                    <p className="text-white font-medium">{exam.name}</p>
+                  </Card>
                 ))}
               </div>
-              <Button variant="outline" onClick={handleBack} className="mt-4">
-                Back
-              </Button>
             </div>
           )}
 
           {/* Step 3: Branch Selection */}
-          {currentStep === 3 && (
-            <div>
-              <h3 className="text-lg font-semibold mb-3 flex items-center">
-                <BookOpen className="w-5 h-5 mr-2 text-primary" />
-                Step 3: Choose Branch
-              </h3>
+          {currentStep === 3 && branches.length > 0 && (
+            <div className="space-y-4">
+              <p className="text-gray-300 mb-4">Select a branch:</p>
               {loading ? (
-                <p className="text-center text-muted-foreground">Loading branches...</p>
+                <div className="text-center text-gray-300">Loading branches...</div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
                   {branches.map((branch) => (
-                    <Badge
+                    <Card
                       key={branch.id}
-                      variant="outline"
-                      className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:border-primary/30"
+                      className="p-4 cursor-pointer hover:bg-gaming-primary/10 border-gaming-primary/30 bg-gaming-darker/50 transition-all duration-300"
                       onClick={() => handleBranchSelect(branch)}
                     >
-                      {branch.name}
-                    </Badge>
+                      <p className="text-white font-medium">{branch.name}</p>
+                    </Card>
                   ))}
                 </div>
               )}
-              <Button variant="outline" onClick={handleBack} className="mt-4">
-                Back
-              </Button>
             </div>
           )}
 
           {/* Step 4: Subject Selection */}
           {currentStep === 4 && (
-            <div>
-              <h3 className="text-lg font-semibold mb-3 flex items-center">
-                <BookOpen className="w-5 h-5 mr-2 text-primary" />
-                Step 4: Choose Subject
-              </h3>
+            <div className="space-y-4">
+              <p className="text-gray-300 mb-4">Select a subject:</p>
               {loading ? (
-                <p className="text-center text-muted-foreground">Loading subjects...</p>
+                <div className="text-center text-gray-300">Loading subjects...</div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
                   {subjects.map((subject) => (
-                    <Badge
+                    <Card
                       key={subject.id}
-                      variant="outline"
-                      className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:border-primary/30"
+                      className="p-4 cursor-pointer hover:bg-gaming-primary/10 border-gaming-primary/30 bg-gaming-darker/50 transition-all duration-300"
                       onClick={() => handleSubjectSelect(subject)}
                     >
-                      {subject.name}
-                    </Badge>
+                      <p className="text-white font-medium">{subject.name}</p>
+                    </Card>
                   ))}
                 </div>
               )}
-              <Button variant="outline" onClick={handleBack} className="mt-4">
-                Back
-              </Button>
             </div>
           )}
 
-          {/* Step 5: Topic Selection (Practice only) */}
+          {/* Step 5: Topic Selection (for practice lobbies) */}
           {currentStep === 5 && selectedLobbyType === 'practice' && (
-            <div>
-              <h3 className="text-lg font-semibold mb-3 flex items-center">
-                <Target className="w-5 h-5 mr-2 text-primary" />
-                Step 5: Choose Topic
-              </h3>
+            <div className="space-y-4">
+              <p className="text-gray-300 mb-4">Select a topic:</p>
               {loading ? (
-                <p className="text-center text-muted-foreground">Loading topics...</p>
+                <div className="text-center text-gray-300">Loading topics...</div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
                   {topics.map((topic) => (
-                    <Badge
+                    <Card
                       key={topic.id}
-                      variant="outline"
-                      className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:border-primary/30"
+                      className="p-4 cursor-pointer hover:bg-gaming-primary/10 border-gaming-primary/30 bg-gaming-darker/50 transition-all duration-300"
                       onClick={() => handleTopicSelect(topic)}
                     >
-                      {topic.name}
-                    </Badge>
+                      <p className="text-white font-medium">{topic.name}</p>
+                    </Card>
                   ))}
                 </div>
               )}
-              <Button variant="outline" onClick={handleBack} className="mt-4">
-                Back
-              </Button>
             </div>
           )}
 
-          {/* Step 6: Final Step */}
+          {/* Step 6: Player Count Selection */}
           {currentStep === 6 && (
-            <div>
-              {selectedLobbyType === 'quiz' ? (
-                <div>
-                  <h3 className="text-lg font-semibold mb-3 flex items-center">
-                    <Users className="w-5 h-5 mr-2 text-primary" />
-                    Step 5: Choose Lobby Size
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card 
-                      className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
-                        selectedPlayers === 2 
-                          ? 'border-primary bg-primary/10' 
-                          : 'border-border hover:border-primary/30'
-                      }`}
-                      onClick={() => setSelectedPlayers(2)}
-                    >
-                      <CardContent className="p-6 text-center">
-                        <div className="w-12 h-12 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-3">
-                          <Users className="w-6 h-6 text-white" />
-                        </div>
-                        <h4 className="font-bold mb-2">2-Player Lobby</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Perfect for focused 1-on-1 sessions
-                        </p>
-                      </CardContent>
-                    </Card>
-
-                    <Card 
-                      className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
-                        selectedPlayers === 4 
-                          ? 'border-primary bg-primary/10' 
-                          : 'border-border hover:border-primary/30'
-                      }`}
-                      onClick={() => setSelectedPlayers(4)}
-                    >
-                      <CardContent className="p-6 text-center">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-secondary to-primary flex items-center justify-center mx-auto mb-3">
-                          <Crown className="w-6 h-6 text-white" />
-                        </div>
-                        <h4 className="font-bold mb-2">4-Player Lobby</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Great for group sessions and team challenges
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <h3 className="text-lg font-semibold mb-3 flex items-center">
-                    <Target className="w-5 h-5 mr-2 text-primary" />
-                    Step 6: Ready to Practice
-                  </h3>
-                  <Card className="border-primary bg-primary/10">
-                    <CardContent className="p-6 text-center">
-                      <div className="w-12 h-12 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-3">
-                        <Target className="w-6 h-6 text-white" />
-                      </div>
-                      <h4 className="font-bold mb-2">Practice Session Ready</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Single player practice session for focused learning
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
+            <div className="space-y-6">
+              <p className="text-gray-300 mb-4">Select number of players:</p>
+              <div className="flex justify-center space-x-4">
+                {[2, 4].map((count) => (
+                  <Badge
+                    key={count}
+                    variant={selectedPlayerCount === count ? "default" : "outline"}
+                    className={`px-6 py-3 text-lg cursor-pointer transition-all duration-300 ${
+                      selectedPlayerCount === count 
+                        ? 'bg-gaming-primary text-white' 
+                        : 'border-gaming-primary/30 text-gaming-primary hover:bg-gaming-primary/10'
+                    }`}
+                    onClick={() => setSelectedPlayerCount(count)}
+                  >
+                    {count} Players
+                  </Badge>
+                ))}
+              </div>
               
-              <div className="flex justify-between items-center mt-6 pt-4 border-t">
-                <Button variant="outline" onClick={handleBack}>
-                  Back
+              <div className="flex justify-center mt-8">
+                <Button 
+                  onClick={handleCreate}
+                  className="px-8 py-3 bg-gaming-primary hover:bg-gaming-primary/80 text-white font-medium"
+                  disabled={!selectedExam || !selectedSubject}
+                >
+                  Create Lobby
                 </Button>
-                
-                {((selectedLobbyType === 'quiz' && selectedPlayers) || (selectedLobbyType === 'practice' && selectedTopic)) && (
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Creating lobby for:</p>
-                      <p className="font-semibold text-sm">
-                        {selectedSubject?.name}
-                        {selectedTopic && ` → ${selectedTopic.name}`}
-                        {' • '}
-                        {selectedLobbyType === 'quiz' ? '🏆 Quiz' : '🎯 Practice'}
-                        {' • '}
-                        {selectedLobbyType === 'quiz' ? `${selectedPlayers} Players` : 'Single Player'}
-                      </p>
-                    </div>
-                    <Button 
-                      onClick={handleCreate}
-                      className="bg-gradient-primary hover:opacity-90 transition-opacity shadow-lg"
-                    >
-                      Create Lobby
-                    </Button>
-                  </div>
-                )}
               </div>
             </div>
           )}
-
-        </CardContent>
+        </div>
       </Card>
     </div>
   );

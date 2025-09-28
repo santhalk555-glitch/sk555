@@ -16,46 +16,30 @@ export type Database = {
     Tables: {
       branches: {
         Row: {
-          course_id: string | null
-          course_simple_id: string | null
           created_at: string
           exam_id: string | null
           exam_simple_id: string | null
           id: string
           name: string
           simple_id: string
-          source_type: string
         }
         Insert: {
-          course_id?: string | null
-          course_simple_id?: string | null
           created_at?: string
           exam_id?: string | null
           exam_simple_id?: string | null
           id?: string
           name: string
           simple_id: string
-          source_type: string
         }
         Update: {
-          course_id?: string | null
-          course_simple_id?: string | null
           created_at?: string
           exam_id?: string | null
           exam_simple_id?: string | null
           id?: string
           name?: string
           simple_id?: string
-          source_type?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "branches_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "branches_exam_id_fkey"
             columns: ["exam_id"]
@@ -89,27 +73,6 @@ export type Database = {
           name?: string
           simple_id?: string
           sub_category?: string
-        }
-        Relationships: []
-      }
-      courses: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          simple_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          simple_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          simple_id?: string
         }
         Relationships: []
       }
@@ -165,8 +128,6 @@ export type Database = {
         Row: {
           branch_id: string | null
           branch_simple_id: string | null
-          course_id: string | null
-          course_simple_id: string | null
           created_at: string
           creator_id: string
           current_players: number
@@ -177,7 +138,6 @@ export type Database = {
           lobby_code: string
           lobby_type: string
           max_players: number
-          source_type: string | null
           status: string
           subject: string | null
           subject_id: string | null
@@ -189,8 +149,6 @@ export type Database = {
         Insert: {
           branch_id?: string | null
           branch_simple_id?: string | null
-          course_id?: string | null
-          course_simple_id?: string | null
           created_at?: string
           creator_id: string
           current_players?: number
@@ -201,7 +159,6 @@ export type Database = {
           lobby_code: string
           lobby_type?: string
           max_players: number
-          source_type?: string | null
           status?: string
           subject?: string | null
           subject_id?: string | null
@@ -213,8 +170,6 @@ export type Database = {
         Update: {
           branch_id?: string | null
           branch_simple_id?: string | null
-          course_id?: string | null
-          course_simple_id?: string | null
           created_at?: string
           creator_id?: string
           current_players?: number
@@ -225,7 +180,6 @@ export type Database = {
           lobby_code?: string
           lobby_type?: string
           max_players?: number
-          source_type?: string | null
           status?: string
           subject?: string | null
           subject_id?: string | null
@@ -615,46 +569,30 @@ export type Database = {
       }
       subjects_hierarchy: {
         Row: {
-          course_id: string | null
-          course_simple_id: string | null
           created_at: string
           exam_id: string | null
           exam_simple_id: string | null
           id: string
           name: string
           simple_id: string
-          source_type: string
         }
         Insert: {
-          course_id?: string | null
-          course_simple_id?: string | null
           created_at?: string
           exam_id?: string | null
           exam_simple_id?: string | null
           id?: string
           name: string
           simple_id: string
-          source_type: string
         }
         Update: {
-          course_id?: string | null
-          course_simple_id?: string | null
           created_at?: string
           exam_id?: string | null
           exam_simple_id?: string | null
           id?: string
           name?: string
           simple_id?: string
-          source_type?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "subjects_hierarchy_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "subjects_hierarchy_exam_id_fkey"
             columns: ["exam_id"]

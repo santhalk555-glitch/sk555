@@ -2,21 +2,7 @@
  * Simple identifiers for courses and exams - easier to use than UUIDs
  */
 
-export const COURSE_IDS = {
-  // Engineering and Technology - Core Branches
-  CSE: 'cse',                    // Computer Science Engineering
-  MECHANICAL: 'mechanical',      // Mechanical Engineering
-  
-  // Engineering and Technology - Emerging Branches  
-  AI_ML: 'ai-ml',               // Artificial Intelligence and Machine Learning
-  
-  // Other categories
-  BBA: 'bba',                   // Business Administration
-  BA_LLB: 'ba-llb',            // Integrated Law
-  MBBS: 'mbbs',                // Medicine
-  PHYSICS: 'physics'            // Pure Sciences
-} as const;
-
+// Only exam-based identifiers are used now
 export const EXAM_IDS = {
   // Engineering
   RRB_JE: 'rrb-je',            // Railway Recruitment Board Junior Engineer
@@ -32,37 +18,13 @@ export const EXAM_IDS = {
   NEET: 'neet'                 // National Eligibility cum Entrance Test
 } as const;
 
+// Only exam-based source type is used now
 export const SOURCE_TYPES = {
-  COURSE: 'course',
   EXAM: 'exam'
 } as const;
 
 export const SUBJECT_IDS = {
-  // Course subjects
-  MATHEMATICS_COURSE: 'mathematics-course',
-  PHYSICS_COURSE: 'physics-course',
-  CHEMISTRY_COURSE: 'chemistry-course',
-  ENGLISH_COURSE: 'english-course',
-  
-  // Computer Science subjects
-  DATA_STRUCTURES: 'data-structures',
-  ALGORITHMS: 'algorithms',
-  COMPUTER_NETWORKS: 'computer-networks',
-  OPERATING_SYSTEMS: 'operating-systems',
-  DATABASE_MANAGEMENT: 'database-management',
-  SOFTWARE_ENGINEERING: 'software-engineering',
-  COMPUTER_GRAPHICS: 'computer-graphics',
-  ARTIFICIAL_INTELLIGENCE: 'artificial-intelligence',
-  MACHINE_LEARNING: 'machine-learning',
-  
-  // Mechanical Engineering subjects
-  THERMODYNAMICS: 'thermodynamics',
-  FLUID_MECHANICS_SUBJECT: 'fluid-mechanics',
-  HEAT_TRANSFER: 'heat-transfer',
-  MANUFACTURING: 'manufacturing',
-  MATERIALS_SCIENCE: 'materials-science',
-  
-  // Exam subjects
+  // Exam subjects only
   MATHEMATICS_EXAM: 'mathematics-exam',
   PHYSICS_EXAM: 'physics-exam',
   CHEMISTRY_EXAM: 'chemistry-exam',
@@ -110,8 +72,7 @@ export const TOPIC_IDS = {
   UTILIZATION_ELECTRICAL_ENERGY: 'utilization-electrical-energy'
 } as const;
 
-// Type definitions for TypeScript
-export type CourseId = typeof COURSE_IDS[keyof typeof COURSE_IDS];
+// Type definitions for TypeScript (exam-only)
 export type ExamId = typeof EXAM_IDS[keyof typeof EXAM_IDS];
 export type SourceType = typeof SOURCE_TYPES[keyof typeof SOURCE_TYPES];
 export type SubjectId = typeof SUBJECT_IDS[keyof typeof SUBJECT_IDS];

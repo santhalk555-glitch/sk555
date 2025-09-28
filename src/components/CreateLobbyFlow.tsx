@@ -5,7 +5,7 @@ import { ArrowLeft, Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import SubjectSelectionModal from './SubjectSelectionModal';
+import SubjectSelectionModal, { SelectionData } from './SubjectSelectionModal';
 
 interface CreateLobbyFlowProps {
   onBack: () => void;
@@ -18,30 +18,12 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const handleSubjectSelect = (selectionData: {
-    sourceType: 'course' | 'exam';
-    courseId?: string;
-    examId?: string;
-    branchId: string;
-    subjectId: string;
-    topicId?: string;
-    maxPlayers: 1 | 2 | 4;
-    lobbyType: 'quiz' | 'practice';
-  }) => {
+  const handleSubjectSelect = (selectionData: SelectionData) => {
     setShowSubjectModal(false);
     createLobbyWithOptions(selectionData);
   };
 
-  const createLobbyWithOptions = async (selectionData: {
-    sourceType: 'course' | 'exam';
-    courseId?: string;
-    examId?: string;
-    branchId: string;
-    subjectId: string;
-    topicId?: string;
-    maxPlayers: 1 | 2 | 4;
-    lobbyType: 'quiz' | 'practice';
-  }) => {
+  const createLobbyWithOptions = async (selectionData: SelectionData) => {
     if (!user) return;
 
     setLoading(true);
@@ -56,11 +38,12 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
 
       // Get subject name for display - handle RRB JE specially
       let subjectName = '';
-      let isRRBJE = selectionData.subjectId.includes('rrb_je_') && selectionData.sourceType === 'exam';
+      
+      // Determine if this is an RRB JE exam
+      const isRRBJE = selectionData.examId === 'rrb_je' || selectionData.examId?.includes('rrb');
       
       if (isRRBJE) {
         // Extract subject name from the synthetic ID for RRB JE
-        // For RRB JE, we store the actual subject name in a special format
         const storedSubjectName = sessionStorage.getItem(`rrb_je_subject_${selectionData.subjectId}`);
         subjectName = storedSubjectName || 'RRB JE Subject';
       } else {
@@ -78,18 +61,17 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
       const { data: lobby, error: lobbyError } = await supabase
         .from('game_lobbies')
         .insert({
-          lobby_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
           creator_id: user.id,
+          subject: subjectName,
           max_players: selectionData.maxPlayers,
-          current_players: 1,
-          subject: subjectName, // Use subject name for backward compatibility
+          lobby_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
+          status: 'waiting',
           lobby_type: selectionData.lobbyType,
-          source_type: selectionData.sourceType,
-          course_id: isRRBJE ? null : selectionData.courseId,
-          exam_id: isRRBJE ? null : selectionData.examId,
-          branch_id: isRRBJE ? null : selectionData.branchId,
-          subject_id: isRRBJE ? null : selectionData.subjectId,
-          topic_id: selectionData.topicId || null
+          game_mode: 'study',
+          exam_simple_id: selectionData.examId,
+          branch_simple_id: selectionData.branchId || null,
+          subject_simple_id: selectionData.subjectId,
+          topic_simple_id: selectionData.topicId || null
         })
         .select()
         .single();
