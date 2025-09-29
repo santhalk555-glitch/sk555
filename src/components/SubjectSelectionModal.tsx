@@ -7,13 +7,83 @@ import { useToast } from '@/components/ui/use-toast';
 import { COMPETITIVE_EXAM_OPTIONS, RRB_JE_ENGINEERING_BRANCHES } from '@/constants/profileOptions';
 import { ArrowLeft } from 'lucide-react';
 
-// General subjects for exams without technical branches
-const GENERAL_SUBJECTS = [
+// Comprehensive subject list for all exams
+const ALL_SUBJECTS = [
   'Quantitative Aptitude',
   'Reasoning Ability',
   'Physics',
   'Chemistry',
-  'Biology'
+  'Biology',
+  'Material Science',
+  'Strength of Materials',
+  'Machining',
+  'Welding',
+  'Grinding & Finishing Process',
+  'Metrology',
+  'Fluid Mechanics & Hydraulic Machinery',
+  'Industrial Management',
+  'Thermal Engineering',
+  'Engineering Mechanics',
+  'Theory of Machines',
+  'Machine Design',
+  'Heat Transfer',
+  'Refrigeration and Air Conditioning',
+  'Production Engineering',
+  'Power Plant Engineering',
+  'Building Construction',
+  'Building Materials',
+  'Construction of Substructure',
+  'Construction of Superstructure',
+  'Building Finishes',
+  'Building Maintenance',
+  'Building Drawing',
+  'Concrete Technology',
+  'Surveying',
+  'Computer Aided Design',
+  'Geo Technical Engineering',
+  'Hydraulics & Irrigation Engineering',
+  'Mechanics & Theory of Structures',
+  'Design of Concrete Structures',
+  'Design of Steel Structures',
+  'Transportation & Highway Engineering',
+  'Environmental Engineering',
+  'Advanced Construction Techniques & Equipment',
+  'Estimating, Costing, Contracts & Accounts',
+  'Structural Analysis',
+  'Basic Concepts',
+  'Circuit Laws & Magnetic Circuits',
+  'AC Fundamentals',
+  'Measurement & Measuring Instruments',
+  'Electrical Machines',
+  'Power Systems',
+  'Power Electronics',
+  'Generation, Transmission and Distribution',
+  'Switchgear and Protection',
+  'Utilization of Electrical Energy',
+  'Control Systems',
+  'Analog Electronics',
+  'Digital Electronics',
+  'Signals and Systems',
+  'Electromagnetic Theory',
+  'Communication Systems',
+  'Microprocessors and Microcontrollers',
+  'VLSI Design',
+  'Embedded Systems',
+  'Optical Communication',
+  'Wireless Communication',
+  'Data Structures',
+  'Algorithms',
+  'Computer Networks',
+  'Operating Systems',
+  'Database Management Systems',
+  'Software Engineering',
+  'Compiler Design',
+  'Theory of Computation',
+  'Artificial Intelligence',
+  'Machine Learning',
+  'Data Science',
+  'Cybersecurity',
+  'Cloud Computing'
 ];
 
 // Exams that have technical + general streams (require branch selection)
@@ -141,13 +211,13 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       } else {
         // For exams with only general subjects, skip to subject selection
         setBranches([]);
-        // Directly show general subjects
-        const generalSubjects = GENERAL_SUBJECTS.map((subject, index) => ({
-          id: `general_${index}`,
+        // Directly show all subjects
+        const allSubjects = ALL_SUBJECTS.map((subject, index) => ({
+          id: `subject_${index}`,
           name: subject,
           branch_id: 'general'
         }));
-        setSubjects(generalSubjects);
+        setSubjects(allSubjects);
         setCurrentStep(4); // Skip branch selection, go directly to subject selection
       }
     } catch (error) {
@@ -166,34 +236,16 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     try {
       setLoading(true);
       
-      // Handle General branch - show general subjects
-      if (branchId === 'rrb_je_general' || branchId === 'general') {
-        const generalSubjects = GENERAL_SUBJECTS.map((subject, index) => ({
-          id: `general_${index}`,
-          name: subject,
-          branch_id: branchId
-        }));
-        setSubjects(generalSubjects);
-        setLoading(false);
-        return;
-      }
+      // Show all subjects for any branch/exam
+      const allSubjects = ALL_SUBJECTS.map((subject, index) => ({
+        id: `subject_${index}`,
+        name: subject,
+        branch_id: branchId
+      }));
       
-      // Handle RRB JE technical branches - show technical subjects
-      if (branchId.startsWith('rrb_je_') && selectedExam?.name === 'RRB JE') {
-        const branchIndex = parseInt(branchId.replace('rrb_je_', ''));
-        const branchName = Object.keys(RRB_JE_ENGINEERING_BRANCHES)[branchIndex];
-        const branchSubjects = RRB_JE_ENGINEERING_BRANCHES[branchName as keyof typeof RRB_JE_ENGINEERING_BRANCHES];
-        
-        const rrb_je_subjects = branchSubjects.map((subject, index) => ({
-          id: `${branchId}_subject_${index}`,
-          name: subject,
-          branch_id: branchId
-        }));
-        
-        setSubjects(rrb_je_subjects);
-        setLoading(false);
-        return;
-      }
+      setSubjects(allSubjects);
+      setLoading(false);
+      return;
       
       // For other branches, fetch from subjects_hierarchy
       const { data, error } = await supabase
