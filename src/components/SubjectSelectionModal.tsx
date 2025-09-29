@@ -7,85 +7,6 @@ import { useToast } from '@/components/ui/use-toast';
 import { COMPETITIVE_EXAM_OPTIONS, RRB_JE_ENGINEERING_BRANCHES } from '@/constants/profileOptions';
 import { ArrowLeft } from 'lucide-react';
 
-// Comprehensive subject list for all exams
-const ALL_SUBJECTS = [
-  'Quantitative Aptitude',
-  'Reasoning Ability',
-  'Physics',
-  'Chemistry',
-  'Biology',
-  'Material Science',
-  'Strength of Materials',
-  'Machining',
-  'Welding',
-  'Grinding & Finishing Process',
-  'Metrology',
-  'Fluid Mechanics & Hydraulic Machinery',
-  'Industrial Management',
-  'Thermal Engineering',
-  'Engineering Mechanics',
-  'Theory of Machines',
-  'Machine Design',
-  'Heat Transfer',
-  'Refrigeration and Air Conditioning',
-  'Production Engineering',
-  'Power Plant Engineering',
-  'Building Construction',
-  'Building Materials',
-  'Construction of Substructure',
-  'Construction of Superstructure',
-  'Building Finishes',
-  'Building Maintenance',
-  'Building Drawing',
-  'Concrete Technology',
-  'Surveying',
-  'Computer Aided Design',
-  'Geo Technical Engineering',
-  'Hydraulics & Irrigation Engineering',
-  'Mechanics & Theory of Structures',
-  'Design of Concrete Structures',
-  'Design of Steel Structures',
-  'Transportation & Highway Engineering',
-  'Environmental Engineering',
-  'Advanced Construction Techniques & Equipment',
-  'Estimating, Costing, Contracts & Accounts',
-  'Structural Analysis',
-  'Basic Concepts',
-  'Circuit Laws & Magnetic Circuits',
-  'AC Fundamentals',
-  'Measurement & Measuring Instruments',
-  'Electrical Machines',
-  'Power Systems',
-  'Power Electronics',
-  'Generation, Transmission and Distribution',
-  'Switchgear and Protection',
-  'Utilization of Electrical Energy',
-  'Control Systems',
-  'Analog Electronics',
-  'Digital Electronics',
-  'Signals and Systems',
-  'Electromagnetic Theory',
-  'Communication Systems',
-  'Microprocessors and Microcontrollers',
-  'VLSI Design',
-  'Embedded Systems',
-  'Optical Communication',
-  'Wireless Communication',
-  'Data Structures',
-  'Algorithms',
-  'Computer Networks',
-  'Operating Systems',
-  'Database Management Systems',
-  'Software Engineering',
-  'Compiler Design',
-  'Theory of Computation',
-  'Artificial Intelligence',
-  'Machine Learning',
-  'Data Science',
-  'Cybersecurity',
-  'Cloud Computing'
-];
-
 // Exams that have technical + general streams (require branch selection)
 const EXAMS_WITH_TECHNICAL_BRANCHES = ['RRB JE'];
 
@@ -261,37 +182,23 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     try {
       setLoading(true);
       
-      try {
-        setLoading(true);
-        
-        // Fetch all subjects from database
-        const { data, error } = await supabase
-          .from('subjects_hierarchy')
-          .select('id, name, simple_id')
-          .order('name');
-        
-        if (error) throw error;
-        
-        // Map to match expected structure
-        const mappedSubjects = (data || []).map(subject => ({
-          id: subject.id,
-          name: subject.name,
-          simple_id: subject.simple_id,
-          branch_id: branchId
-        }));
-        
-        setSubjects(mappedSubjects);
-      } catch (error) {
-        console.error('Error fetching subjects:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load subjects',
-          variant: 'destructive'
-        });
-      } finally {
-        setLoading(false);
-      }
-      return;
+      // Fetch all subjects from database
+      const { data, error } = await supabase
+        .from('subjects_hierarchy')
+        .select('id, name, simple_id')
+        .order('name');
+      
+      if (error) throw error;
+      
+      // Map to match expected structure
+      const mappedSubjects = (data || []).map(subject => ({
+        id: subject.id,
+        name: subject.name,
+        simple_id: subject.simple_id,
+        branch_id: branchId
+      }));
+      
+      setSubjects(mappedSubjects);
     } catch (error) {
       console.error('Error fetching subjects:', error);
       toast({
