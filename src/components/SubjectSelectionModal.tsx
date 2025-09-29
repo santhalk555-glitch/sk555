@@ -211,13 +211,38 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       } else {
         // For exams with only general subjects, skip to subject selection
         setBranches([]);
-        // Directly show all subjects
-        const allSubjects = ALL_SUBJECTS.map((subject, index) => ({
-          id: `subject_${index}`,
-          name: subject,
-          branch_id: 'general'
-        }));
-        setSubjects(allSubjects);
+        
+        try {
+          setLoading(true);
+          
+          // Fetch all subjects from database
+          const { data, error } = await supabase
+            .from('subjects_hierarchy')
+            .select('id, name, simple_id')
+            .order('name');
+          
+          if (error) throw error;
+          
+          // Map to match expected structure
+          const mappedSubjects = (data || []).map(subject => ({
+            id: subject.id,
+            name: subject.name,
+            simple_id: subject.simple_id,
+            branch_id: 'general'
+          }));
+          
+          setSubjects(mappedSubjects);
+        } catch (error) {
+          console.error('Error fetching subjects:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to load subjects',
+            variant: 'destructive'
+          });
+        } finally {
+          setLoading(false);
+        }
+        
         setCurrentStep(4); // Skip branch selection, go directly to subject selection
       }
     } catch (error) {
@@ -236,34 +261,37 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     try {
       setLoading(true);
       
-      // Show all subjects for any branch/exam
-      const allSubjects = ALL_SUBJECTS.map((subject, index) => ({
-        id: `subject_${index}`,
-        name: subject,
-        branch_id: branchId
-      }));
-      
-      setSubjects(allSubjects);
-      setLoading(false);
+      try {
+        setLoading(true);
+        
+        // Fetch all subjects from database
+        const { data, error } = await supabase
+          .from('subjects_hierarchy')
+          .select('id, name, simple_id')
+          .order('name');
+        
+        if (error) throw error;
+        
+        // Map to match expected structure
+        const mappedSubjects = (data || []).map(subject => ({
+          id: subject.id,
+          name: subject.name,
+          simple_id: subject.simple_id,
+          branch_id: branchId
+        }));
+        
+        setSubjects(mappedSubjects);
+      } catch (error) {
+        console.error('Error fetching subjects:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load subjects',
+          variant: 'destructive'
+        });
+      } finally {
+        setLoading(false);
+      }
       return;
-      
-      // For other branches, fetch from subjects_hierarchy
-      const { data, error } = await supabase
-        .from('subjects_hierarchy')
-        .select('id, name, simple_id')
-        .order('name');
-      
-      if (error) throw error;
-      
-      // Map to match expected structure
-      const mappedSubjects = (data || []).map(subject => ({
-        id: subject.id,
-        name: subject.name,
-        simple_id: subject.simple_id,
-        branch_id: branchId
-      }));
-      
-      setSubjects(mappedSubjects);
     } catch (error) {
       console.error('Error fetching subjects:', error);
       toast({
