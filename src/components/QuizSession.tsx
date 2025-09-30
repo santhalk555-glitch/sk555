@@ -69,63 +69,33 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
   const loadQuizData = async () => {
     try {
-      // Fetch questions based on the hierarchical structure using simple_ids
+      // Fetch questions based on subject_id from lobby
       let questionsQuery = supabase
         .from('quiz_questions')
         .select('*')
         .limit(15);
 
-      // Primary approach: Use simple_id fields from lobby
-      if (lobby.exam_simple_id) {
-        questionsQuery = questionsQuery.eq('exam_simple_id', lobby.exam_simple_id);
+      // Use subject_id if available
+      if (lobby.subject_id) {
+        questionsQuery = questionsQuery.eq('subject_id', lobby.subject_id);
 
-        // Add subject filter if available
-        if (lobby.subject_simple_id) {
-          questionsQuery = questionsQuery.eq('subject_simple_id', lobby.subject_simple_id);
+        // Add exam filter if available
+        if (lobby.exam_simple_id) {
+          questionsQuery = questionsQuery.eq('exam_simple_id', lobby.exam_simple_id);
         }
 
         // Add topic filter if available (for practice mode)
         if (lobby.topic_simple_id) {
           questionsQuery = questionsQuery.eq('topic_simple_id', lobby.topic_simple_id);
         }
-      } else if (lobby.subject_simple_id) {
-        // Fallback: If only subject_simple_id is available
-        questionsQuery = questionsQuery.eq('subject_simple_id', lobby.subject_simple_id);
-        
-        if (lobby.topic_simple_id) {
-          questionsQuery = questionsQuery.eq('topic_simple_id', lobby.topic_simple_id);
-        }
       } else {
-        // Last resort: Try to find subject data dynamically from database
-        console.warn('Lobby missing simple_id fields, attempting dynamic lookup');
-        
-        if (lobby.subject_id) {
-          const { data: subjectData } = await supabase
-            .from('subjects_hierarchy')
-            .select('simple_id, exam_simple_id')
-            .eq('id', lobby.subject_id)
-            .maybeSingle();
-
-          if (subjectData?.simple_id) {
-            questionsQuery = questionsQuery.eq('subject_simple_id', subjectData.simple_id);
-            
-            if (subjectData.exam_simple_id) {
-              questionsQuery = questionsQuery.eq('exam_simple_id', subjectData.exam_simple_id);
-            }
-          }
-        }
-
-        if (lobby.topic_id) {
-          const { data: topicData } = await supabase
-            .from('topics')
-            .select('simple_id')
-            .eq('id', lobby.topic_id)
-            .maybeSingle();
-
-          if (topicData?.simple_id) {
-            questionsQuery = questionsQuery.eq('topic_simple_id', topicData.simple_id);
-          }
-        }
+        console.error('Lobby missing subject_id');
+        toast({
+          title: 'Configuration Error',
+          description: 'Unable to load quiz questions. Lobby is missing subject information.',
+          variant: 'destructive'
+        });
+        return;
       }
 
       const { data: questionsData, error: questionsError } = await questionsQuery;

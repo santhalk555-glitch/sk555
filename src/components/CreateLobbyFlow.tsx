@@ -54,9 +54,8 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
 
       if (profileError) throw profileError;
 
-      // Get subject data with simple_ids
+      // Get subject data
       let subjectName = '';
-      let subjectSimpleId = null;
       let examSimpleId = null;
       let topicSimpleId = null;
       let isRRBJE = selectionData.subjectId.includes('rrb_je_') && selectionData.sourceType === 'exam';
@@ -68,16 +67,15 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
         // For RRB JE, set exam_simple_id
         examSimpleId = 'rrb-je';
       } else {
-        // Fetch subject with simple_id
+        // Fetch subject name
         const { data: subjectData, error: subjectError } = await supabase
           .from('subjects_hierarchy')
-          .select('name, simple_id, exam_simple_id')
+          .select('name, exam_simple_id')
           .eq('id', selectionData.subjectId)
           .maybeSingle();
 
         if (subjectError) throw subjectError;
         subjectName = subjectData?.name || 'Unknown Subject';
-        subjectSimpleId = subjectData?.simple_id || null;
         examSimpleId = subjectData?.exam_simple_id || selectionData.examId || null;
 
         // Fetch topic simple_id if topic is selected
@@ -108,7 +106,6 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
           branch_id: isRRBJE ? null : selectionData.branchId,
           subject_id: isRRBJE ? null : selectionData.subjectId,
           topic_id: selectionData.topicId || null,
-          subject_simple_id: subjectSimpleId,
           exam_simple_id: examSimpleId,
           topic_simple_id: topicSimpleId
         })

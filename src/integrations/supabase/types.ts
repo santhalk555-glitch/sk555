@@ -506,8 +506,7 @@ export type Database = {
           option_3: string
           option_4: string
           question: string
-          subject: Database["public"]["Enums"]["quiz_subject"]
-          subject_simple_id: string | null
+          subject_id: string | null
           topic_simple_id: string | null
         }
         Insert: {
@@ -523,8 +522,7 @@ export type Database = {
           option_3: string
           option_4: string
           question: string
-          subject: Database["public"]["Enums"]["quiz_subject"]
-          subject_simple_id?: string | null
+          subject_id?: string | null
           topic_simple_id?: string | null
         }
         Update: {
@@ -540,11 +538,18 @@ export type Database = {
           option_3?: string
           option_4?: string
           question?: string
-          subject?: Database["public"]["Enums"]["quiz_subject"]
-          subject_simple_id?: string | null
+          subject_id?: string | null
           topic_simple_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects_hierarchy"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       recent_activities: {
         Row: {
