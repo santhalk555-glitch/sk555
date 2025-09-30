@@ -416,7 +416,6 @@ export type Database = {
         Row: {
           created_at: string
           current_players: number
-          difficulty: Database["public"]["Enums"]["difficulty_level"]
           ended_at: string | null
           host_id: string
           id: string
@@ -430,7 +429,6 @@ export type Database = {
         Insert: {
           created_at?: string
           current_players?: number
-          difficulty?: Database["public"]["Enums"]["difficulty_level"]
           ended_at?: string | null
           host_id: string
           id?: string
@@ -444,7 +442,6 @@ export type Database = {
         Update: {
           created_at?: string
           current_players?: number
-          difficulty?: Database["public"]["Enums"]["difficulty_level"]
           ended_at?: string | null
           host_id?: string
           id?: string
@@ -497,7 +494,6 @@ export type Database = {
           correct_answer: number
           course_simple_id: string | null
           created_at: string
-          difficulty: Database["public"]["Enums"]["difficulty_level"]
           exam_simple_id: string | null
           explanation: string | null
           id: string
@@ -513,7 +509,6 @@ export type Database = {
           correct_answer: number
           course_simple_id?: string | null
           created_at?: string
-          difficulty: Database["public"]["Enums"]["difficulty_level"]
           exam_simple_id?: string | null
           explanation?: string | null
           id?: string
@@ -529,7 +524,6 @@ export type Database = {
           correct_answer?: number
           course_simple_id?: string | null
           created_at?: string
-          difficulty?: Database["public"]["Enums"]["difficulty_level"]
           exam_simple_id?: string | null
           explanation?: string | null
           id?: string
@@ -703,7 +697,6 @@ export type Database = {
       }
     }
     Enums: {
-      difficulty_level: "easy" | "medium" | "hard"
       quiz_status: "waiting" | "active" | "completed"
       quiz_subject:
         | "aptitude_quantitative"
@@ -845,7 +838,6 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      difficulty_level: ["easy", "medium", "hard"],
       quiz_status: ["waiting", "active", "completed"],
       quiz_subject: [
         "aptitude_quantitative",
