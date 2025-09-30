@@ -57,7 +57,6 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
       // Get subject data
       let subjectName = '';
       let examSimpleId = null;
-      let topicSimpleId = null;
       let isRRBJE = selectionData.subjectId.includes('rrb_je_') && selectionData.sourceType === 'exam';
       
       if (isRRBJE) {
@@ -77,17 +76,6 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
         if (subjectError) throw subjectError;
         subjectName = subjectData?.name || 'Unknown Subject';
         examSimpleId = subjectData?.exam_simple_id || selectionData.examId || null;
-
-        // Fetch topic simple_id if topic is selected
-        if (selectionData.topicId) {
-          const { data: topicData } = await supabase
-            .from('topics')
-            .select('simple_id')
-            .eq('id', selectionData.topicId)
-            .maybeSingle();
-          
-          topicSimpleId = topicData?.simple_id || null;
-        }
       }
 
       const { data: lobby, error: lobbyError } = await supabase
@@ -106,8 +94,7 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
           branch_id: isRRBJE ? null : selectionData.branchId,
           subject_id: isRRBJE ? null : selectionData.subjectId,
           topic_id: selectionData.topicId || null,
-          exam_simple_id: examSimpleId,
-          topic_simple_id: topicSimpleId
+          exam_simple_id: examSimpleId
         })
         .select()
         .single();

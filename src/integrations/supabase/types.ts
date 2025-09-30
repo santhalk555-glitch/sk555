@@ -503,6 +503,7 @@ export type Database = {
           option_4: string
           question: string
           subject_id: string | null
+          topic_id: string | null
           topic_simple_id: string | null
         }
         Insert: {
@@ -518,6 +519,7 @@ export type Database = {
           option_4: string
           question: string
           subject_id?: string | null
+          topic_id?: string | null
           topic_simple_id?: string | null
         }
         Update: {
@@ -533,6 +535,7 @@ export type Database = {
           option_4?: string
           question?: string
           subject_id?: string | null
+          topic_id?: string | null
           topic_simple_id?: string | null
         }
         Relationships: [
@@ -541,6 +544,13 @@ export type Database = {
             columns: ["subject_id"]
             isOneToOne: false
             referencedRelation: "subjects_hierarchy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_questions_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
             referencedColumns: ["id"]
           },
         ]

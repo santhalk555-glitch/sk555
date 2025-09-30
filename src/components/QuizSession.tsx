@@ -85,8 +85,8 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         }
 
         // Add topic filter if available (for practice mode)
-        if (lobby.topic_simple_id) {
-          questionsQuery = questionsQuery.eq('topic_simple_id', lobby.topic_simple_id);
+        if (lobby.topic_id) {
+          questionsQuery = questionsQuery.eq('topic_id', lobby.topic_id);
         }
       } else {
         console.error('Lobby missing subject_id');
