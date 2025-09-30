@@ -44,7 +44,9 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log('QuizSession: lobby status changed:', lobby?.status, 'quizStarted:', quizStarted);
     if (lobby && lobby.status === 'active') {
+      console.log('QuizSession: Loading quiz data for active lobby:', lobby.id);
       loadQuizData();
       setQuizStarted(true);
     }
@@ -67,6 +69,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   }, [quizStarted, timeLeft]);
 
   const loadQuizData = async () => {
+    console.log('QuizSession: loadQuizData called for lobby:', lobby);
     try {
       // Fetch questions based on subject_id from lobby
       let questionsQuery = supabase
@@ -74,19 +77,22 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         .select('*')
         .limit(15);
 
+      console.log('QuizSession: Building query with subject_id:', lobby.subject_id, 'topic_id:', lobby.topic_id);
+
       // Use subject_id if available
       if (lobby.subject_id) {
         questionsQuery = questionsQuery.eq('subject_id', lobby.subject_id);
 
         // Add topic filter if available (for practice mode)
         if (lobby.topic_id) {
+          console.log('QuizSession: Adding topic filter:', lobby.topic_id);
           questionsQuery = questionsQuery.eq('topic_id', lobby.topic_id);
         }
         
         // Only filter by exam_simple_id if both lobby and questions have it
         // Most questions have NULL exam_simple_id, so we skip this filter
       } else {
-        console.error('Lobby missing subject_id');
+        console.error('QuizSession: Lobby missing subject_id');
         toast({
           title: 'Configuration Error',
           description: 'Unable to load quiz questions. Lobby is missing subject information.',
@@ -95,18 +101,23 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         return;
       }
 
+      console.log('QuizSession: Executing questions query...');
       const { data: questionsData, error: questionsError } = await questionsQuery;
 
-      if (questionsError) throw questionsError;
+      if (questionsError) {
+        console.error('QuizSession: Error fetching questions:', questionsError);
+        throw questionsError;
+      }
 
-      console.log(`Fetching questions for lobby:`, lobby);
-      console.log('Questions found:', questionsData?.length || 0);
+      console.log('QuizSession: Questions found:', questionsData?.length || 0);
+      console.log('QuizSession: First question:', questionsData?.[0]);
 
       if (questionsData && questionsData.length > 0) {
+        console.log('QuizSession: Setting questions state with', questionsData.length, 'questions');
         setQuestions(questionsData);
         setAnswers(new Array(questionsData.length).fill(''));
       } else {
-        console.error(`No questions found for the selected topic/subject`);
+        console.error('QuizSession: No questions found for subject_id:', lobby.subject_id, 'topic_id:', lobby.topic_id);
         toast({
           title: 'No Questions Available',
           description: `No questions found for the selected topic. Please contact support or try a different topic.`,
@@ -447,14 +458,19 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   }
 
   if (questions.length === 0) {
+    console.log('QuizSession: Rendering loading state. quizStarted:', quizStarted, 'questions.length:', questions.length);
     return (
       <div className="pt-20 pb-12">
         <div className="container mx-auto px-6 text-center">
           <p className="text-muted-foreground">Loading questions...</p>
+          <p className="text-xs text-muted-foreground mt-2">Subject ID: {lobby.subject_id}</p>
+          <p className="text-xs text-muted-foreground">Topic ID: {lobby.topic_id || 'None'}</p>
         </div>
       </div>
     );
   }
+
+  console.log('QuizSession: Rendering quiz with', questions.length, 'questions. Current index:', currentQuestionIndex);
 
   const currentQuestion = questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
