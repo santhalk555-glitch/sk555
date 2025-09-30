@@ -69,119 +69,63 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
   const loadQuizData = async () => {
     try {
-      // Check if this is RRB JE based on subject name
-      const isRRBJE = lobby.subject && (
-        lobby.subject.includes('Engineering Mechanics') ||
-        lobby.subject.includes('Material Science') ||
-        lobby.subject.includes('Building Construction') ||
-        lobby.subject.includes('Basic Concepts')
-      );
-
-      // Fetch questions based on the new hierarchical structure
+      // Fetch questions based on the hierarchical structure using simple_ids
       let questionsQuery = supabase
         .from('quiz_questions')
         .select('*')
         .limit(15);
 
-      if (isRRBJE) {
-        // For RRB JE, use simple exam identifier
-        const examSimpleId = 'rrb-je';
-        
-        // Find the subject based on RRB JE branch mapping
-        let subjectName = '';
-        if (lobby.subject.includes('Mechanical') || lobby.subject.includes('Material Science') || lobby.subject.includes('Thermal') || lobby.subject.includes('Machining') || lobby.subject.includes('Engineering Mechanics') || lobby.subject.includes('Strength of Materials') || lobby.subject.includes('Welding') || lobby.subject.includes('Grinding') || lobby.subject.includes('Metrology') || lobby.subject.includes('Fluid Mechanics') || lobby.subject.includes('Industrial Management')) {
-          subjectName = 'Mechanical & Allied Engineering';
-        } else if (lobby.subject.includes('Civil') || lobby.subject.includes('Building') || lobby.subject.includes('Construction') || lobby.subject.includes('Surveying') || lobby.subject.includes('Concrete') || lobby.subject.includes('Masonry') || lobby.subject.includes('Foundation') || lobby.subject.includes('Drawing') || lobby.subject.includes('Hydraulics') || lobby.subject.includes('Transportation') || lobby.subject.includes('Environmental') || lobby.subject.includes('Geotechnical') || lobby.subject.includes('Structural') || lobby.subject.includes('Estimating')) {
-          subjectName = 'Civil & Allied Engineering';
-        } else if (lobby.subject.includes('Electrical') || lobby.subject.includes('Circuit') || lobby.subject.includes('Basic Concepts') || lobby.subject.includes('AC Fundamentals') || lobby.subject.includes('Measurement') || lobby.subject.includes('Machines') || lobby.subject.includes('Generation') || lobby.subject.includes('Transmission') || lobby.subject.includes('Distribution') || lobby.subject.includes('Switchgear') || lobby.subject.includes('Estimation') || lobby.subject.includes('Utilization')) {
-          subjectName = 'Electrical & Allied Engineering';
+      // Primary approach: Use simple_id fields from lobby
+      if (lobby.exam_simple_id) {
+        questionsQuery = questionsQuery.eq('exam_simple_id', lobby.exam_simple_id);
+
+        // Add subject filter if available
+        if (lobby.subject_simple_id) {
+          questionsQuery = questionsQuery.eq('subject_simple_id', lobby.subject_simple_id);
         }
 
-        if (subjectName) {
-          // Get branch_id using simple exam identifier
-          const branchQuery = await supabase
-            .from('branches')
-            .select('id')
-            .eq('name', subjectName)
-            .eq('exam_simple_id', examSimpleId)
-            .single();
+        // Add topic filter if available (for practice mode)
+        if (lobby.topic_simple_id) {
+          questionsQuery = questionsQuery.eq('topic_simple_id', lobby.topic_simple_id);
+        }
+      } else if (lobby.subject_simple_id) {
+        // Fallback: If only subject_simple_id is available
+        questionsQuery = questionsQuery.eq('subject_simple_id', lobby.subject_simple_id);
+        
+        if (lobby.topic_simple_id) {
+          questionsQuery = questionsQuery.eq('topic_simple_id', lobby.topic_simple_id);
+        }
+      } else {
+        // Last resort: Try to find subject data dynamically from database
+        console.warn('Lobby missing simple_id fields, attempting dynamic lookup');
+        
+        if (lobby.subject_id) {
+          const { data: subjectData } = await supabase
+            .from('subjects_hierarchy')
+            .select('simple_id, exam_simple_id')
+            .eq('id', lobby.subject_id)
+            .maybeSingle();
 
-          if (branchQuery.data) {
-            // Get subject_id for the specific subject
-            const subjectQuery = await supabase
-              .from('subjects_hierarchy')
-              .select('id, simple_id')
-              .eq('name', lobby.subject)
-              .maybeSingle();
-
-            // Filter questions by simple exam identifier
-            questionsQuery = questionsQuery
-              .eq('exam_simple_id', examSimpleId);
-
-            if (subjectQuery.data) {
-              questionsQuery = questionsQuery.eq('topic_simple_id', subjectQuery.data.simple_id);
-            } else {
-              // Fallback to subject-based filtering if topic not found
-              let dbSubject = 'other_engineering';
-              if (subjectName.includes('Mechanical')) {
-                dbSubject = 'mechanical_engineering';
-              } else if (subjectName.includes('Civil')) {
-                dbSubject = 'civil_engineering';
-              } else if (subjectName.includes('Electrical')) {
-                dbSubject = 'electrical_engineering';
-              }
-              questionsQuery = questionsQuery.eq('subject', dbSubject as any);
+          if (subjectData?.simple_id) {
+            questionsQuery = questionsQuery.eq('subject_simple_id', subjectData.simple_id);
+            
+            if (subjectData.exam_simple_id) {
+              questionsQuery = questionsQuery.eq('exam_simple_id', subjectData.exam_simple_id);
             }
           }
         }
-      } else if (lobby.source_type && lobby.subject_simple_id && lobby.topic_simple_id) {
-        // If lobby has new structure, use it
-        questionsQuery = questionsQuery
-          .eq('subject_simple_id', lobby.subject_simple_id)
-          .eq('topic_simple_id', lobby.topic_simple_id);
 
-        if (lobby.source_type === 'course' && lobby.course_simple_id) {
-          questionsQuery = questionsQuery.eq('course_simple_id', lobby.course_simple_id);
-        } else if (lobby.source_type === 'exam' && lobby.exam_simple_id) {
-          questionsQuery = questionsQuery.eq('exam_simple_id', lobby.exam_simple_id);
+        if (lobby.topic_id) {
+          const { data: topicData } = await supabase
+            .from('topics')
+            .select('simple_id')
+            .eq('id', lobby.topic_id)
+            .maybeSingle();
+
+          if (topicData?.simple_id) {
+            questionsQuery = questionsQuery.eq('topic_simple_id', topicData.simple_id);
+          }
         }
-      } else {
-        // Fallback to old subject-based approach for backward compatibility
-        const subjectMapping: { [key: string]: string } = {
-          'Mechanical Engineering': 'mechanical_engineering',
-          'Electrical Engineering': 'electrical_engineering', 
-          'Civil Engineering': 'civil_engineering',
-          'Computer Science': 'computer_science',
-          'Information Technology': 'information_technology',
-          'Mathematics': 'mathematics',
-          'Physics': 'physics',
-          'Chemistry': 'chemistry',
-          'Biology': 'biology',
-          'English': 'english',
-          'History': 'history',
-          'Geography': 'geography',
-          'Economics': 'economics',
-          'Psychology': 'psychology',
-          'Engineering': 'engineering',
-          'Medical': 'medical',
-          'Business Studies': 'business_studies',
-          'Accounting': 'accounting',
-          'Political Science': 'political_science',
-          'Sociology': 'sociology',
-          'Philosophy': 'philosophy',
-          'Statistics': 'statistics',
-          'Data Science': 'data_science',
-          'Marketing': 'marketing',
-          'Finance': 'finance',
-          'Law': 'law',
-          'Environmental Science': 'environmental_science',
-          'Biotechnology': 'biotechnology',
-          'Pharmaceutical': 'pharmaceutical',
-          'Architecture': 'architecture'
-        };
-
-        const dbSubject = subjectMapping[lobby.subject] || lobby.subject.toLowerCase().replace(/\s+/g, '_');
-        questionsQuery = questionsQuery.eq('subject', dbSubject);
       }
 
       const { data: questionsData, error: questionsError } = await questionsQuery;

@@ -54,25 +54,42 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
 
       if (profileError) throw profileError;
 
-      // Get subject name for display - handle RRB JE specially
+      // Get subject data with simple_ids
       let subjectName = '';
+      let subjectSimpleId = null;
+      let examSimpleId = null;
+      let topicSimpleId = null;
       let isRRBJE = selectionData.subjectId.includes('rrb_je_') && selectionData.sourceType === 'exam';
       
       if (isRRBJE) {
-        // Extract subject name from the synthetic ID for RRB JE
-        // For RRB JE, we store the actual subject name in a special format
+        // For RRB JE, get the stored subject name
         const storedSubjectName = sessionStorage.getItem(`rrb_je_subject_${selectionData.subjectId}`);
         subjectName = storedSubjectName || 'RRB JE Subject';
+        // For RRB JE, set exam_simple_id
+        examSimpleId = 'rrb-je';
       } else {
-        // Regular database lookup for other subjects
+        // Fetch subject with simple_id
         const { data: subjectData, error: subjectError } = await supabase
           .from('subjects_hierarchy')
-          .select('name')
+          .select('name, simple_id, exam_simple_id')
           .eq('id', selectionData.subjectId)
-          .single();
+          .maybeSingle();
 
         if (subjectError) throw subjectError;
         subjectName = subjectData?.name || 'Unknown Subject';
+        subjectSimpleId = subjectData?.simple_id || null;
+        examSimpleId = subjectData?.exam_simple_id || selectionData.examId || null;
+
+        // Fetch topic simple_id if topic is selected
+        if (selectionData.topicId) {
+          const { data: topicData } = await supabase
+            .from('topics')
+            .select('simple_id')
+            .eq('id', selectionData.topicId)
+            .maybeSingle();
+          
+          topicSimpleId = topicData?.simple_id || null;
+        }
       }
 
       const { data: lobby, error: lobbyError } = await supabase
@@ -82,15 +99,18 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
           creator_id: user.id,
           max_players: selectionData.maxPlayers,
           current_players: 1,
-          subject: subjectName, // Use subject name for backward compatibility
+          subject: subjectName,
           lobby_type: selectionData.lobbyType,
-          game_mode: selectionData.lobbyType, // Set game_mode for backward compatibility
+          game_mode: selectionData.lobbyType,
           source_type: selectionData.sourceType,
           course_id: isRRBJE ? null : selectionData.courseId,
           exam_id: isRRBJE ? null : selectionData.examId,
           branch_id: isRRBJE ? null : selectionData.branchId,
           subject_id: isRRBJE ? null : selectionData.subjectId,
-          topic_id: selectionData.topicId || null
+          topic_id: selectionData.topicId || null,
+          subject_simple_id: subjectSimpleId,
+          exam_simple_id: examSimpleId,
+          topic_simple_id: topicSimpleId
         })
         .select()
         .single();
