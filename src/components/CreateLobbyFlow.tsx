@@ -89,9 +89,9 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
           lobby_type: selectionData.lobbyType,
           game_mode: selectionData.lobbyType,
           source_type: selectionData.sourceType,
+          subject_id: selectionData.subjectId,
           topic_id: selectionData.topicId || null,
-          exam_simple_id: examSimpleId,
-          subject_id: isRRBJE ? null : selectionData.subjectId
+          exam_simple_id: examSimpleId
         })
         .select()
         .single();
