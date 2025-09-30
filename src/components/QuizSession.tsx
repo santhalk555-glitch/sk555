@@ -103,19 +103,23 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
             .from('branches')
             .select('id')
             .eq('name', subjectName)
+            .eq('source_type', 'exam')
             .eq('exam_simple_id', examSimpleId)
             .single();
 
           if (branchQuery.data) {
             // Get subject_id for the specific subject
             const subjectQuery = await supabase
-              .from('subjects_hierarchy')
+              .from('subjects')
               .select('id, simple_id')
               .eq('name', lobby.subject)
+              .eq('branch_id', branchQuery.data.id)
               .maybeSingle();
 
-            // Filter questions by exam simple identifier only
-            questionsQuery = questionsQuery.eq('exam_simple_id', examSimpleId);
+            // Filter questions by simple exam identifier
+            questionsQuery = questionsQuery
+              .eq('exam_simple_id', examSimpleId)
+              .eq('source_type', 'exam');
 
             if (subjectQuery.data) {
               questionsQuery = questionsQuery.eq('topic_simple_id', subjectQuery.data.simple_id);
@@ -133,12 +137,18 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
             }
           }
         }
-      } else if (lobby.exam_simple_id && lobby.subject_simple_id && lobby.topic_simple_id) {
+      } else if (lobby.source_type && lobby.subject_simple_id && lobby.topic_simple_id) {
         // If lobby has new structure, use it
         questionsQuery = questionsQuery
-          .eq('exam_simple_id', lobby.exam_simple_id)
+          .eq('source_type', lobby.source_type)
           .eq('subject_simple_id', lobby.subject_simple_id)
           .eq('topic_simple_id', lobby.topic_simple_id);
+
+        if (lobby.source_type === 'course' && lobby.course_simple_id) {
+          questionsQuery = questionsQuery.eq('course_simple_id', lobby.course_simple_id);
+        } else if (lobby.source_type === 'exam' && lobby.exam_simple_id) {
+          questionsQuery = questionsQuery.eq('exam_simple_id', lobby.exam_simple_id);
+        }
       } else {
         // Fallback to old subject-based approach for backward compatibility
         const subjectMapping: { [key: string]: string } = {
