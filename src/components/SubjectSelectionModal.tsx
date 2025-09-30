@@ -173,7 +173,30 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     try {
       setLoading(true);
       
-      // Get exam simple_id from database
+      // For general branch, fetch the common general subjects (they have null exam_simple_id)
+      if (isGeneralBranch) {
+        const generalSubjectNames = ['Quantitative Aptitude', 'Reasoning Ability', 'Physics', 'Chemistry', 'Biology'];
+        
+        const { data, error } = await supabase
+          .from('subjects_hierarchy')
+          .select('id, name, simple_id, exam_simple_id')
+          .in('name', generalSubjectNames)
+          .is('exam_simple_id', null)
+          .order('name');
+        
+        if (error) throw error;
+        
+        const subjectsData = (data || []).map(s => ({
+          id: s.id,
+          name: s.name,
+          branch_id: 'general'
+        }));
+        
+        setSubjects(subjectsData);
+        return;
+      }
+      
+      // For non-general branches, fetch exam-specific subjects
       const { data: examData } = await supabase
         .from('competitive_exams_list')
         .select('simple_id')
@@ -185,23 +208,47 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
         return;
       }
       
-      // Fetch general subjects from subjects_hierarchy table
-      // General subjects: Quantitative Aptitude, Reasoning Ability, Physics, Chemistry, Biology
-      const { data, error } = await supabase
-        .from('subjects_hierarchy')
-        .select('id, name, simple_id, exam_simple_id')
-        .eq('exam_simple_id', examData.simple_id)
-        .order('name');
+      // Check if exam has technical branches
+      const hasTechnicalBranches = EXAMS_WITH_TECHNICAL_BRANCHES.includes(examName);
       
-      if (error) throw error;
-      
-      const subjectsData = (data || []).map(s => ({
-        id: s.id,
-        name: s.name,
-        branch_id: 'general'
-      }));
-      
-      setSubjects(subjectsData);
+      if (hasTechnicalBranches) {
+        // For exams with technical branches, fetch exam-specific subjects
+        const { data, error } = await supabase
+          .from('subjects_hierarchy')
+          .select('id, name, simple_id, exam_simple_id')
+          .eq('exam_simple_id', examData.simple_id)
+          .order('name');
+        
+        if (error) throw error;
+        
+        const subjectsData = (data || []).map(s => ({
+          id: s.id,
+          name: s.name,
+          branch_id: 'general'
+        }));
+        
+        setSubjects(subjectsData);
+      } else {
+        // For exams without technical branches, show general subjects
+        const generalSubjectNames = ['Quantitative Aptitude', 'Reasoning Ability', 'Physics', 'Chemistry', 'Biology'];
+        
+        const { data, error } = await supabase
+          .from('subjects_hierarchy')
+          .select('id, name, simple_id, exam_simple_id')
+          .in('name', generalSubjectNames)
+          .is('exam_simple_id', null)
+          .order('name');
+        
+        if (error) throw error;
+        
+        const subjectsData = (data || []).map(s => ({
+          id: s.id,
+          name: s.name,
+          branch_id: 'general'
+        }));
+        
+        setSubjects(subjectsData);
+      }
     } catch (error) {
       console.error('Error fetching subjects for exam:', error);
       toast({
