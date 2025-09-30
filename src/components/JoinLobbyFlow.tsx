@@ -23,6 +23,7 @@ interface LobbyInvite {
   responded_at: string | null;
   game_lobbies: {
     subject: string;
+    lobby_type: string;
     game_mode: string;
     max_players: number;
     current_players: number;
@@ -58,6 +59,7 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
           *,
           game_lobbies (
             subject,
+            lobby_type,
             game_mode,
             max_players,
             current_players,
@@ -428,12 +430,12 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
                         <div className="text-sm text-muted-foreground">Subject</div>
                         <div className="font-semibold">{invite.game_lobbies.subject}</div>
                       </div>
-                      <div>
-                        <div className="text-sm text-muted-foreground">Mode</div>
-                        <div className="font-semibold">
-                          {invite.game_lobbies.game_mode === 'quiz' ? '🏆 Quiz' : '📚 Study'}
+                        <div>
+                          <div className="text-sm text-muted-foreground">Mode</div>
+                          <div className="font-semibold">
+                            {(invite.game_lobbies.lobby_type || invite.game_lobbies.game_mode) === 'quiz' ? '🏆 Quiz' : '📚 Study'}
+                          </div>
                         </div>
-                      </div>
                       <div>
                         <div className="text-sm text-muted-foreground">Players</div>
                         <div className="font-semibold flex items-center justify-center">

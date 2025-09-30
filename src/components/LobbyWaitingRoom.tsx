@@ -376,7 +376,7 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
                 {lobby.subject || 'No Subject Selected'}
               </div>
               <div className="text-lg text-muted-foreground mb-2">
-                Mode: {lobby.lobby_type === 'quiz' ? '🏆 Quiz Mode' : '📚 Study Mode'}
+                Mode: {(lobby.lobby_type || lobby.game_mode) === 'quiz' ? '🏆 Quiz Mode' : '📚 Study Mode'}
               </div>
               <div className="text-sm text-muted-foreground mb-2">
                 Lobby Code: <span className="font-mono bg-muted px-2 py-1 rounded">{lobby.lobby_code}</span>
@@ -500,7 +500,7 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
             )}
 
             {/* Quiz Controls */}
-            {lobby.lobby_type === 'quiz' && lobby.status === 'waiting' && (
+            {(lobby.lobby_type || lobby.game_mode) === 'quiz' && lobby.status === 'waiting' && (
               <Card className="mb-8">
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -551,9 +551,9 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
             <CardContent>
               <div className="text-center space-y-4">
                 <p className="text-muted-foreground">
-                  The lobby creator will start the {lobby.lobby_type === 'quiz' ? 'quiz' : 'study session'} when ready.
+                  The lobby creator will start the {(lobby.lobby_type || lobby.game_mode) === 'quiz' ? 'quiz' : 'study session'} when ready.
                 </p>
-                {lobby.lobby_type === 'quiz' && (
+                {(lobby.lobby_type || lobby.game_mode) === 'quiz' && (
                   <div className="bg-primary/10 rounded-lg p-4">
                     <p className="text-sm text-primary font-medium">
                       🏆 Quiz Mode Active

@@ -84,6 +84,7 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
           current_players: 1,
           subject: subjectName, // Use subject name for backward compatibility
           lobby_type: selectionData.lobbyType,
+          game_mode: selectionData.lobbyType, // Set game_mode for backward compatibility
           source_type: selectionData.sourceType,
           course_id: isRRBJE ? null : selectionData.courseId,
           exam_id: isRRBJE ? null : selectionData.examId,
