@@ -504,7 +504,6 @@ export type Database = {
           question: string
           subject_id: string | null
           topic_id: string | null
-          topic_simple_id: string | null
         }
         Insert: {
           correct_answer: number
@@ -520,7 +519,6 @@ export type Database = {
           question: string
           subject_id?: string | null
           topic_id?: string | null
-          topic_simple_id?: string | null
         }
         Update: {
           correct_answer?: number
@@ -536,7 +534,6 @@ export type Database = {
           question?: string
           subject_id?: string | null
           topic_id?: string | null
-          topic_simple_id?: string | null
         }
         Relationships: [
           {
@@ -622,21 +619,18 @@ export type Database = {
           created_at: string
           id: string
           name: string
-          simple_id: string
           subject_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
-          simple_id: string
           subject_id: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
-          simple_id?: string
           subject_id?: string
         }
         Relationships: [
