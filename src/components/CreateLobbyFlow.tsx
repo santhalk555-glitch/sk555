@@ -66,13 +66,13 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
       } else {
         // Regular database lookup for other subjects
         const { data: subjectData, error: subjectError } = await supabase
-          .from('subjects')
+          .from('subjects_hierarchy')
           .select('name')
           .eq('id', selectionData.subjectId)
           .single();
 
         if (subjectError) throw subjectError;
-        subjectName = subjectData.name;
+        subjectName = subjectData?.name || 'Unknown Subject';
       }
 
       const { data: lobby, error: lobbyError } = await supabase

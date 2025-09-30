@@ -43,9 +43,7 @@ interface ExamOption {
 interface Branch {
   id: string;
   name: string;
-  source_type: 'course' | 'exam';
-  course_id?: string;
-  exam_id?: string;
+  exam_simple_id?: string;
 }
 
 interface Subject {
@@ -101,14 +99,12 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
             ...Object.keys(RRB_JE_ENGINEERING_BRANCHES).map((branch, index) => ({
               id: `rrb_je_${index}`,
               name: branch,
-              source_type: 'exam' as const,
-              exam_id: 'rrb_je'
+              exam_simple_id: 'rrb_je'
             })),
             {
               id: 'rrb_je_general',
               name: 'General',
-              source_type: 'exam' as const,
-              exam_id: 'rrb_je'
+              exam_simple_id: 'rrb_je'
             }
           ];
           setBranches(rrb_je_branches);
@@ -126,19 +122,13 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
         if (examData?.simple_id) {
           const { data, error } = await supabase
             .from('branches')
-            .select('*')
-            .eq('source_type', 'exam')
+            .select('id, name, exam_simple_id')
             .eq('exam_simple_id', examData.simple_id)
             .order('name');
           
           if (error) throw error;
           
-          const typedBranches = (data || []).map(branch => ({
-            ...branch,
-            source_type: branch.source_type as 'course' | 'exam'
-          }));
-          
-          setBranches(typedBranches);
+          setBranches(data || []);
         } else {
           setBranches([]);
         }
@@ -199,15 +189,22 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
         return;
       }
       
-      // For other branches, fetch from database
+      // For other branches, fetch from subjects_hierarchy table
       const { data, error } = await supabase
-        .from('subjects')
-        .select('id, name, simple_id, branch_id')
-        .eq('branch_id', branchId)
+        .from('subjects_hierarchy')
+        .select('id, name, simple_id')
+        .eq('exam_simple_id', selectedExam?.name.toLowerCase().replace(/\s+/g, '_'))
         .order('name');
       
       if (error) throw error;
-      setSubjects(data || []);
+      
+      const subjectsData = (data || []).map(s => ({
+        id: s.id,
+        name: s.name,
+        branch_id: branchId
+      }));
+      
+      setSubjects(subjectsData);
     } catch (error) {
       console.error('Error fetching subjects:', error);
       toast({
