@@ -169,7 +169,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     }
   };
 
-  const fetchSubjectsForExam = async (examName: string) => {
+  const fetchSubjectsForExam = async (examName: string, isGeneralBranch: boolean = false) => {
     try {
       setLoading(true);
       
@@ -185,7 +185,8 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
         return;
       }
       
-      // Fetch subjects from database for this exam
+      // Fetch general subjects from subjects_hierarchy table
+      // General subjects: Quantitative Aptitude, Reasoning Ability, Physics, Chemistry, Biology
       const { data, error } = await supabase
         .from('subjects_hierarchy')
         .select('id, name, simple_id, exam_simple_id')
@@ -220,7 +221,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       // Handle General branch - fetch general subjects from database
       if (branchId === 'rrb_je_general' || branchId === 'general') {
         if (formData.exam?.name) {
-          await fetchSubjectsForExam(formData.exam.name);
+          await fetchSubjectsForExam(formData.exam.name, true);
         }
         setLoading(false);
         return;
