@@ -78,15 +78,13 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
       if (lobby.subject_id) {
         questionsQuery = questionsQuery.eq('subject_id', lobby.subject_id);
 
-        // Add exam filter if available
-        if (lobby.exam_simple_id) {
-          questionsQuery = questionsQuery.eq('exam_simple_id', lobby.exam_simple_id);
-        }
-
         // Add topic filter if available (for practice mode)
         if (lobby.topic_id) {
           questionsQuery = questionsQuery.eq('topic_id', lobby.topic_id);
         }
+        
+        // Only filter by exam_simple_id if both lobby and questions have it
+        // Most questions have NULL exam_simple_id, so we skip this filter
       } else {
         console.error('Lobby missing subject_id');
         toast({
