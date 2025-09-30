@@ -34,7 +34,6 @@ interface Participant {
 const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string>('');
   const [timeLeft, setTimeLeft] = useState(900); // 15 minutes in seconds
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [quizStarted, setQuizStarted] = useState(false);
@@ -64,7 +63,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
   // Timer that auto-submits quiz when time runs out
   useEffect(() => {
-    if (!quizStarted || timeLeft <= 0) return;
+    if (!quizStarted || timeLeft <= 0 || showResults) return;
     
     const timer = setInterval(() => {
       setTimeLeft(prev => {
@@ -78,7 +77,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [quizStarted]);
+  }, [quizStarted, showResults]);
 
 
   const loadQuizData = async () => {
@@ -160,27 +159,39 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   };
 
   const handleAnswerSelect = (answer: string) => {
-    setSelectedAnswer(answer);
+    // Save answer immediately when selected
+    const newAnswers = [...answers];
+    newAnswers[currentQuestionIndex] = answer;
+    setAnswers(newAnswers);
   };
 
-  const submitAnswer = async () => {
-    if (!selectedAnswer) return;
-
-    const newAnswers = [...answers];
-    newAnswers[currentQuestionIndex] = selectedAnswer;
-    setAnswers(newAnswers);
-
-    // Move to next question or end quiz
+  const goToNextQuestion = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setSelectedAnswer('');
-      
+    }
+  };
+
+  const goToPreviousQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
+  };
+
+  const submitQuiz = () => {
+    // Check if all questions are answered
+    const unansweredCount = answers.filter(a => !a).length;
+    
+    if (unansweredCount > 0) {
       toast({
-        title: '✅ Answer Submitted',
-        description: `Moving to question ${currentQuestionIndex + 2}`,
+        title: 'Incomplete Quiz',
+        description: `You have ${unansweredCount} unanswered question(s). Submit anyway?`,
+        variant: 'destructive'
       });
+      // Give them a moment to see the warning, then submit
+      setTimeout(() => {
+        handleQuizEnd();
+      }, 2000);
     } else {
-      // Last question - end quiz
       handleQuizEnd();
     }
   };
@@ -578,8 +589,14 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
           <CardHeader>
             <div className="flex items-center justify-between mb-2">
               <CardTitle className="text-xl">
-                Question {currentQuestionIndex + 1}
+                Question {currentQuestionIndex + 1} of {questions.length}
               </CardTitle>
+              {answers[currentQuestionIndex] && (
+                <Badge variant="secondary" className="bg-green-500/20 text-green-700">
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Answered
+                </Badge>
+              )}
             </div>
             <CardDescription className="text-lg font-medium text-foreground">
               {currentQuestion.question}
@@ -590,9 +607,9 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
               {[1, 2, 3, 4].map((option) => (
                 <Button
                   key={option}
-                  variant={selectedAnswer === option.toString() ? "default" : "outline"}
+                  variant={answers[currentQuestionIndex] === option.toString() ? "default" : "outline"}
                   className={`w-full text-left justify-start p-4 h-auto ${
-                    selectedAnswer === option.toString() ? 'bg-gradient-primary text-white' : ''
+                    answers[currentQuestionIndex] === option.toString() ? 'bg-gradient-primary text-white' : ''
                   }`}
                   onClick={() => handleAnswerSelect(option.toString())}
                 >
@@ -604,15 +621,43 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
           </CardContent>
         </Card>
 
-        {/* Submit Button */}
+        {/* Navigation Controls */}
+        <div className="flex gap-4 items-center justify-between mb-4">
+          <Button
+            variant="outline"
+            onClick={goToPreviousQuestion}
+            disabled={currentQuestionIndex === 0}
+            className="flex-1"
+          >
+            ← Previous
+          </Button>
+          
+          <div className="text-sm text-muted-foreground">
+            {answers.filter(a => a).length} / {questions.length} answered
+          </div>
+          
+          <Button
+            variant="outline"
+            onClick={goToNextQuestion}
+            disabled={currentQuestionIndex === questions.length - 1}
+            className="flex-1"
+          >
+            Next →
+          </Button>
+        </div>
+
+        {/* Submit Quiz Button */}
         <div className="text-center">
           <Button 
-            onClick={submitAnswer}
-            disabled={!selectedAnswer}
-            className="bg-gradient-primary hover:opacity-90 px-8 py-3"
+            onClick={submitQuiz}
+            className="bg-gradient-primary hover:opacity-90 px-8 py-3 w-full"
+            size="lg"
           >
-            {currentQuestionIndex === questions.length - 1 ? 'Finish Quiz' : 'Submit & Next Question'}
+            Submit Quiz
           </Button>
+          <p className="text-xs text-muted-foreground mt-2">
+            You can review and change your answers before submitting
+          </p>
         </div>
       </div>
     </div>
