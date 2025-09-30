@@ -5,20 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { X, BookOpen, Users, Crown, GraduationCap, Trophy, Target, Gamepad2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from './ui/use-toast';
-import { COMPETITIVE_EXAM_OPTIONS, RRB_JE_ENGINEERING_BRANCHES } from '@/constants/profileOptions';
+import { RRB_JE_ENGINEERING_BRANCHES } from '@/constants/profileOptions';
 
 // Define exams with technical + general streams
 const EXAMS_WITH_TECHNICAL_BRANCHES = [
   'RRB JE', 'RRB SSE', 'ISRO', 'DRDO', 'GATE', 'ESE/IES'
-];
-
-// Define general subjects for all exams
-const GENERAL_SUBJECTS = [
-  'Quantitative Aptitude',
-  'Reasoning Ability', 
-  'Physics',
-  'Chemistry',
-  'Biology'
 ];
 
 interface SubjectSelectionModalProps {
@@ -82,10 +73,29 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     }
   }, [isOpen]);
 
-  const loadOptions = () => {    
-    // Load exam options from the same source as ProfileCreationForm
-    const exams = COMPETITIVE_EXAM_OPTIONS.map(name => ({ name }));
-    setExamOptions(exams);
+  const loadOptions = async () => {    
+    try {
+      setLoading(true);
+      // Fetch competitive exams dynamically from database
+      const { data: examsData, error } = await supabase
+        .from('competitive_exams_list')
+        .select('name')
+        .order('name');
+      
+      if (error) throw error;
+      
+      const exams = (examsData || []).map(exam => ({ name: exam.name }));
+      setExamOptions(exams);
+    } catch (error) {
+      console.error('Error loading exam options:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load exam options',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Update form data helper
@@ -142,15 +152,9 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
           setBranches([]);
         }
       } else {
-        // For exams with only general subjects, skip to subject selection
+        // For exams with only general subjects, fetch from database
         setBranches([]);
-        // Directly show general subjects
-        const generalSubjects = GENERAL_SUBJECTS.map((subject, index) => ({
-          id: `general_${index}`,
-          name: subject,
-          branch_id: 'general'
-        }));
-        setSubjects(generalSubjects);
+        await fetchSubjectsForExam(selectedName);
         setCurrentStep(4); // Skip branch selection, go directly to subject selection
       }
     } catch (error) {
@@ -165,18 +169,59 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     }
   };
 
+  const fetchSubjectsForExam = async (examName: string) => {
+    try {
+      setLoading(true);
+      
+      // Get exam simple_id from database
+      const { data: examData } = await supabase
+        .from('competitive_exams_list')
+        .select('simple_id')
+        .eq('name', examName)
+        .maybeSingle();
+      
+      if (!examData?.simple_id) {
+        setSubjects([]);
+        return;
+      }
+      
+      // Fetch subjects from database for this exam
+      const { data, error } = await supabase
+        .from('subjects_hierarchy')
+        .select('id, name, simple_id, exam_simple_id')
+        .eq('exam_simple_id', examData.simple_id)
+        .order('name');
+      
+      if (error) throw error;
+      
+      const subjectsData = (data || []).map(s => ({
+        id: s.id,
+        name: s.name,
+        branch_id: 'general'
+      }));
+      
+      setSubjects(subjectsData);
+    } catch (error) {
+      console.error('Error fetching subjects for exam:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load subjects',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchSubjects = async (branchId: string) => {
     try {
       setLoading(true);
       
-      // Handle General branch - show general subjects
+      // Handle General branch - fetch general subjects from database
       if (branchId === 'rrb_je_general' || branchId === 'general') {
-        const generalSubjects = GENERAL_SUBJECTS.map((subject, index) => ({
-          id: `general_${index}`,
-          name: subject,
-          branch_id: branchId
-        }));
-        setSubjects(generalSubjects);
+        if (formData.exam?.name) {
+          await fetchSubjectsForExam(formData.exam.name);
+        }
         setLoading(false);
         return;
       }
@@ -199,10 +244,22 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       }
       
       // For other branches, fetch from subjects_hierarchy table
+      const { data: examData } = await supabase
+        .from('competitive_exams_list')
+        .select('simple_id')
+        .eq('name', formData.exam?.name || '')
+        .maybeSingle();
+      
+      if (!examData?.simple_id) {
+        setSubjects([]);
+        setLoading(false);
+        return;
+      }
+      
       const { data, error } = await supabase
         .from('subjects_hierarchy')
         .select('id, name, simple_id')
-        .eq('exam_simple_id', formData.exam?.name.toLowerCase().replace(/\s+/g, '_'))
+        .eq('exam_simple_id', examData.simple_id)
         .order('name');
       
       if (error) throw error;
