@@ -128,6 +128,7 @@ export type Database = {
         Row: {
           branch_id: string | null
           branch_simple_id: string | null
+          course_id: string | null
           created_at: string
           creator_id: string
           current_players: number
@@ -138,6 +139,7 @@ export type Database = {
           lobby_code: string
           lobby_type: string
           max_players: number
+          source_type: string | null
           status: string
           subject: string | null
           subject_id: string | null
@@ -149,6 +151,7 @@ export type Database = {
         Insert: {
           branch_id?: string | null
           branch_simple_id?: string | null
+          course_id?: string | null
           created_at?: string
           creator_id: string
           current_players?: number
@@ -159,6 +162,7 @@ export type Database = {
           lobby_code: string
           lobby_type?: string
           max_players: number
+          source_type?: string | null
           status?: string
           subject?: string | null
           subject_id?: string | null
@@ -170,6 +174,7 @@ export type Database = {
         Update: {
           branch_id?: string | null
           branch_simple_id?: string | null
+          course_id?: string | null
           created_at?: string
           creator_id?: string
           current_players?: number
@@ -180,6 +185,7 @@ export type Database = {
           lobby_code?: string
           lobby_type?: string
           max_players?: number
+          source_type?: string | null
           status?: string
           subject?: string | null
           subject_id?: string | null
