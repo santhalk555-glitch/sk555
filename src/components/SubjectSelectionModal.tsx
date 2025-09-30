@@ -339,49 +339,44 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
 
   const handleBack = () => {
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-      
-      // Only clear selections from the step we're leaving, preserve all previous data
+      // Only clear selections from the current step, preserve all previous step data
       if (currentStep === 6) {
-        // Going back from final step - only clear final selections
+        // Going back from final step (player selection or practice confirmation)
         setSelectedPlayers(null);
-        // If practice mode, we go back to step 5 (topic selection)
-        // If quiz mode, we go back to step 4 (subject selection) 
-        if (selectedLobbyType === 'quiz') {
-          setSelectedSubject(null);
-          setTopics([]);
-        }
-        setSelectedTopic(null);
+        // Don't clear anything else - keep all previous selections and data intact
       } else if (currentStep === 5) {
         // Going back from topic selection to subject selection
-        // Keep subjects array intact, only clear the selected topic
+        // Only clear the selected topic, keep topics array and all previous data
         setSelectedTopic(null);
       } else if (currentStep === 4) {
         // Going back from subject selection to branch selection
-        // Keep branches intact, clear subjects
+        // Clear only subject-related data
         setSelectedSubject(null);
         setSubjects([]);
-        setTopics([]);
         setSelectedTopic(null);
+        setTopics([]);
       } else if (currentStep === 3) {
         // Going back from branch selection to exam selection  
-        // Keep exams intact, clear branches
+        // Clear branch and everything after it
         setSelectedBranch(null);
         setBranches([]);
         setSelectedSubject(null);
         setSubjects([]);
-        setTopics([]);
         setSelectedTopic(null);
+        setTopics([]);
       } else if (currentStep === 2) {
         // Going back from exam selection to lobby type
         setSelectedExam(null);
-        setBranches([]);
         setSelectedBranch(null);
-        setSubjects([]);
+        setBranches([]);
         setSelectedSubject(null);
-        setTopics([]);
+        setSubjects([]);
         setSelectedTopic(null);
+        setTopics([]);
       }
+      
+      // Decrement step after clearing appropriate data
+      setCurrentStep(currentStep - 1);
     }
   };
 
