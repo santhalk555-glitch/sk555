@@ -12,6 +12,7 @@ export interface Profile {
   display_user_id: string;
   course_name: string;
   competitive_exams: CompetitiveExam[];
+  avatar_url?: string;
   created_at: string;
   updated_at: string;
 }

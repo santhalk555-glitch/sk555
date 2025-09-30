@@ -333,6 +333,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           competitive_exams: Json | null
           competitive_exams_old: string[]
           course_name: string
@@ -346,6 +347,7 @@ export type Database = {
           victory_count: number
         }
         Insert: {
+          avatar_url?: string | null
           competitive_exams?: Json | null
           competitive_exams_old?: string[]
           course_name: string
@@ -359,6 +361,7 @@ export type Database = {
           victory_count?: number
         }
         Update: {
+          avatar_url?: string | null
           competitive_exams?: Json | null
           competitive_exams_old?: string[]
           course_name?: string
@@ -635,6 +638,7 @@ export type Database = {
     Views: {
       profile_view: {
         Row: {
+          avatar_url: string | null
           competitive_exams: Json | null
           course_name: string | null
           created_at: string | null
@@ -645,6 +649,7 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          avatar_url?: string | null
           competitive_exams?: Json | null
           course_name?: string | null
           created_at?: string | null
@@ -655,6 +660,7 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          avatar_url?: string | null
           competitive_exams?: Json | null
           course_name?: string | null
           created_at?: string | null

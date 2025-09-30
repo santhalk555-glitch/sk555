@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ArrowLeft, User, BookOpen, Target, GraduationCap } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -202,7 +203,7 @@ export const ProfileMatches = () => {
 
         {/* Current User Profile Summary */}
         {currentUserProfile && (
-          <Card className="mb-6">
+          <Card className="mb-6 bg-gradient-card border-primary/20">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
@@ -210,14 +211,26 @@ export const ProfileMatches = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-center gap-4 mb-4">
+                <Avatar className="h-16 w-16 border-2 border-primary">
+                  <AvatarImage src={currentUserProfile.avatar_url || undefined} alt={currentUserProfile.username || 'User'} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                    {currentUserProfile.username?.charAt(0).toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="text-lg font-bold">{currentUserProfile.username || 'Anonymous'}</h3>
+                  <p className="text-sm text-muted-foreground">@{currentUserProfile.display_user_id}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-center gap-2">
                   <GraduationCap className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">{currentUserProfile.course_name}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Target className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{currentUserProfile.competitive_exams.join(', ')}</span>
+                  <span className="text-sm">{currentUserProfile.competitive_exams.map(e => e.name).join(', ')}</span>
                 </div>
               </div>
             </CardContent>
@@ -227,17 +240,20 @@ export const ProfileMatches = () => {
         {/* Matches List */}
         <div className="space-y-4">
           {matches.map((match) => (
-            <Card key={match.id} className="hover:shadow-lg transition-shadow">
+            <Card key={match.id} className="hover:shadow-lg transition-all duration-200 hover:border-primary/30">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                      <User className="h-6 w-6 text-primary" />
-                    </div>
+                    <Avatar className="h-12 w-12 border-2 border-primary/20">
+                      <AvatarImage src={match.avatar_url || undefined} alt={match.username || 'User'} />
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {match.username?.charAt(0).toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
-                      <h3 className="font-semibold">@{match.username}</h3>
+                      <h3 className="font-semibold text-lg">{match.username || 'Anonymous User'}</h3>
                       <p className="text-sm text-muted-foreground">
-                        Joined {new Date(match.created_at).toLocaleDateString()}
+                        @{match.display_user_id} · Joined {new Date(match.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
