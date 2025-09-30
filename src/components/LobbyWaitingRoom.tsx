@@ -499,16 +499,18 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
               </Card>
             )}
 
-            {/* Quiz Controls */}
-            {(lobby.lobby_type || lobby.game_mode) === 'quiz' && lobby.status === 'waiting' && (
+            {/* Quiz/Practice Controls */}
+            {lobby.status === 'waiting' && (
               <Card className="mb-8">
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Crown className="w-5 h-5 mr-2 text-primary" />
-                    Quiz Controls
+                    {(lobby.lobby_type || lobby.game_mode) === 'quiz' ? 'Quiz Controls' : 'Practice Controls'}
                   </CardTitle>
                   <CardDescription>
-                    Start the quiz when ready
+                    {(lobby.lobby_type || lobby.game_mode) === 'quiz' 
+                      ? 'Start the quiz when ready'
+                      : 'Start your practice session'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -521,12 +523,14 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
                         size="lg"
                       >
                         <Play className="w-5 h-5 mr-2" />
-                        Start Quiz
+                        {(lobby.lobby_type || lobby.game_mode) === 'quiz' ? 'Start Quiz' : 'Start Practice'}
                       </Button>
                     </div>
                     
                     <div className="text-sm text-muted-foreground text-center">
-                      {participants.length === 1 ? (
+                      {(lobby.lobby_type || lobby.game_mode) === 'practice' ? (
+                        <p>📚 Practice Mode - Learn at your own pace!</p>
+                      ) : participants.length === 1 ? (
                         <p>🎯 Single-player mode - Perfect for practice!</p>
                       ) : (
                         <p>All participants will be taken to the quiz when you start</p>
