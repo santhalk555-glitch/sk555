@@ -48,11 +48,22 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
   useEffect(() => {
     console.log('QuizSession: lobby status changed:', lobby?.status, 'quizStarted:', quizStarted);
-    if (lobby && lobby.status === 'active') {
+    if (lobby && lobby.status === 'active' && !quizStarted) {
       console.log('QuizSession: Loading quiz data for active lobby:', lobby.id);
-      loadQuizData();
       setQuizStarted(true);
       setIsCreator(user?.id === lobby.creator_id);
+      
+      // Load quiz data after setting quizStarted
+      loadQuizData().then(() => {
+        console.log('QuizSession: Quiz data loaded successfully');
+      }).catch((error) => {
+        console.error('QuizSession: Failed to load quiz data:', error);
+        toast({
+          title: 'Error Loading Quiz',
+          description: 'Failed to load questions. Please try again.',
+          variant: 'destructive'
+        });
+      });
     }
   }, [lobby, user]);
 
@@ -545,12 +556,47 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
   if (questions.length === 0) {
     console.log('QuizSession: Rendering loading state. quizStarted:', quizStarted, 'questions.length:', questions.length);
+    console.log('QuizSession: Lobby data:', { 
+      id: lobby.id, 
+      status: lobby.status, 
+      subject_id: lobby.subject_id, 
+      topic_id: lobby.topic_id 
+    });
+    
     return (
       <div className="pt-20 pb-12">
-        <div className="container mx-auto px-6 text-center">
-          <p className="text-muted-foreground">Loading questions...</p>
-          <p className="text-xs text-muted-foreground mt-2">Subject ID: {lobby.subject_id}</p>
-          <p className="text-xs text-muted-foreground">Topic ID: {lobby.topic_id || 'None'}</p>
+        <div className="container mx-auto px-6 max-w-2xl">
+          <Card className="bg-gradient-card border-primary/20">
+            <CardHeader>
+              <CardTitle className="text-center">Loading Questions...</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+              <div className="text-center space-y-2">
+                <p className="text-muted-foreground">Please wait while we load your quiz</p>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p>Lobby: {lobby.id}</p>
+                  <p>Subject ID: {lobby.subject_id || 'Not set'}</p>
+                  <p>Topic ID: {lobby.topic_id || 'Not set'}</p>
+                  <p>Status: {lobby.status}</p>
+                </div>
+              </div>
+              <div className="text-center">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    console.log('Retrying to load questions...');
+                    loadQuizData();
+                  }}
+                  className="mt-4"
+                >
+                  Retry Loading
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
