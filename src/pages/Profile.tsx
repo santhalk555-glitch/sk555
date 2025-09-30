@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -14,7 +15,7 @@ import {
   AlertDialogTitle, 
   AlertDialogTrigger 
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, LogOut, User, BookOpen, Target, Trash2, Mail, Instagram } from 'lucide-react';
+import { ArrowLeft, LogOut, User, BookOpen, Target, Trash2, Mail, Instagram, Camera, Upload } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -25,12 +26,15 @@ interface UserProfile {
   username: string;
   course_name: string;
   competitive_exams: CompetitiveExam[];
+  avatar_url?: string;
 }
 
 const Profile = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -44,7 +48,7 @@ const Profile = () => {
     const fetchProfile = async () => {
         const { data, error } = await supabase
           .from('profile_view')
-          .select('display_user_id, username, course_name, competitive_exams')
+          .select('display_user_id, username, course_name, competitive_exams, avatar_url')
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -61,7 +65,8 @@ const Profile = () => {
           display_user_id: data.display_user_id,
           username: data.username,
           course_name: data.course_name,
-          competitive_exams: parseCompetitiveExams(data.competitive_exams)
+          competitive_exams: parseCompetitiveExams(data.competitive_exams),
+          avatar_url: data.avatar_url || undefined
         };
         setProfile(profileData);
       }
@@ -88,6 +93,75 @@ const Profile = () => {
         description: 'Failed to log out. Please try again.',
         variant: 'destructive'
       });
+    }
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user || !event.target.files || event.target.files.length === 0) return;
+
+    const file = event.target.files[0];
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Invalid File',
+        description: 'Please upload an image file.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Validate file size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: 'File Too Large',
+        description: 'Please upload an image smaller than 2MB.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Update profile with avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('user_id', user.id);
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
+
+      toast({
+        title: 'Success',
+        description: 'Profile picture updated successfully!'
+      });
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to upload profile picture.',
+        variant: 'destructive'
+      });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -208,14 +282,49 @@ const Profile = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-8">
-            {/* User ID Display */}
+            {/* Avatar and Username Section */}
             <div className="text-center p-6 bg-gradient-card rounded-lg border border-primary/20">
-              <div className="text-sm text-muted-foreground mb-2">Username</div>
-              <div className="text-4xl font-bold text-primary">
-                @{profile.username}
+              <div className="flex flex-col items-center gap-4 mb-4">
+                <div className="relative group">
+                  <Avatar className="h-24 w-24 border-4 border-primary/20">
+                    <AvatarImage src={profile.avatar_url || undefined} alt={profile.username} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-3xl">
+                      {profile.username?.charAt(0).toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="absolute bottom-0 right-0 h-8 w-8 rounded-full p-0 shadow-lg"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    {uploading ? (
+                      <div className="animate-spin">⟳</div>
+                    ) : (
+                      <Camera className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                  />
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground mb-1">Username</div>
+                  <div className="text-3xl font-bold text-primary">
+                    @{profile.username}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    ID: {profile.display_user_id}
+                  </div>
+                </div>
               </div>
-              <div className="text-sm text-muted-foreground mt-2">
-                Your unique username for connecting with friends
+              <div className="text-sm text-muted-foreground">
+                Click the camera icon to upload a profile picture (optional)
               </div>
             </div>
 

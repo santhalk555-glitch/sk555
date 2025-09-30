@@ -253,7 +253,7 @@ export const ProfileMatches = () => {
                     <div>
                       <h3 className="font-semibold text-lg">{match.username || 'Anonymous User'}</h3>
                       <p className="text-sm text-muted-foreground">
-                        @{match.display_user_id} · Joined {new Date(match.created_at).toLocaleDateString()}
+                        Joined {new Date(match.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
