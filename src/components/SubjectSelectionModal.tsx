@@ -64,13 +64,17 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
   const [branches, setBranches] = useState<Branch[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
-  const [selectedLobbyType, setSelectedLobbyType] = useState<'quiz' | 'practice' | null>(null);
-  const [selectedExam, setSelectedExam] = useState<ExamOption | null>(null);
-  const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
-  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
-  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
-  const [selectedPlayers, setSelectedPlayers] = useState<2 | 4 | null>(null);
   const [loading, setLoading] = useState(false);
+  
+  // Single state object to store all form data
+  const [formData, setFormData] = useState({
+    lobbyType: null as 'quiz' | 'practice' | null,
+    exam: null as ExamOption | null,
+    branch: null as Branch | null,
+    subject: null as Subject | null,
+    topic: null as Topic | null,
+    players: null as 2 | 4 | null,
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -82,6 +86,11 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     // Load exam options from the same source as ProfileCreationForm
     const exams = COMPETITIVE_EXAM_OPTIONS.map(name => ({ name }));
     setExamOptions(exams);
+  };
+
+  // Update form data helper
+  const updateFormData = (field: keyof typeof formData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const fetchBranches = async (sourceType: 'course' | 'exam', selectedName: string) => {
@@ -173,7 +182,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       }
       
       // Handle RRB JE technical branches - show technical subjects
-      if (branchId.startsWith('rrb_je_') && selectedExam?.name === 'RRB JE') {
+      if (branchId.startsWith('rrb_je_') && formData.exam?.name === 'RRB JE') {
         const branchIndex = parseInt(branchId.replace('rrb_je_', ''));
         const branchName = Object.keys(RRB_JE_ENGINEERING_BRANCHES)[branchIndex];
         const branchSubjects = RRB_JE_ENGINEERING_BRANCHES[branchName as keyof typeof RRB_JE_ENGINEERING_BRANCHES];
@@ -193,7 +202,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       const { data, error } = await supabase
         .from('subjects_hierarchy')
         .select('id, name, simple_id')
-        .eq('exam_simple_id', selectedExam?.name.toLowerCase().replace(/\s+/g, '_'))
+        .eq('exam_simple_id', formData.exam?.name.toLowerCase().replace(/\s+/g, '_'))
         .order('name');
       
       if (error) throw error;
@@ -242,12 +251,12 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
   };
 
   const handleLobbyTypeSelect = (lobbyType: 'quiz' | 'practice') => {
-    setSelectedLobbyType(lobbyType);
+    updateFormData('lobbyType', lobbyType);
     setCurrentStep(2);
   };
 
   const handleExamSelect = (exam: ExamOption) => {
-    setSelectedExam(exam);
+    updateFormData('exam', exam);
     
     // Check if this exam has technical branches or only general subjects
     const hasTechnicalBranches = EXAMS_WITH_TECHNICAL_BRANCHES.includes(exam.name);
@@ -263,15 +272,15 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
   };
 
   const handleBranchSelect = (branch: Branch) => {
-    setSelectedBranch(branch);
+    updateFormData('branch', branch);
     fetchSubjects(branch.id);
     setCurrentStep(4);
   };
 
   const handleSubjectSelect = (subject: Subject) => {
-    setSelectedSubject(subject);
+    updateFormData('subject', subject);
     
-    if (selectedLobbyType === 'practice') {
+    if (formData.lobbyType === 'practice') {
       // For practice lobbies, fetch topics for detailed selection
       fetchTopics(subject.id);
       setCurrentStep(5);
@@ -282,56 +291,62 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
   };
 
   const handleTopicSelect = (topic: Topic) => {
-    setSelectedTopic(topic);
+    updateFormData('topic', topic);
     setCurrentStep(6);
+  };
+  
+  const handlePlayersSelect = (players: 2 | 4) => {
+    updateFormData('players', players);
   };
 
   const handleCreate = async () => {
-    if (!selectedBranch || !selectedSubject || !selectedLobbyType) return;
+    if (!formData.branch || !formData.subject || !formData.lobbyType) return;
     
     // For practice lobbies, topic is required
-    if (selectedLobbyType === 'practice' && !selectedTopic) return;
+    if (formData.lobbyType === 'practice' && !formData.topic) return;
     
     // For quiz lobbies, player count is required
-    if (selectedLobbyType === 'quiz' && !selectedPlayers) return;
+    if (formData.lobbyType === 'quiz' && !formData.players) return;
 
     // Get the actual database IDs for exam
     let examId: string | undefined;
     
-    if (selectedExam) {
+    if (formData.exam) {
       const { data: examData } = await supabase
         .from('competitive_exams_list')
         .select('simple_id')
-        .eq('name', selectedExam.name)
+        .eq('name', formData.exam.name)
         .maybeSingle();
       examId = examData?.simple_id;
     }
     
     // Store RRB JE subject name for later use in lobby creation
-    if (selectedSubject && selectedSubject.id.includes('rrb_je_')) {
-      sessionStorage.setItem(`rrb_je_subject_${selectedSubject.id}`, selectedSubject.name);
+    if (formData.subject && formData.subject.id.includes('rrb_je_')) {
+      sessionStorage.setItem(`rrb_je_subject_${formData.subject.id}`, formData.subject.name);
     }
     
     onSubjectSelect({
       sourceType: 'exam',
       examId,
-      branchId: selectedBranch.id,
-      subjectId: selectedSubject.id,
-      topicId: selectedTopic?.id,
-      maxPlayers: selectedLobbyType === 'practice' ? 1 : (selectedPlayers || 2),
-      lobbyType: selectedLobbyType
+      branchId: formData.branch.id,
+      subjectId: formData.subject.id,
+      topicId: formData.topic?.id,
+      maxPlayers: formData.lobbyType === 'practice' ? 1 : (formData.players || 2),
+      lobbyType: formData.lobbyType
     });
     resetModal();
   };
 
   const resetModal = () => {
     setCurrentStep(1);
-    setSelectedLobbyType(null);
-    setSelectedExam(null);
-    setSelectedBranch(null);
-    setSelectedSubject(null);
-    setSelectedTopic(null);
-    setSelectedPlayers(null);
+    setFormData({
+      lobbyType: null,
+      exam: null,
+      branch: null,
+      subject: null,
+      topic: null,
+      players: null,
+    });
     setBranches([]);
     setSubjects([]);
     setTopics([]);
@@ -341,53 +356,23 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
     if (currentStep > 1) {
       let targetStep = currentStep - 1;
       
-      // Handle backing from step 6
+      // Handle backing from step 6 - determine correct previous step
       if (currentStep === 6) {
-        setSelectedPlayers(null);
         // For quiz mode, skip step 5 (topics) and go back to step 4 (subjects)
-        if (selectedLobbyType === 'quiz') {
+        if (formData.lobbyType === 'quiz') {
           targetStep = 4;
         } else {
           // For practice mode, go to step 5 (topics)
           targetStep = 5;
         }
       } 
-      // Handle backing from step 5 (practice mode topics only)
-      else if (currentStep === 5) {
-        setSelectedTopic(null);
-        targetStep = 4;
-      } 
-      // Handle backing from step 4 (subjects)
+      // Handle backing from step 4 (subjects) - check if we need to skip step 3
       else if (currentStep === 4) {
-        setSelectedSubject(null);
-        setSubjects([]);
-        setSelectedTopic(null);
-        setTopics([]);
         // Check if we skipped step 3 (branch selection)
-        const hasTechnicalBranches = selectedExam ? EXAMS_WITH_TECHNICAL_BRANCHES.includes(selectedExam.name) : false;
+        const hasTechnicalBranches = formData.exam ? EXAMS_WITH_TECHNICAL_BRANCHES.includes(formData.exam.name) : false;
         targetStep = hasTechnicalBranches ? 3 : 2;
-      } 
-      // Handle backing from step 3 (branch selection)
-      else if (currentStep === 3) {
-        setSelectedBranch(null);
-        setBranches([]);
-        setSelectedSubject(null);
-        setSubjects([]);
-        setSelectedTopic(null);
-        setTopics([]);
-        targetStep = 2;
-      } 
-      // Handle backing from step 2 (exam selection)
-      else if (currentStep === 2) {
-        setSelectedExam(null);
-        setSelectedBranch(null);
-        setBranches([]);
-        setSelectedSubject(null);
-        setSubjects([]);
-        setSelectedTopic(null);
-        setTopics([]);
-        targetStep = 1;
       }
+      // All other steps just go back one step
       
       setCurrentStep(targetStep);
     }
@@ -396,9 +381,9 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
   if (!isOpen) return null;
 
   const getStepTitle = () => {
-    const hasTechnicalBranches = selectedExam ? EXAMS_WITH_TECHNICAL_BRANCHES.includes(selectedExam.name) : false;
-    const totalSteps = selectedLobbyType === 'practice' ? (hasTechnicalBranches ? 6 : 5) : (hasTechnicalBranches ? 5 : 4);
-    return `Create ${selectedLobbyType?.charAt(0).toUpperCase() + selectedLobbyType?.slice(1) || ''} Lobby - Step ${currentStep} of ${totalSteps}`;
+    const hasTechnicalBranches = formData.exam ? EXAMS_WITH_TECHNICAL_BRANCHES.includes(formData.exam.name) : false;
+    const totalSteps = formData.lobbyType === 'practice' ? (hasTechnicalBranches ? 6 : 5) : (hasTechnicalBranches ? 5 : 4);
+    return `Create ${formData.lobbyType?.charAt(0).toUpperCase() + formData.lobbyType?.slice(1) || ''} Lobby - Step ${currentStep} of ${totalSteps}`;
   };
 
   return (
@@ -554,7 +539,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
           )}
 
           {/* Step 5: Topic Selection (Practice only) */}
-          {currentStep === 5 && selectedLobbyType === 'practice' && (
+          {currentStep === 5 && formData.lobbyType === 'practice' && (
             <div>
               <h3 className="text-lg font-semibold mb-3 flex items-center">
                 <Target className="w-5 h-5 mr-2 text-primary" />
@@ -585,7 +570,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
           {/* Step 6: Final Step */}
           {currentStep === 6 && (
             <div>
-              {selectedLobbyType === 'quiz' ? (
+              {formData.lobbyType === 'quiz' ? (
                 <div>
                   <h3 className="text-lg font-semibold mb-3 flex items-center">
                     <Users className="w-5 h-5 mr-2 text-primary" />
@@ -594,11 +579,11 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Card 
                       className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
-                        selectedPlayers === 2 
+                        formData.players === 2 
                           ? 'border-primary bg-primary/10' 
                           : 'border-border hover:border-primary/30'
                       }`}
-                      onClick={() => setSelectedPlayers(2)}
+                      onClick={() => handlePlayersSelect(2)}
                     >
                       <CardContent className="p-6 text-center">
                         <div className="w-12 h-12 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-3">
@@ -613,11 +598,11 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
 
                     <Card 
                       className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
-                        selectedPlayers === 4 
+                        formData.players === 4 
                           ? 'border-primary bg-primary/10' 
                           : 'border-border hover:border-primary/30'
                       }`}
-                      onClick={() => setSelectedPlayers(4)}
+                      onClick={() => handlePlayersSelect(4)}
                     >
                       <CardContent className="p-6 text-center">
                         <div className="w-12 h-12 rounded-full bg-gradient-to-r from-secondary to-primary flex items-center justify-center mx-auto mb-3">
@@ -656,17 +641,17 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
                   Back
                 </Button>
                 
-                {((selectedLobbyType === 'quiz' && selectedPlayers) || (selectedLobbyType === 'practice' && selectedTopic)) && (
+                {((formData.lobbyType === 'quiz' && formData.players) || (formData.lobbyType === 'practice' && formData.topic)) && (
                   <div className="flex items-center gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Creating lobby for:</p>
                       <p className="font-semibold text-sm">
-                        {selectedSubject?.name}
-                        {selectedTopic && ` → ${selectedTopic.name}`}
+                        {formData.subject?.name}
+                        {formData.topic && ` → ${formData.topic.name}`}
                         {' • '}
-                        {selectedLobbyType === 'quiz' ? '🏆 Quiz' : '🎯 Practice'}
+                        {formData.lobbyType === 'quiz' ? '🏆 Quiz' : '🎯 Practice'}
                         {' • '}
-                        {selectedLobbyType === 'quiz' ? `${selectedPlayers} Players` : 'Single Player'}
+                        {formData.lobbyType === 'quiz' ? `${formData.players} Players` : 'Single Player'}
                       </p>
                     </div>
                     <Button 
