@@ -342,28 +342,41 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
 
   const handleBack = () => {
     if (currentStep > 1) {
-      // Only clear selections from FUTURE steps, not current or previous ones
+      setCurrentStep(currentStep - 1);
+      
+      // Only clear selections from the step we're leaving, preserve all previous data
       if (currentStep === 6) {
-        // Going back from final step - only clear player selection
+        // Going back from final step - only clear final selections
         setSelectedPlayers(null);
+        // If practice mode, we go back to step 5 (topic selection)
+        // If quiz mode, we go back to step 4 (subject selection) 
+        if (selectedLobbyType === 'quiz') {
+          setSelectedSubject(null);
+          setTopics([]);
+        }
         setSelectedTopic(null);
       } else if (currentStep === 5) {
-        // Going back from topic selection - only clear topic
+        // Going back from topic selection to subject selection
+        // Keep subjects array intact, only clear the selected topic
         setSelectedTopic(null);
       } else if (currentStep === 4) {
-        // Going back from subject selection - only clear subject and topics
+        // Going back from subject selection to branch selection
+        // Keep branches intact, clear subjects
         setSelectedSubject(null);
+        setSubjects([]);
         setTopics([]);
         setSelectedTopic(null);
       } else if (currentStep === 3) {
-        // Going back from branch selection - only clear branch, subjects, and topics
+        // Going back from branch selection to exam selection  
+        // Keep exams intact, clear branches
         setSelectedBranch(null);
-        setSubjects([]);
+        setBranches([]);
         setSelectedSubject(null);
+        setSubjects([]);
         setTopics([]);
         setSelectedTopic(null);
       } else if (currentStep === 2) {
-        // Going back from exam selection - clear exam and everything after
+        // Going back from exam selection to lobby type
         setSelectedExam(null);
         setBranches([]);
         setSelectedBranch(null);
@@ -372,8 +385,6 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
         setTopics([]);
         setSelectedTopic(null);
       }
-      
-      setCurrentStep(currentStep - 1);
     }
   };
 
