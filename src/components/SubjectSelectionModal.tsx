@@ -342,29 +342,38 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
 
   const handleBack = () => {
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-      
-      // Reset subsequent selections
-      if (currentStep === 2) {
-        setSelectedLobbyType(null);
-      } else if (currentStep === 3) {
-        setSelectedExam(null);
-        setBranches([]);
-      } else if (currentStep === 4) {
-        setSelectedBranch(null);
-        setSubjects([]);
+      // Only clear selections from FUTURE steps, not current or previous ones
+      if (currentStep === 6) {
+        // Going back from final step - only clear player selection
+        setSelectedPlayers(null);
+        setSelectedTopic(null);
       } else if (currentStep === 5) {
+        // Going back from topic selection - only clear topic
+        setSelectedTopic(null);
+      } else if (currentStep === 4) {
+        // Going back from subject selection - only clear subject and topics
         setSelectedSubject(null);
         setTopics([]);
-      } else if (currentStep === 6) {
-        if (selectedLobbyType === 'practice') {
-          setSelectedTopic(null);
-        } else {
-          setSelectedSubject(null);
-          setTopics([]);
-        }
-        setSelectedPlayers(null);
+        setSelectedTopic(null);
+      } else if (currentStep === 3) {
+        // Going back from branch selection - only clear branch, subjects, and topics
+        setSelectedBranch(null);
+        setSubjects([]);
+        setSelectedSubject(null);
+        setTopics([]);
+        setSelectedTopic(null);
+      } else if (currentStep === 2) {
+        // Going back from exam selection - clear exam and everything after
+        setSelectedExam(null);
+        setBranches([]);
+        setSelectedBranch(null);
+        setSubjects([]);
+        setSelectedSubject(null);
+        setTopics([]);
+        setSelectedTopic(null);
       }
+      
+      setCurrentStep(currentStep - 1);
     }
   };
 
