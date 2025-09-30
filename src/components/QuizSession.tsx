@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +40,9 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   const [quizStarted, setQuizStarted] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [answers, setAnswers] = useState<string[]>([]);
+  const [isCreator, setIsCreator] = useState(false);
+  const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
+  const channelRef = useRef<any>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -49,8 +52,45 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
       console.log('QuizSession: Loading quiz data for active lobby:', lobby.id);
       loadQuizData();
       setQuizStarted(true);
+      setIsCreator(user?.id === lobby.creator_id);
     }
-  }, [lobby]);
+  }, [lobby, user]);
+
+  // Real-time synchronization for quiz state
+  useEffect(() => {
+    if (!lobby || !quizStarted) return;
+
+    const channel = supabase.channel(`quiz-sync-${lobby.id}`);
+    channelRef.current = channel;
+
+    // Listen for question changes from creator
+    channel
+      .on('broadcast', { event: 'question_change' }, ({ payload }) => {
+        console.log('QuizSession: Received question change:', payload);
+        if (payload.questionIndex !== undefined) {
+          setCurrentQuestionIndex(payload.questionIndex);
+          setQuestionStartTime(Date.now());
+          setSelectedAnswer(''); // Reset selection for new question
+          
+          toast({
+            title: '📝 New Question',
+            description: `Question ${payload.questionIndex + 1} loaded!`,
+          });
+        }
+      })
+      .on('broadcast', { event: 'quiz_end' }, () => {
+        console.log('QuizSession: Received quiz end signal');
+        handleQuizEnd();
+      })
+      .subscribe((status) => {
+        console.log('QuizSession: Channel subscription status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+    };
+  }, [lobby, quizStarted]);
 
   useEffect(() => {
     if (quizStarted && timeLeft > 0) {
@@ -150,18 +190,64 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     setSelectedAnswer(answer);
   };
 
-  const submitAnswer = () => {
+  const submitAnswer = async () => {
     if (!selectedAnswer) return;
 
     const newAnswers = [...answers];
     newAnswers[currentQuestionIndex] = selectedAnswer;
     setAnswers(newAnswers);
 
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-      setSelectedAnswer('');
-    } else {
-      handleQuizEnd();
+    // If creator, broadcast next question to all players
+    if (isCreator && channelRef.current) {
+      try {
+        if (currentQuestionIndex < questions.length - 1) {
+          const nextIndex = currentQuestionIndex + 1;
+          
+          console.log('QuizSession: Broadcasting question change to index:', nextIndex);
+          
+          // Broadcast to all players
+          await channelRef.current.send({
+            type: 'broadcast',
+            event: 'question_change',
+            payload: { questionIndex: nextIndex }
+          });
+          
+          // Update local state for creator
+          setCurrentQuestionIndex(nextIndex);
+          setQuestionStartTime(Date.now());
+          setSelectedAnswer('');
+          
+          toast({
+            title: '✅ Question Updated',
+            description: `All players moved to question ${nextIndex + 1}`,
+          });
+        } else {
+          console.log('QuizSession: Broadcasting quiz end');
+          
+          // Broadcast quiz end
+          await channelRef.current.send({
+            type: 'broadcast',
+            event: 'quiz_end',
+            payload: {}
+          });
+          
+          handleQuizEnd();
+        }
+      } catch (error) {
+        console.error('QuizSession: Error broadcasting:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to sync with other players',
+          variant: 'destructive'
+        });
+      }
+    } else if (!isCreator) {
+      // Non-creators just save their answer and wait
+      console.log('QuizSession: Non-creator submitted answer, waiting for creator');
+      toast({
+        title: '✅ Answer Saved',
+        description: 'Waiting for Quiz Master to continue...',
+      });
     }
   };
 
@@ -519,11 +605,19 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         </div>
 
         {/* Question Card */}
-        <Card className="mb-8">
+        <Card className="mb-8 bg-gradient-card border-primary/20">
           <CardHeader>
-            <CardTitle className="text-xl">
-              Question {currentQuestionIndex + 1}
-            </CardTitle>
+            <div className="flex items-center justify-between mb-2">
+              <CardTitle className="text-xl">
+                Question {currentQuestionIndex + 1}
+              </CardTitle>
+              {isCreator && (
+                <Badge variant="secondary" className="bg-primary/20">
+                  <Crown className="w-3 h-3 mr-1" />
+                  Quiz Master
+                </Badge>
+              )}
+            </div>
             <CardDescription className="text-lg font-medium text-foreground">
               {currentQuestion.question}
             </CardDescription>
@@ -544,6 +638,11 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
                 </Button>
               ))}
             </div>
+            {!isCreator && (
+              <div className="mt-4 text-sm text-muted-foreground text-center">
+                ⏳ Waiting for Quiz Master to advance to next question
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -554,7 +653,10 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
             disabled={!selectedAnswer}
             className="bg-gradient-primary hover:opacity-90 px-8 py-3"
           >
-            {currentQuestionIndex === questions.length - 1 ? 'Finish Quiz' : 'Next Question'}
+            {isCreator 
+              ? (currentQuestionIndex === questions.length - 1 ? 'Finish Quiz for All' : 'Next Question for All')
+              : (currentQuestionIndex === questions.length - 1 ? 'Finish Quiz' : 'Submit Answer')
+            }
           </Button>
         </div>
       </div>
