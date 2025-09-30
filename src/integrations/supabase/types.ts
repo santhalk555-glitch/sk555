@@ -495,7 +495,6 @@ export type Database = {
           course_simple_id: string | null
           created_at: string
           exam_simple_id: string | null
-          explanation: string | null
           id: string
           option_1: string
           option_2: string
@@ -510,7 +509,6 @@ export type Database = {
           course_simple_id?: string | null
           created_at?: string
           exam_simple_id?: string | null
-          explanation?: string | null
           id?: string
           option_1: string
           option_2: string
@@ -525,7 +523,6 @@ export type Database = {
           course_simple_id?: string | null
           created_at?: string
           exam_simple_id?: string | null
-          explanation?: string | null
           id?: string
           option_1?: string
           option_2?: string

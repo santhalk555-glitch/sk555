@@ -22,7 +22,6 @@ interface Question {
   option_3: string;
   option_4: string;
   correct_answer: number;
-  explanation?: string;
 }
 
 interface Participant {
@@ -432,9 +431,6 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
                     <div className="text-sm">
                       <p>Your answer: <span className={parseInt(answers[index]) === question.correct_answer ? 'text-green-600' : 'text-red-600'}>{answers[index]}</span></p>
                       <p>Correct answer: <span className="text-green-600">{question.correct_answer}</span></p>
-                      {question.explanation && (
-                        <p className="text-muted-foreground mt-1">{question.explanation}</p>
-                      )}
                     </div>
                   </div>
                 ))}
