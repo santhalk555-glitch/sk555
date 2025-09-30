@@ -118,8 +118,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
             // Filter questions by simple exam identifier
             questionsQuery = questionsQuery
-              .eq('exam_simple_id', examSimpleId)
-              .eq('source_type', 'exam');
+              .eq('exam_simple_id', examSimpleId);
 
             if (subjectQuery.data) {
               questionsQuery = questionsQuery.eq('topic_simple_id', subjectQuery.data.simple_id);
@@ -140,7 +139,6 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
       } else if (lobby.source_type && lobby.subject_simple_id && lobby.topic_simple_id) {
         // If lobby has new structure, use it
         questionsQuery = questionsQuery
-          .eq('source_type', lobby.source_type)
           .eq('subject_simple_id', lobby.subject_simple_id)
           .eq('topic_simple_id', lobby.topic_simple_id);
 
