@@ -30,6 +30,7 @@ interface Participant {
   username: string;
   score: number;
   isWinner?: boolean;
+  quiz_finished?: boolean;
 }
 
 const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
@@ -41,6 +42,8 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   const [showResults, setShowResults] = useState(false);
   const [answers, setAnswers] = useState<string[]>([]);
   const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const [currentUserFinished, setCurrentUserFinished] = useState(false);
+  const [waitingForOthers, setWaitingForOthers] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -74,7 +77,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
   // Timer that auto-submits quiz when time runs out
   useEffect(() => {
-    if (!quizStarted || timeLeft <= 0 || showResults) return;
+    if (!quizStarted || timeLeft <= 0 || currentUserFinished) return;
     
     const timer = setInterval(() => {
       setTimeLeft(prev => {
@@ -88,7 +91,44 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [quizStarted, showResults]);
+  }, [quizStarted, currentUserFinished]);
+
+  // Listen for realtime updates to quiz participants
+  useEffect(() => {
+    if (!lobby?.id || !currentUserFinished) return;
+
+    const channel = supabase
+      .channel(`quiz_participants_${lobby.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'quiz_participants',
+          filter: `lobby_id=eq.${lobby.id}`
+        },
+        async (payload) => {
+          console.log('Quiz participant updated:', payload);
+          
+          // Check if all players are finished
+          const { data: allParticipants } = await supabase
+            .from('quiz_participants')
+            .select('user_id, quiz_finished, score')
+            .eq('lobby_id', lobby.id);
+
+          if (allParticipants && allParticipants.every(p => p.quiz_finished)) {
+            console.log('All players finished! Showing results...');
+            setWaitingForOthers(false);
+            await calculateAndShowResults();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [lobby?.id, currentUserFinished]);
 
 
   const loadQuizData = async () => {
@@ -247,8 +287,6 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   };
 
   const handleQuizEnd = async () => {
-    setShowResults(true);
-    
     // Calculate current user's score
     let score = 0;
     answers.forEach((answer, index) => {
@@ -258,22 +296,53 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     });
 
     try {
-      // Update current user's score first
+      // Mark current user as finished
       const { error: updateError } = await supabase
         .from('quiz_participants')
         .update({ 
           score,
-          answers: answers 
+          answers: answers,
+          quiz_finished: true
         })
         .eq('lobby_id', lobby.id)
         .eq('user_id', user?.id);
 
       if (updateError) throw updateError;
 
-      // Wait a moment for score to be updated
-      await new Promise(resolve => setTimeout(resolve, 500));
+      setCurrentUserFinished(true);
 
-      // Get all participants' scores to determine winner(s)
+      // Check if all players are finished
+      const { data: allParticipants } = await supabase
+        .from('quiz_participants')
+        .select('user_id, quiz_finished, score')
+        .eq('lobby_id', lobby.id);
+
+      const allFinished = allParticipants?.every(p => p.quiz_finished) || false;
+
+      if (allFinished) {
+        // All players finished - show results immediately
+        await calculateAndShowResults();
+      } else {
+        // Wait for other players
+        setWaitingForOthers(true);
+        toast({
+          title: 'Quiz Submitted!',
+          description: 'Waiting for other players to finish...',
+        });
+      }
+    } catch (error) {
+      console.error('Error submitting quiz:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to submit quiz. Please try again.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const calculateAndShowResults = async () => {
+    try {
+      // Get all participants' scores
       const { data: allParticipants, error: participantsError } = await supabase
         .from('quiz_participants')
         .select('user_id, score')
@@ -303,6 +372,9 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
       const maxScore = Math.max(...participantsWithProfiles.map(p => p.score));
       const winners = participantsWithProfiles.filter(p => p.score === maxScore);
       const isCurrentUserWinner = winners.some(w => w.user_id === user?.id);
+
+      // Calculate current user's score
+      const currentUserScore = allParticipants.find(p => p.user_id === user?.id)?.score || 0;
 
       // New points system: -5 for all players, +10 additional for winner(s)
       const participationPenalty = -5;
@@ -348,18 +420,20 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         isWinner: winners.some(w => w.user_id === p.user_id)
       })));
 
-      const scorePercentage = Math.round((score / questions.length) * 100);
-      
       toast({
         title: isCurrentUserWinner ? '🎉 You Won!' : 'Quiz Completed!',
-        description: `You scored ${score}/${questions.length} (${isCurrentUserWinner ? `Winner! +${totalPointsEarned}` : `${totalPointsEarned}`} points)`,
+        description: `You scored ${currentUserScore}/${questions.length} (${isCurrentUserWinner ? `Winner! +${totalPointsEarned}` : `${totalPointsEarned}`} points)`,
         className: isCurrentUserWinner ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-300' : undefined
       });
+
+      // Show results
+      setShowResults(true);
     } catch (error) {
-      console.error('Error updating scores:', error);
+      console.error('Error calculating results:', error);
       toast({
-        title: 'Quiz Completed!',
-        description: `You scored ${score}/${questions.length} questions correctly.`,
+        title: 'Error',
+        description: 'Failed to calculate results.',
+        variant: 'destructive'
       });
     }
   };
@@ -382,6 +456,64 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
               Waiting for the quiz to begin.
             </p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (waitingForOthers) {
+    const score = answers.filter((answer, index) => 
+      questions[index] && parseInt(answer) === questions[index].correct_answer
+    ).length;
+
+    return (
+      <div className="pt-20 pb-12">
+        <div className="container mx-auto px-6 max-w-4xl">
+          <Card className="bg-gradient-card border-primary/20">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
+                <Clock className="w-8 h-8 text-primary" />
+              </div>
+              <CardTitle className="text-2xl mb-2">Quiz Submitted!</CardTitle>
+              <CardDescription className="text-lg">
+                Waiting for other players to finish...
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center space-y-4">
+                <div className="text-5xl font-bold text-primary mb-2">
+                  {score}/{questions.length}
+                </div>
+                <p className="text-muted-foreground">Your Score</p>
+                
+                <div className="mt-8 p-4 bg-muted/20 rounded-lg">
+                  <div className="flex items-center justify-center space-x-2 mb-3">
+                    <Users className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Other Players</span>
+                  </div>
+                  <div className="flex justify-center space-x-2">
+                    {participants.filter(p => p.user_id !== user?.id).map((participant) => (
+                      <div key={participant.user_id} className="flex flex-col items-center">
+                        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-1">
+                          <span className="text-sm font-semibold">
+                            {participant.username.substring(0, 2).toUpperCase()}
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground animate-pulse">
+                          Still playing...
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-6 text-sm text-muted-foreground">
+                  <p>⏳ The results will appear automatically</p>
+                  <p className="mt-1">when all players have finished</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );

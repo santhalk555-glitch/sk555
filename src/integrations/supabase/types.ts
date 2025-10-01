@@ -466,6 +466,7 @@ export type Database = {
           id: string
           joined_at: string
           lobby_id: string
+          quiz_finished: boolean
           score: number
           user_id: string
         }
@@ -474,6 +475,7 @@ export type Database = {
           id?: string
           joined_at?: string
           lobby_id: string
+          quiz_finished?: boolean
           score?: number
           user_id: string
         }
@@ -482,6 +484,7 @@ export type Database = {
           id?: string
           joined_at?: string
           lobby_id?: string
+          quiz_finished?: boolean
           score?: number
           user_id?: string
         }
