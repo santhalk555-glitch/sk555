@@ -83,56 +83,95 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   const loadQuizData = async () => {
     console.log('QuizSession: loadQuizData called for lobby:', lobby);
     try {
-      // Fetch questions based on subject_id from lobby
-      let questionsQuery = supabase
-        .from('quiz_questions')
-        .select('*')
-        .limit(15);
+      let questionsData: Question[] = [];
 
-      console.log('QuizSession: Building query with subject_id:', lobby.subject_id, 'topic_id:', lobby.topic_id);
+      // Check if lobby already has randomized questions
+      if (lobby.question_ids && lobby.question_ids.length > 0) {
+        console.log('QuizSession: Loading pre-selected questions:', lobby.question_ids);
+        
+        // Fetch questions in the exact order stored in lobby
+        const { data, error } = await supabase
+          .from('quiz_questions')
+          .select('*')
+          .in('id', lobby.question_ids);
 
-      // Use subject_id if available
-      if (lobby.subject_id) {
-        questionsQuery = questionsQuery.eq('subject_id', lobby.subject_id);
+        if (error) throw error;
+        
+        // Sort questions to match the order in question_ids
+        if (data) {
+          questionsData = lobby.question_ids.map((id: string) => 
+            data.find((q: Question) => q.id === id)
+          ).filter(Boolean) as Question[];
+        }
+      } else {
+        // First player to load - select and randomize questions
+        console.log('QuizSession: Selecting random questions for new quiz');
+        
+        if (!lobby.subject_id) {
+          console.error('QuizSession: Lobby missing subject_id');
+          toast({
+            title: 'Configuration Error',
+            description: 'Unable to load quiz questions. Lobby is missing subject information.',
+            variant: 'destructive'
+          });
+          return;
+        }
 
-        // Add topic filter if available (for practice mode)
+        // Build query to fetch all matching questions
+        let questionsQuery = supabase
+          .from('quiz_questions')
+          .select('*')
+          .eq('subject_id', lobby.subject_id);
+
         if (lobby.topic_id) {
           console.log('QuizSession: Adding topic filter:', lobby.topic_id);
           questionsQuery = questionsQuery.eq('topic_id', lobby.topic_id);
         }
+
+        const { data: allQuestions, error: questionsError } = await questionsQuery;
+
+        if (questionsError) {
+          console.error('QuizSession: Error fetching questions:', questionsError);
+          throw questionsError;
+        }
+
+        if (!allQuestions || allQuestions.length === 0) {
+          console.error('QuizSession: No questions found for subject_id:', lobby.subject_id, 'topic_id:', lobby.topic_id);
+          toast({
+            title: 'No Questions Available',
+            description: `No questions found for the selected topic. Please contact support or try a different topic.`,
+            variant: 'destructive'
+          });
+          return;
+        }
+
+        // Randomize and select 15 questions
+        const shuffled = allQuestions.sort(() => Math.random() - 0.5);
+        questionsData = shuffled.slice(0, 15);
         
-        // Only filter by exam_simple_id if both lobby and questions have it
-        // Most questions have NULL exam_simple_id, so we skip this filter
-      } else {
-        console.error('QuizSession: Lobby missing subject_id');
-        toast({
-          title: 'Configuration Error',
-          description: 'Unable to load quiz questions. Lobby is missing subject information.',
-          variant: 'destructive'
-        });
-        return;
+        // Store the randomized question IDs in the lobby
+        const questionIds = questionsData.map(q => q.id);
+        const { error: updateError } = await supabase
+          .from('game_lobbies')
+          .update({ question_ids: questionIds })
+          .eq('id', lobby.id);
+
+        if (updateError) {
+          console.error('QuizSession: Error saving question IDs:', updateError);
+        } else {
+          console.log('QuizSession: Saved randomized questions to lobby');
+        }
       }
 
-      console.log('QuizSession: Executing questions query...');
-      const { data: questionsData, error: questionsError } = await questionsQuery;
-
-      if (questionsError) {
-        console.error('QuizSession: Error fetching questions:', questionsError);
-        throw questionsError;
-      }
-
-      console.log('QuizSession: Questions found:', questionsData?.length || 0);
-      console.log('QuizSession: First question:', questionsData?.[0]);
-
-      if (questionsData && questionsData.length > 0) {
-        console.log('QuizSession: Setting questions state with', questionsData.length, 'questions');
+      console.log('QuizSession: Questions loaded:', questionsData.length);
+      
+      if (questionsData.length > 0) {
         setQuestions(questionsData);
         setAnswers(new Array(questionsData.length).fill(''));
       } else {
-        console.error('QuizSession: No questions found for subject_id:', lobby.subject_id, 'topic_id:', lobby.topic_id);
         toast({
-          title: 'No Questions Available',
-          description: `No questions found for the selected topic. Please contact support or try a different topic.`,
+          title: 'Error',
+          description: 'Failed to load questions. Please try again.',
           variant: 'destructive'
         });
       }
