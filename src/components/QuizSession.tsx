@@ -45,8 +45,6 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   const [currentUserFinished, setCurrentUserFinished] = useState(false);
   const [waitingForOthers, setWaitingForOthers] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [loadingQuestions, setLoadingQuestions] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -63,17 +61,12 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   useEffect(() => {
     if (lobby && lobby.status === 'active' && !quizStarted && !sessionId) {
       console.log('QuizSession: Loading quiz data for active lobby:', lobby.id);
-      setLoadingQuestions(true);
-      setLoadError(null);
       
       initializeQuizSession().then(() => {
         console.log('QuizSession: Quiz session initialized successfully');
-        setLoadingQuestions(false);
         setQuizStarted(true);
       }).catch((error) => {
         console.error('QuizSession: Failed to initialize quiz session:', error);
-        setLoadingQuestions(false);
-        setLoadError(error.message || 'Failed to load questions');
         toast({
           title: 'Error Loading Quiz',
           description: 'Failed to load questions. Please try again.',
@@ -104,12 +97,18 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
   const initializeQuizSession = async () => {
     console.log('initializeQuizSession: Starting for lobby:', lobby.id);
+    console.log('initializeQuizSession: Lobby data:', {
+      id: lobby.id,
+      subject_id: lobby.subject_id,
+      topic_id: lobby.topic_id,
+      question_ids: lobby.question_ids
+    });
     
     try {
       let questionsData: Question[] = [];
 
       // Check if lobby already has randomized questions
-      if (lobby?.question_ids && Array.isArray(lobby.question_ids) && lobby.question_ids.length > 0) {
+      if (lobby.question_ids && lobby.question_ids.length > 0) {
         console.log('initializeQuizSession: Loading pre-selected questions:', lobby.question_ids);
         
         const { data, error } = await supabase
@@ -118,26 +117,22 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
           .in('id', lobby.question_ids);
 
         if (error) {
-          console.error('Error fetching questions:', error);
-          throw new Error('Failed to fetch questions from database');
+          console.error('initializeQuizSession: Error loading questions:', error);
+          throw error;
         }
         
-        if (!data || data.length === 0) {
-          throw new Error('No questions found for the selected IDs');
-        }
-        
-        // Preserve the order from lobby.question_ids
-        questionsData = lobby.question_ids.map((id: string) => 
-          data.find((q: Question) => q.id === id)
-        ).filter(Boolean) as Question[];
-        
-        if (questionsData.length === 0) {
-          throw new Error('Failed to load questions - no valid questions found');
+        if (data) {
+          questionsData = lobby.question_ids.map((id: string) => 
+            data.find((q: Question) => q.id === id)
+          ).filter(Boolean) as Question[];
         }
       } else {
-        // Select and randomize 10 questions
-        if (!lobby?.subject_id) {
-          throw new Error('Lobby configuration error: missing subject');
+        // Select and randomize questions
+        console.log('initializeQuizSession: Selecting random questions');
+        
+        if (!lobby.subject_id) {
+          console.error('initializeQuizSession: Lobby missing subject_id');
+          throw new Error('Lobby missing subject_id');
         }
 
         let questionsQuery = supabase
@@ -146,49 +141,40 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
           .eq('subject_id', lobby.subject_id);
 
         if (lobby.topic_id) {
+          console.log('initializeQuizSession: Adding topic filter:', lobby.topic_id);
           questionsQuery = questionsQuery.eq('topic_id', lobby.topic_id);
         }
 
         const { data: allQuestions, error: questionsError } = await questionsQuery;
 
         if (questionsError) {
-          console.error('Error querying questions:', questionsError);
-          throw new Error('Failed to query questions from database');
+          console.error('initializeQuizSession: Error fetching questions:', questionsError);
+          throw questionsError;
         }
 
         if (!allQuestions || allQuestions.length === 0) {
-          throw new Error('No questions available for this subject/topic');
+          console.error('initializeQuizSession: No questions found for filters');
+          throw new Error('No questions found');
         }
 
-        // Randomly select exactly 10 questions
-        const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
-        questionsData = shuffled.slice(0, 10);
+        console.log('initializeQuizSession: Found', allQuestions.length, 'questions');
+        const shuffled = allQuestions.sort(() => Math.random() - 0.5);
+        questionsData = shuffled.slice(0, 15);
         
-        console.log('Selected 10 random questions from', allQuestions.length, 'available');
-        
-        // Save question IDs to lobby
         const questionIds = questionsData.map(q => q.id);
-        const { error: updateError } = await supabase
+        console.log('initializeQuizSession: Saving question IDs to lobby');
+        await supabase
           .from('game_lobbies')
           .update({ question_ids: questionIds })
           .eq('id', lobby.id);
-          
-        if (updateError) {
-          console.error('Warning: Failed to save question IDs to lobby:', updateError);
-          // Don't throw - we can still proceed with the quiz
-        }
       }
 
-      // Final validation
-      if (!questionsData || questionsData.length === 0) {
-        throw new Error('No questions loaded - cannot start quiz');
-      }
-
-      console.log('initializeQuizSession: Successfully loaded', questionsData.length, 'questions');
+      console.log('initializeQuizSession: Questions loaded:', questionsData.length);
       setQuestions(questionsData);
       setAnswers(new Array(questionsData.length).fill(''));
 
-      // Create quiz session with the question IDs
+      // Create quiz session
+      console.log('initializeQuizSession: Creating quiz session');
       const { data: session, error: sessionError } = await supabase
         .from('quiz_sessions')
         .insert({
@@ -200,41 +186,55 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         .single();
 
       if (sessionError) {
-        console.error('Error creating quiz session:', sessionError);
-        throw new Error('Failed to create quiz session');
+        console.error('initializeQuizSession: Error creating session:', sessionError);
+        throw sessionError;
       }
       
-      if (!session) {
-        throw new Error('Quiz session creation failed - no session returned');
-      }
-      
-      console.log('initializeQuizSession: Session created successfully:', session.id);
+      console.log('initializeQuizSession: Session created:', session.id);
       setSessionId(session.id);
 
       // Get all lobby participants and create quiz_players records
+      console.log('initializeQuizSession: Loading lobby participants');
       const { data: lobbyParticipants, error: participantsError } = await supabase
         .from('lobby_participants')
         .select('user_id, username')
         .eq('lobby_id', lobby.id);
 
-      if (participantsError) throw participantsError;
+      if (participantsError) {
+        console.error('initializeQuizSession: Error loading participants:', participantsError);
+        throw participantsError;
+      }
+
+      console.log('initializeQuizSession: Found', lobbyParticipants?.length, 'participants');
 
       if (lobbyParticipants) {
         // Create quiz_player records for all participants
+        console.log('initializeQuizSession: Creating quiz_player records');
         for (const participant of lobbyParticipants) {
-          await supabase
+          const { error: playerError } = await supabase
             .from('quiz_players')
             .insert({
               session_id: session.id,
               user_id: participant.user_id,
               username: participant.username
             });
+          
+          if (playerError) {
+            console.error('initializeQuizSession: Error creating player record:', playerError);
+            throw playerError;
+          }
         }
 
         setParticipants(lobbyParticipants.map(p => ({ ...p, score: 0 })));
+        console.log('initializeQuizSession: Successfully initialized quiz session!');
       }
     } catch (error) {
-      console.error('Error initializing quiz session:', error);
+      console.error('initializeQuizSession: Fatal error:', error);
+      toast({
+        title: 'Error Loading Quiz',
+        description: error instanceof Error ? error.message : 'Failed to load questions. Please try again.',
+        variant: 'destructive'
+      });
       throw error;
     }
   };
@@ -274,11 +274,6 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
 
   const handleAnswerSelect = (answer: string) => {
-    if (!questions || questions.length === 0) {
-      console.error('Cannot select answer: no questions loaded');
-      return;
-    }
-    
     // Save answer immediately when selected
     const newAnswers = [...answers];
     newAnswers[currentQuestionIndex] = answer;
@@ -286,16 +281,12 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   };
 
   const goToNextQuestion = () => {
-    if (!questions || questions.length === 0) return;
-    
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
 
   const goToPreviousQuestion = () => {
-    if (!questions || questions.length === 0) return;
-    
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
     }
@@ -323,21 +314,6 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   const handleQuizEnd = async () => {
     if (!sessionId) {
       console.error('handleQuizEnd: No session ID available');
-      toast({
-        title: 'Error',
-        description: 'Session not initialized properly',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (!questions || questions.length === 0) {
-      console.error('handleQuizEnd: No questions available');
-      toast({
-        title: 'Error',
-        description: 'No questions loaded - cannot submit quiz',
-        variant: 'destructive'
-      });
       return;
     }
 
@@ -518,49 +494,6 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // Show loading state
-  if (loadingQuestions) {
-    return (
-      <div className="pt-20 pb-12">
-        <div className="container mx-auto px-6 max-w-4xl">
-          <Card className="bg-gradient-card border-primary/20">
-            <CardContent className="pt-8 text-center">
-              <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
-                <Clock className="w-8 h-8 text-primary" />
-              </div>
-              <h2 className="text-2xl font-bold mb-2">Loading Questions...</h2>
-              <p className="text-muted-foreground">
-                Please wait while we prepare your quiz
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state
-  if (loadError || !questions || questions.length === 0) {
-    return (
-      <div className="pt-20 pb-12">
-        <div className="container mx-auto px-6 max-w-4xl">
-          <Card className="border-destructive/50">
-            <CardContent className="pt-8 text-center">
-              <h2 className="text-2xl font-bold mb-4 text-destructive">Failed to Load Questions</h2>
-              <p className="text-muted-foreground mb-6">
-                {loadError || 'No questions available. Please try again.'}
-              </p>
-              <Button onClick={onBack} variant="outline">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Lobby
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
   if (!quizStarted) {
     return (
       <div className="pt-20 pb-12">
@@ -579,11 +512,9 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   }
 
   if (waitingForOthers) {
-    const score = questions && questions.length > 0 
-      ? answers.filter((answer, index) => 
-          questions[index] && parseInt(answer) === questions[index].correct_answer
-        ).length
-      : 0;
+    const score = answers.filter((answer, index) => 
+      questions[index] && parseInt(answer) === questions[index].correct_answer
+    ).length;
 
     return (
       <div className="pt-20 pb-12">
@@ -601,7 +532,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
             <CardContent>
               <div className="text-center space-y-4">
                 <div className="text-5xl font-bold text-primary mb-2">
-                  {score}/{questions?.length || 0}
+                  {score}/{questions.length}
                 </div>
                 <p className="text-muted-foreground">Your Score</p>
                 
