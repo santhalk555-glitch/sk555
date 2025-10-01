@@ -44,6 +44,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [currentUserFinished, setCurrentUserFinished] = useState(false);
   const [waitingForOthers, setWaitingForOthers] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -56,16 +57,16 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Load quiz data immediately when lobby becomes active
+  // Load quiz data and create session when lobby becomes active
   useEffect(() => {
-    if (lobby && lobby.status === 'active' && !quizStarted) {
+    if (lobby && lobby.status === 'active' && !quizStarted && !sessionId) {
       console.log('QuizSession: Loading quiz data for active lobby:', lobby.id);
       
-      loadQuizData().then(() => {
-        console.log('QuizSession: Quiz data loaded successfully, starting quiz');
+      initializeQuizSession().then(() => {
+        console.log('QuizSession: Quiz session initialized successfully');
         setQuizStarted(true);
       }).catch((error) => {
-        console.error('QuizSession: Failed to load quiz data:', error);
+        console.error('QuizSession: Failed to initialize quiz session:', error);
         toast({
           title: 'Error Loading Quiz',
           description: 'Failed to load questions. Please try again.',
@@ -73,7 +74,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         });
       });
     }
-  }, [lobby?.status]);
+  }, [lobby?.status, sessionId]);
 
   // Timer that auto-submits quiz when time runs out
   useEffect(() => {
@@ -93,33 +94,133 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     return () => clearInterval(timer);
   }, [quizStarted, currentUserFinished]);
 
-  // Listen for realtime updates to quiz participants
+
+  const initializeQuizSession = async () => {
+    console.log('initializeQuizSession: Starting for lobby:', lobby.id);
+    
+    try {
+      let questionsData: Question[] = [];
+
+      // Check if lobby already has randomized questions
+      if (lobby.question_ids && lobby.question_ids.length > 0) {
+        console.log('initializeQuizSession: Loading pre-selected questions:', lobby.question_ids);
+        
+        const { data, error } = await supabase
+          .from('quiz_questions')
+          .select('*')
+          .in('id', lobby.question_ids);
+
+        if (error) throw error;
+        
+        if (data) {
+          questionsData = lobby.question_ids.map((id: string) => 
+            data.find((q: Question) => q.id === id)
+          ).filter(Boolean) as Question[];
+        }
+      } else {
+        // Select and randomize questions
+        if (!lobby.subject_id) {
+          throw new Error('Lobby missing subject_id');
+        }
+
+        let questionsQuery = supabase
+          .from('quiz_questions')
+          .select('*')
+          .eq('subject_id', lobby.subject_id);
+
+        if (lobby.topic_id) {
+          questionsQuery = questionsQuery.eq('topic_id', lobby.topic_id);
+        }
+
+        const { data: allQuestions, error: questionsError } = await questionsQuery;
+
+        if (questionsError) throw questionsError;
+
+        if (!allQuestions || allQuestions.length === 0) {
+          throw new Error('No questions found');
+        }
+
+        const shuffled = allQuestions.sort(() => Math.random() - 0.5);
+        questionsData = shuffled.slice(0, 15);
+        
+        const questionIds = questionsData.map(q => q.id);
+        await supabase
+          .from('game_lobbies')
+          .update({ question_ids: questionIds })
+          .eq('id', lobby.id);
+      }
+
+      console.log('initializeQuizSession: Questions loaded:', questionsData.length);
+      setQuestions(questionsData);
+      setAnswers(new Array(questionsData.length).fill(''));
+
+      // Create quiz session
+      const { data: session, error: sessionError } = await supabase
+        .from('quiz_sessions')
+        .insert({
+          lobby_id: lobby.id,
+          question_ids: questionsData.map(q => q.id),
+          status: 'active'
+        })
+        .select()
+        .single();
+
+      if (sessionError) throw sessionError;
+      
+      console.log('initializeQuizSession: Session created:', session.id);
+      setSessionId(session.id);
+
+      // Get all lobby participants and create quiz_players records
+      const { data: lobbyParticipants, error: participantsError } = await supabase
+        .from('lobby_participants')
+        .select('user_id, username')
+        .eq('lobby_id', lobby.id);
+
+      if (participantsError) throw participantsError;
+
+      if (lobbyParticipants) {
+        // Create quiz_player records for all participants
+        for (const participant of lobbyParticipants) {
+          await supabase
+            .from('quiz_players')
+            .insert({
+              session_id: session.id,
+              user_id: participant.user_id,
+              username: participant.username
+            });
+        }
+
+        setParticipants(lobbyParticipants.map(p => ({ ...p, score: 0 })));
+      }
+    } catch (error) {
+      console.error('Error initializing quiz session:', error);
+      throw error;
+    }
+  };
+
+  // Listen for realtime updates to quiz session status
   useEffect(() => {
-    if (!lobby?.id || !currentUserFinished) return;
+    if (!sessionId || !currentUserFinished) return;
+
+    console.log('QuizSession: Setting up realtime listener for session:', sessionId);
 
     const channel = supabase
-      .channel(`quiz_participants_${lobby.id}`)
+      .channel(`quiz_session_${sessionId}`)
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'quiz_participants',
-          filter: `lobby_id=eq.${lobby.id}`
+          table: 'quiz_sessions',
+          filter: `id=eq.${sessionId}`
         },
         async (payload) => {
-          console.log('Quiz participant updated:', payload);
+          console.log('Quiz session updated:', payload);
           
-          // Check if all players are finished
-          const { data: allParticipants } = await supabase
-            .from('quiz_participants')
-            .select('user_id, quiz_finished, score')
-            .eq('lobby_id', lobby.id);
-
-          if (allParticipants && allParticipants.every(p => p.quiz_finished)) {
-            console.log('All players finished! Showing results...');
+          if (payload.new.status === 'completed') {
+            console.log('Session completed! Showing results...');
             setWaitingForOthers(false);
-            await calculateAndShowResults();
+            await loadAndShowResults();
           }
         }
       )
@@ -128,125 +229,8 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [lobby?.id, currentUserFinished]);
+  }, [sessionId, currentUserFinished]);
 
-
-  const loadQuizData = async () => {
-    console.log('QuizSession: loadQuizData called for lobby:', lobby);
-    try {
-      let questionsData: Question[] = [];
-
-      // Check if lobby already has randomized questions
-      if (lobby.question_ids && lobby.question_ids.length > 0) {
-        console.log('QuizSession: Loading pre-selected questions:', lobby.question_ids);
-        
-        // Fetch questions in the exact order stored in lobby
-        const { data, error } = await supabase
-          .from('quiz_questions')
-          .select('*')
-          .in('id', lobby.question_ids);
-
-        if (error) throw error;
-        
-        // Sort questions to match the order in question_ids
-        if (data) {
-          questionsData = lobby.question_ids.map((id: string) => 
-            data.find((q: Question) => q.id === id)
-          ).filter(Boolean) as Question[];
-        }
-      } else {
-        // First player to load - select and randomize questions
-        console.log('QuizSession: Selecting random questions for new quiz');
-        
-        if (!lobby.subject_id) {
-          console.error('QuizSession: Lobby missing subject_id');
-          toast({
-            title: 'Configuration Error',
-            description: 'Unable to load quiz questions. Lobby is missing subject information.',
-            variant: 'destructive'
-          });
-          return;
-        }
-
-        // Build query to fetch all matching questions
-        let questionsQuery = supabase
-          .from('quiz_questions')
-          .select('*')
-          .eq('subject_id', lobby.subject_id);
-
-        if (lobby.topic_id) {
-          console.log('QuizSession: Adding topic filter:', lobby.topic_id);
-          questionsQuery = questionsQuery.eq('topic_id', lobby.topic_id);
-        }
-
-        const { data: allQuestions, error: questionsError } = await questionsQuery;
-
-        if (questionsError) {
-          console.error('QuizSession: Error fetching questions:', questionsError);
-          throw questionsError;
-        }
-
-        if (!allQuestions || allQuestions.length === 0) {
-          console.error('QuizSession: No questions found for subject_id:', lobby.subject_id, 'topic_id:', lobby.topic_id);
-          toast({
-            title: 'No Questions Available',
-            description: `No questions found for the selected topic. Please contact support or try a different topic.`,
-            variant: 'destructive'
-          });
-          return;
-        }
-
-        // Randomize and select 15 questions
-        const shuffled = allQuestions.sort(() => Math.random() - 0.5);
-        questionsData = shuffled.slice(0, 15);
-        
-        // Store the randomized question IDs in the lobby
-        const questionIds = questionsData.map(q => q.id);
-        const { error: updateError } = await supabase
-          .from('game_lobbies')
-          .update({ question_ids: questionIds })
-          .eq('id', lobby.id);
-
-        if (updateError) {
-          console.error('QuizSession: Error saving question IDs:', updateError);
-        } else {
-          console.log('QuizSession: Saved randomized questions to lobby');
-        }
-      }
-
-      console.log('QuizSession: Questions loaded:', questionsData.length);
-      
-      if (questionsData.length > 0) {
-        setQuestions(questionsData);
-        setAnswers(new Array(questionsData.length).fill(''));
-      } else {
-        toast({
-          title: 'Error',
-          description: 'Failed to load questions. Please try again.',
-          variant: 'destructive'
-        });
-      }
-
-      // Load participants
-      const { data: participantsData, error: participantsError } = await supabase
-        .from('lobby_participants')
-        .select('user_id, username')
-        .eq('lobby_id', lobby.id);
-
-      if (participantsError) throw participantsError;
-
-      if (participantsData) {
-        setParticipants(participantsData.map(p => ({ ...p, score: 0 })));
-      }
-    } catch (error) {
-      console.error('Error loading quiz data:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load quiz data.',
-        variant: 'destructive'
-      });
-    }
-  };
 
   const handleAnswerSelect = (answer: string) => {
     // Save answer immediately when selected
@@ -287,6 +271,11 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   };
 
   const handleQuizEnd = async () => {
+    if (!sessionId) {
+      console.error('handleQuizEnd: No session ID available');
+      return;
+    }
+
     // Calculate current user's score
     let score = 0;
     answers.forEach((answer, index) => {
@@ -296,18 +285,18 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     });
 
     console.log('handleQuizEnd: Calculated score:', score, 'out of', questions.length);
-    console.log('handleQuizEnd: Answers:', answers);
 
     try {
-      // Mark current user as finished
+      // Update quiz_player record to mark as finished
       const { error: updateError } = await supabase
-        .from('quiz_participants')
+        .from('quiz_players')
         .update({ 
           score,
           answers: answers,
-          quiz_finished: true
+          quiz_finished: true,
+          finished_at: new Date().toISOString()
         })
-        .eq('lobby_id', lobby.id)
+        .eq('session_id', sessionId)
         .eq('user_id', user?.id);
 
       console.log('handleQuizEnd: Update result:', updateError ? 'ERROR' : 'SUCCESS');
@@ -318,17 +307,16 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
       setCurrentUserFinished(true);
 
-      // Check if all players are finished
-      const { data: allParticipants } = await supabase
-        .from('quiz_participants')
-        .select('user_id, quiz_finished, score')
-        .eq('lobby_id', lobby.id);
+      // Check session status
+      const { data: session } = await supabase
+        .from('quiz_sessions')
+        .select('status')
+        .eq('id', sessionId)
+        .single();
 
-      const allFinished = allParticipants?.every(p => p.quiz_finished) || false;
-
-      if (allFinished) {
-        // All players finished - show results immediately
-        await calculateAndShowResults();
+      if (session?.status === 'completed') {
+        // Session already completed - show results immediately
+        await loadAndShowResults();
       } else {
         // Wait for other players
         setWaitingForOthers(true);
@@ -347,66 +335,61 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     }
   };
 
-  const calculateAndShowResults = async () => {
-    try {
-      console.log('calculateAndShowResults: Starting for lobby:', lobby.id);
-      
-      // Get all participants' scores
-      const { data: allParticipants, error: participantsError } = await supabase
-        .from('quiz_participants')
-        .select('user_id, score')
-        .eq('lobby_id', lobby.id);
+  const loadAndShowResults = async () => {
+    if (!sessionId) return;
 
-      console.log('calculateAndShowResults: Quiz participants data:', allParticipants);
-      if (participantsError) {
-        console.error('calculateAndShowResults: Error fetching participants:', participantsError);
-        throw participantsError;
+    try {
+      console.log('loadAndShowResults: Loading results for session:', sessionId);
+
+      // Get all players' scores from quiz_players table
+      const { data: allPlayers, error: playersError } = await supabase
+        .from('quiz_players')
+        .select('user_id, username, score')
+        .eq('session_id', sessionId);
+
+      console.log('loadAndShowResults: Players data:', allPlayers);
+      if (playersError) {
+        console.error('loadAndShowResults: Error fetching players:', playersError);
+        throw playersError;
       }
 
-      // Get profiles for all participants
-      const userIds = allParticipants.map(p => p.user_id);
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, username, quiz_points, victory_count')
-        .in('user_id', userIds);
+      if (!allPlayers || allPlayers.length === 0) {
+        throw new Error('No players found for session');
+      }
 
-      if (profilesError) throw profilesError;
-
-      // Combine participant data with profiles
-      const participantsWithProfiles = allParticipants.map(participant => {
-        const profile = profiles.find(p => p.user_id === participant.user_id);
-        return {
-          ...participant,
-          profile: profile || { username: 'Unknown', quiz_points: 100, victory_count: 0 }
-        };
-      });
-
-      // Determine winner(s) - highest score wins
-      const maxScore = Math.max(...participantsWithProfiles.map(p => p.score));
-      const winners = participantsWithProfiles.filter(p => p.score === maxScore);
+      // Determine winner(s)
+      const maxScore = Math.max(...allPlayers.map(p => p.score));
+      const winners = allPlayers.filter(p => p.score === maxScore);
       const isCurrentUserWinner = winners.some(w => w.user_id === user?.id);
+      const currentUserScore = allPlayers.find(p => p.user_id === user?.id)?.score || 0;
 
-      // Calculate current user's score and profile
-      const currentUserScore = allParticipants.find(p => p.user_id === user?.id)?.score || 0;
-      const currentUserProfile = participantsWithProfiles.find(p => p.user_id === user?.id)?.profile;
+      // Update participants state
+      const updatedParticipants = allPlayers.map(player => ({
+        user_id: player.user_id,
+        username: player.username,
+        score: player.score,
+        isWinner: winners.some(w => w.user_id === player.user_id)
+      }));
 
-      // New points system: -5 for all players, +10 additional for winner(s)
+      console.log('loadAndShowResults: Updated participants:', updatedParticipants);
+      setParticipants(updatedParticipants);
+
+      // Update current user's profile
       const participationPenalty = -5;
       const winnerBonus = 10;
       const totalPointsEarned = participationPenalty + (isCurrentUserWinner ? winnerBonus : 0);
 
-      console.log('calculateAndShowResults: Current user winner?', isCurrentUserWinner);
-      console.log('calculateAndShowResults: Points earned:', totalPointsEarned);
-      console.log('calculateAndShowResults: Current quiz_points:', currentUserProfile?.quiz_points);
+      const { data: currentProfile } = await supabase
+        .from('profiles')
+        .select('quiz_points, victory_count')
+        .eq('user_id', user?.id)
+        .single();
 
-      // Update ONLY current user's profile (RLS allows only own profile updates)
-      if (currentUserProfile) {
-        const newQuizPoints = Math.max(0, currentUserProfile.quiz_points + totalPointsEarned);
-        const newVictoryCount = currentUserProfile.victory_count + (isCurrentUserWinner ? 1 : 0);
+      if (currentProfile) {
+        const newQuizPoints = Math.max(0, currentProfile.quiz_points + totalPointsEarned);
+        const newVictoryCount = currentProfile.victory_count + (isCurrentUserWinner ? 1 : 0);
 
-        console.log('calculateAndShowResults: Updating to new points:', newQuizPoints);
-
-        const { error: updateError } = await supabase
+        await supabase
           .from('profiles')
           .update({ 
             quiz_points: newQuizPoints,
@@ -414,14 +397,8 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
           })
           .eq('user_id', user?.id);
 
-        if (updateError) {
-          console.error('calculateAndShowResults: Error updating profile:', updateError);
-        } else {
-          console.log('calculateAndShowResults: Profile updated successfully');
-        }
-
-        // Add activity for current user only
-        const { error: activityError } = await supabase
+        // Add activity
+        await supabase
           .from('recent_activities')
           .insert({
             user_id: user?.id,
@@ -432,28 +409,10 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
               max_score: questions.length,
               points_earned: totalPointsEarned,
               victory: isCurrentUserWinner,
-              participants_count: participantsWithProfiles.length
+              participants_count: allPlayers.length
             }
           });
-
-        if (activityError) {
-          console.error('calculateAndShowResults: Error adding activity:', activityError);
-        }
       }
-
-      // Update participants state with winner info and scores
-      const updatedParticipants = participantsWithProfiles.map(pp => {
-        const matchingParticipant = participants.find(p => p.user_id === pp.user_id);
-        return {
-          user_id: pp.user_id,
-          username: pp.profile.username,
-          score: pp.score,
-          isWinner: winners.some(w => w.user_id === pp.user_id)
-        };
-      });
-      
-      console.log('calculateAndShowResults: Updated participants:', updatedParticipants);
-      setParticipants(updatedParticipants);
 
       toast({
         title: isCurrentUserWinner ? '🎉 You Won!' : 'Quiz Completed!',
@@ -461,13 +420,12 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         className: isCurrentUserWinner ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-300' : undefined
       });
 
-      // Show results
       setShowResults(true);
     } catch (error) {
-      console.error('Error calculating results:', error);
+      console.error('Error loading results:', error);
       toast({
         title: 'Error',
-        description: 'Failed to calculate results.',
+        description: 'Failed to load results.',
         variant: 'destructive'
       });
     }
@@ -750,7 +708,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
                   variant="outline" 
                   onClick={() => {
                     console.log('Retrying to load questions...');
-                    loadQuizData();
+                    initializeQuizSession();
                   }}
                   className="mt-4"
                 >

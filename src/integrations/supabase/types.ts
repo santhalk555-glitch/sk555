@@ -498,6 +498,50 @@ export type Database = {
           },
         ]
       }
+      quiz_players: {
+        Row: {
+          answers: Json | null
+          finished_at: string | null
+          id: string
+          joined_at: string
+          quiz_finished: boolean
+          score: number
+          session_id: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          answers?: Json | null
+          finished_at?: string | null
+          id?: string
+          joined_at?: string
+          quiz_finished?: boolean
+          score?: number
+          session_id: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          answers?: Json | null
+          finished_at?: string | null
+          id?: string
+          joined_at?: string
+          quiz_finished?: boolean
+          score?: number
+          session_id?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_players_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quiz_questions: {
         Row: {
           correct_answer: number
@@ -554,6 +598,44 @@ export type Database = {
             columns: ["topic_id"]
             isOneToOne: false
             referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_sessions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          lobby_id: string
+          question_ids: string[]
+          started_at: string
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          lobby_id: string
+          question_ids?: string[]
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          lobby_id?: string
+          question_ids?: string[]
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_sessions_lobby_id_fkey"
+            columns: ["lobby_id"]
+            isOneToOne: false
+            referencedRelation: "game_lobbies"
             referencedColumns: ["id"]
           },
         ]
