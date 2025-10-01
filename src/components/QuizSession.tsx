@@ -386,44 +386,59 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
       const winners = participantsWithProfiles.filter(p => p.score === maxScore);
       const isCurrentUserWinner = winners.some(w => w.user_id === user?.id);
 
-      // Calculate current user's score
+      // Calculate current user's score and profile
       const currentUserScore = allParticipants.find(p => p.user_id === user?.id)?.score || 0;
+      const currentUserProfile = participantsWithProfiles.find(p => p.user_id === user?.id)?.profile;
 
       // New points system: -5 for all players, +10 additional for winner(s)
       const participationPenalty = -5;
       const winnerBonus = 10;
       const totalPointsEarned = participationPenalty + (isCurrentUserWinner ? winnerBonus : 0);
 
-      // Update all participants' points
-      for (const participant of participantsWithProfiles) {
-        const isWinner = winners.some(w => w.user_id === participant.user_id);
-        const participantPoints = participationPenalty + (isWinner ? winnerBonus : 0);
-        const newQuizPoints = Math.max(0, participant.profile.quiz_points + participantPoints);
-        const newVictoryCount = participant.profile.victory_count + (isWinner ? 1 : 0);
+      console.log('calculateAndShowResults: Current user winner?', isCurrentUserWinner);
+      console.log('calculateAndShowResults: Points earned:', totalPointsEarned);
+      console.log('calculateAndShowResults: Current quiz_points:', currentUserProfile?.quiz_points);
 
-        await supabase
+      // Update ONLY current user's profile (RLS allows only own profile updates)
+      if (currentUserProfile) {
+        const newQuizPoints = Math.max(0, currentUserProfile.quiz_points + totalPointsEarned);
+        const newVictoryCount = currentUserProfile.victory_count + (isCurrentUserWinner ? 1 : 0);
+
+        console.log('calculateAndShowResults: Updating to new points:', newQuizPoints);
+
+        const { error: updateError } = await supabase
           .from('profiles')
           .update({ 
             quiz_points: newQuizPoints,
             victory_count: newVictoryCount
           })
-          .eq('user_id', participant.user_id);
+          .eq('user_id', user?.id);
 
-        // Add activity for each participant
-        await supabase
+        if (updateError) {
+          console.error('calculateAndShowResults: Error updating profile:', updateError);
+        } else {
+          console.log('calculateAndShowResults: Profile updated successfully');
+        }
+
+        // Add activity for current user only
+        const { error: activityError } = await supabase
           .from('recent_activities')
           .insert({
-            user_id: participant.user_id,
+            user_id: user?.id,
             activity_type: 'quiz_completed',
-            description: `Completed multiplayer quiz${isWinner ? ' - Victory!' : ''}`,
+            description: `Completed multiplayer quiz${isCurrentUserWinner ? ' - Victory!' : ''}`,
             metadata: {
-              score: participant.score,
+              score: currentUserScore,
               max_score: questions.length,
-              points_earned: participantPoints,
-              victory: isWinner,
+              points_earned: totalPointsEarned,
+              victory: isCurrentUserWinner,
               participants_count: participantsWithProfiles.length
             }
           });
+
+        if (activityError) {
+          console.error('calculateAndShowResults: Error adding activity:', activityError);
+        }
       }
 
       // Update participants state with winner info and scores
