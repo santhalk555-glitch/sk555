@@ -295,6 +295,9 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
       }
     });
 
+    console.log('handleQuizEnd: Calculated score:', score, 'out of', questions.length);
+    console.log('handleQuizEnd: Answers:', answers);
+
     try {
       // Mark current user as finished
       const { error: updateError } = await supabase
@@ -307,7 +310,11 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         .eq('lobby_id', lobby.id)
         .eq('user_id', user?.id);
 
-      if (updateError) throw updateError;
+      console.log('handleQuizEnd: Update result:', updateError ? 'ERROR' : 'SUCCESS');
+      if (updateError) {
+        console.error('handleQuizEnd: Update error:', updateError);
+        throw updateError;
+      }
 
       setCurrentUserFinished(true);
 
@@ -342,13 +349,19 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
   const calculateAndShowResults = async () => {
     try {
+      console.log('calculateAndShowResults: Starting for lobby:', lobby.id);
+      
       // Get all participants' scores
       const { data: allParticipants, error: participantsError } = await supabase
         .from('quiz_participants')
         .select('user_id, score')
         .eq('lobby_id', lobby.id);
 
-      if (participantsError) throw participantsError;
+      console.log('calculateAndShowResults: Quiz participants data:', allParticipants);
+      if (participantsError) {
+        console.error('calculateAndShowResults: Error fetching participants:', participantsError);
+        throw participantsError;
+      }
 
       // Get profiles for all participants
       const userIds = allParticipants.map(p => p.user_id);
@@ -413,12 +426,19 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
           });
       }
 
-      // Update participants state with winner info
-      setParticipants(prev => prev.map(p => ({
-        ...p,
-        score: participantsWithProfiles.find(pp => pp.user_id === p.user_id)?.score || 0,
-        isWinner: winners.some(w => w.user_id === p.user_id)
-      })));
+      // Update participants state with winner info and scores
+      const updatedParticipants = participantsWithProfiles.map(pp => {
+        const matchingParticipant = participants.find(p => p.user_id === pp.user_id);
+        return {
+          user_id: pp.user_id,
+          username: pp.profile.username,
+          score: pp.score,
+          isWinner: winners.some(w => w.user_id === pp.user_id)
+        };
+      });
+      
+      console.log('calculateAndShowResults: Updated participants:', updatedParticipants);
+      setParticipants(updatedParticipants);
 
       toast({
         title: isCurrentUserWinner ? '🎉 You Won!' : 'Quiz Completed!',
