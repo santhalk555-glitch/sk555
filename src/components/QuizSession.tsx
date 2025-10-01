@@ -336,7 +336,10 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   };
 
   const loadAndShowResults = async () => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      console.error('loadAndShowResults: No session ID available');
+      return;
+    }
 
     try {
       console.log('loadAndShowResults: Loading results for session:', sessionId);
@@ -347,23 +350,33 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         .select('user_id, username, score')
         .eq('session_id', sessionId);
 
-      console.log('loadAndShowResults: Players data:', allPlayers);
+      console.log('loadAndShowResults: Players data from quiz_players:', allPlayers);
       if (playersError) {
         console.error('loadAndShowResults: Error fetching players:', playersError);
         throw playersError;
       }
 
       if (!allPlayers || allPlayers.length === 0) {
+        console.error('loadAndShowResults: No players found for session');
         throw new Error('No players found for session');
       }
 
+      console.log('loadAndShowResults: Number of players:', allPlayers.length);
+      console.log('loadAndShowResults: Player scores:', allPlayers.map(p => ({ username: p.username, score: p.score })));
+
       // Determine winner(s)
       const maxScore = Math.max(...allPlayers.map(p => p.score));
+      console.log('loadAndShowResults: Max score:', maxScore);
+      
       const winners = allPlayers.filter(p => p.score === maxScore);
+      console.log('loadAndShowResults: Winners:', winners.map(w => w.username));
+      
       const isCurrentUserWinner = winners.some(w => w.user_id === user?.id);
       const currentUserScore = allPlayers.find(p => p.user_id === user?.id)?.score || 0;
 
-      // Update participants state
+      console.log('loadAndShowResults: Current user is winner?', isCurrentUserWinner);
+
+      // Update participants state with ALL players' data
       const updatedParticipants = allPlayers.map(player => ({
         user_id: player.user_id,
         username: player.username,
@@ -371,7 +384,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         isWinner: winners.some(w => w.user_id === player.user_id)
       }));
 
-      console.log('loadAndShowResults: Updated participants:', updatedParticipants);
+      console.log('loadAndShowResults: Setting participants state with:', updatedParticipants);
       setParticipants(updatedParticipants);
 
       // Update current user's profile
@@ -388,6 +401,8 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
       if (currentProfile) {
         const newQuizPoints = Math.max(0, currentProfile.quiz_points + totalPointsEarned);
         const newVictoryCount = currentProfile.victory_count + (isCurrentUserWinner ? 1 : 0);
+
+        console.log('loadAndShowResults: Updating profile - old points:', currentProfile.quiz_points, 'new points:', newQuizPoints);
 
         await supabase
           .from('profiles')
@@ -421,6 +436,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
       });
 
       setShowResults(true);
+      console.log('loadAndShowResults: Results displayed successfully');
     } catch (error) {
       console.error('Error loading results:', error);
       toast({
@@ -520,6 +536,15 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     const currentUserParticipant = participants.find(p => p.user_id === user?.id);
     const isWinner = currentUserParticipant?.isWinner || false;
 
+    console.log('RESULTS RENDER - Participants state:', participants);
+    console.log('RESULTS RENDER - Participants count:', participants.length);
+    console.log('RESULTS RENDER - Current user is winner:', isWinner);
+    console.log('RESULTS RENDER - Participants data:', participants.map(p => ({
+      username: p.username,
+      score: p.score,
+      isWinner: p.isWinner
+    })));
+
     return (
       <div className="pt-20 pb-12">
         {/* Confetti for winner */}
@@ -578,56 +603,80 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
               <CardTitle className="flex items-center justify-center">
                 <Trophy className="w-5 h-5 mr-2" />
                 Final Leaderboard
+                {participants.length < 2 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      console.log('Manual refresh triggered');
+                      loadAndShowResults();
+                    }}
+                    className="ml-2"
+                  >
+                    Refresh
+                  </Button>
+                )}
               </CardTitle>
+              {participants.length < 2 && (
+                <CardDescription className="text-center text-yellow-600">
+                  ⚠️ Not all players loaded. Click Refresh to try again.
+                </CardDescription>
+              )}
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {participants
-                  .sort((a, b) => (b.score || 0) - (a.score || 0))
-                  .map((participant, index) => (
-                    <div 
-                      key={participant.user_id}
-                      className={`flex items-center justify-between p-4 rounded-lg ${
-                        participant.isWinner 
-                          ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 border-2 border-yellow-300' 
-                          : 'bg-muted/20 border border-muted/40'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              {participants.length === 0 ? (
+                <div className="text-center p-8 text-muted-foreground">
+                  <p>No player data found. Please refresh the page.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {participants
+                    .sort((a, b) => (b.score || 0) - (a.score || 0))
+                    .map((participant, index) => (
+                      <div 
+                        key={participant.user_id}
+                        className={`flex items-center justify-between p-4 rounded-lg ${
                           participant.isWinner 
-                            ? 'bg-yellow-500 text-white' 
-                            : 'bg-primary/20 text-primary'
-                        }`}>
-                          {participant.isWinner ? (
-                            <Crown className="w-5 h-5" />
-                          ) : (
-                            <span className="font-bold">#{index + 1}</span>
-                          )}
+                            ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 border-2 border-yellow-300' 
+                            : 'bg-muted/20 border border-muted/40'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            participant.isWinner 
+                              ? 'bg-yellow-500 text-white' 
+                              : 'bg-primary/20 text-primary'
+                          }`}>
+                            {participant.isWinner ? (
+                              <Crown className="w-5 h-5" />
+                            ) : (
+                              <span className="font-bold">#{index + 1}</span>
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-semibold flex items-center">
+                              @{participant.username}
+                              {participant.user_id === user?.id && (
+                                <Badge variant="outline" className="ml-2">You</Badge>
+                              )}
+                              {participant.isWinner && (
+                                <Badge variant="secondary" className="ml-2 bg-yellow-100 text-yellow-800">Winner</Badge>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="font-semibold flex items-center">
-                            @{participant.username}
-                            {participant.user_id === user?.id && (
-                              <Badge variant="outline" className="ml-2">You</Badge>
-                            )}
-                            {participant.isWinner && (
-                              <Badge variant="secondary" className="ml-2 bg-yellow-100 text-yellow-800">Winner</Badge>
-                            )}
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-primary">
+                            {participant.score || 0}/{questions.length}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {Math.round(((participant.score || 0) / questions.length) * 100)}%
                           </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-primary">
-                          {participant.score || 0}/{questions.length}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {Math.round(((participant.score || 0) / questions.length) * 100)}%
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-              </div>
+                    ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
