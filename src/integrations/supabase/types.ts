@@ -250,6 +250,7 @@ export type Database = {
           id: string
           joined_at: string
           lobby_id: string
+          ready: boolean | null
           slot_number: number
           user_id: string
           username: string
@@ -258,6 +259,7 @@ export type Database = {
           id?: string
           joined_at?: string
           lobby_id: string
+          ready?: boolean | null
           slot_number: number
           user_id: string
           username: string
@@ -266,6 +268,7 @@ export type Database = {
           id?: string
           joined_at?: string
           lobby_id?: string
+          ready?: boolean | null
           slot_number?: number
           user_id?: string
           username?: string

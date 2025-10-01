@@ -18,6 +18,7 @@ interface LobbyParticipant {
   slot_number: number;
   username: string;
   user_id: string;
+  ready: boolean;
 }
 
 const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyWaitingRoomProps) => {
@@ -180,9 +181,45 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
         setLobby(prev => prev ? { ...prev, current_players: data.length } : null);
         
         console.log('Updated participants state:', data);
+        
+        // Check if all players are ready
+        const allReady = data.length >= 2 && data.every((p: LobbyParticipant) => p.ready);
+        if (allReady && isCreator && lobby.status === 'waiting') {
+          console.log('All players ready! Auto-starting quiz...');
+          startQuiz();
+        }
       }
     } catch (error) {
       console.error('Error loading participants:', error);
+    }
+  };
+
+  const toggleReady = async () => {
+    if (!user) return;
+
+    const currentParticipant = participants.find(p => p.user_id === user.id);
+    const newReadyStatus = !currentParticipant?.ready;
+
+    try {
+      const { error } = await supabase
+        .from('lobby_participants')
+        .update({ ready: newReadyStatus })
+        .eq('lobby_id', lobby.id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: newReadyStatus ? 'Ready!' : 'Not Ready',
+        description: newReadyStatus ? 'Waiting for other players...' : 'Click Ready when you\'re prepared',
+      });
+    } catch (error) {
+      console.error('Error updating ready status:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update ready status',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -401,7 +438,7 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
               {/* Create an array for all slots */}
               {Array.from({ length: lobby.max_players }, (_, slotIndex) => {
                 const slotNumber = slotIndex + 1;
-                const participant = participants.find(p => p.slot_number === slotNumber);
+                  const participant = participants.find(p => p.slot_number === slotNumber);
                 
                 if (participant) {
                   // Occupied slot
@@ -416,12 +453,19 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
                         </div>
                         <div>
                           <div className="font-semibold text-lg">@{participant.username}</div>
-                          {participant.user_id === lobby.creator_id && (
-                            <Badge variant="secondary" className="mt-1">Creator</Badge>
-                          )}
-                          {participant.user_id === user?.id && participant.user_id !== lobby.creator_id && (
-                            <Badge variant="outline" className="mt-1">You</Badge>
-                          )}
+                          <div className="flex gap-1 mt-1">
+                            {participant.user_id === lobby.creator_id && (
+                              <Badge variant="secondary">Creator</Badge>
+                            )}
+                            {participant.user_id === user?.id && participant.user_id !== lobby.creator_id && (
+                              <Badge variant="outline">You</Badge>
+                            )}
+                            {participant.ready ? (
+                              <Badge className="bg-green-500">✓ Ready</Badge>
+                            ) : (
+                              <Badge variant="outline" className="opacity-50">Not Ready</Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="text-sm text-muted-foreground">
@@ -454,6 +498,31 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
             </div>
           </CardContent>
         </Card>
+
+        {/* Ready Button for All Players */}
+        {lobby.status === 'waiting' && (
+          <Card className="mb-8">
+            <CardContent className="pt-6">
+              <Button
+                onClick={toggleReady}
+                className={`w-full py-6 text-lg font-bold ${
+                  participants.find(p => p.user_id === user?.id)?.ready
+                    ? 'bg-green-500 hover:bg-green-600'
+                    : 'bg-gradient-primary hover:opacity-90'
+                }`}
+                size="lg"
+              >
+                {participants.find(p => p.user_id === user?.id)?.ready ? '✓ Ready!' : 'Click When Ready'}
+              </Button>
+              <p className="text-center text-sm text-muted-foreground mt-3">
+                {participants.filter(p => p.ready).length}/{participants.length} players ready
+                {participants.length >= 2 && participants.every(p => p.ready) && isCreator && (
+                  <span className="block text-green-500 font-semibold mt-1">Starting quiz...</span>
+                )}
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Creator Controls */}
         {isCreator && (
@@ -499,8 +568,8 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
               </Card>
             )}
 
-            {/* Quiz/Practice Controls */}
-            {lobby.status === 'waiting' && (
+            {/* Quiz/Practice Controls - Hidden when ready system is active */}
+            {lobby.status === 'waiting' && participants.length < 2 && (
               <Card className="mb-8">
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -509,7 +578,7 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
                   </CardTitle>
                   <CardDescription>
                     {(lobby.lobby_type || lobby.game_mode) === 'quiz' 
-                      ? 'Start the quiz when ready'
+                      ? 'Waiting for more players... (Quiz starts when all are ready)'
                       : 'Start your practice session'}
                   </CardDescription>
                 </CardHeader>
@@ -518,7 +587,7 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
                     <div className="text-center">
                       <Button
                         onClick={startQuiz}
-                        disabled={loading}
+                        disabled={loading || participants.length < 2}
                         className="bg-gradient-primary hover:opacity-90 min-w-[200px]"
                         size="lg"
                       >
@@ -531,7 +600,7 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
                       {(lobby.lobby_type || lobby.game_mode) === 'practice' ? (
                         <p>📚 Practice Mode - Learn at your own pace!</p>
                       ) : participants.length === 1 ? (
-                        <p>🎯 Single-player mode - Perfect for practice!</p>
+                        <p>🎯 Waiting for at least 2 players...</p>
                       ) : (
                         <p>All participants will be taken to the quiz when you start</p>
                       )}

@@ -8,6 +8,7 @@ import ReportQuestionDialog from './ReportQuestionDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import Confetti from 'react-confetti';
 
 interface QuizSessionProps {
   lobby: any;
@@ -39,8 +40,18 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   const [quizStarted, setQuizStarted] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [answers, setAnswers] = useState<string[]>([]);
+  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Track window size for confetti
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Load quiz data immediately when lobby becomes active
   useEffect(() => {
@@ -386,10 +397,21 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
     return (
       <div className="pt-20 pb-12">
+        {/* Confetti for winner */}
+        {isWinner && (
+          <Confetti
+            width={windowSize.width}
+            height={windowSize.height}
+            recycle={false}
+            numberOfPieces={500}
+            gravity={0.3}
+          />
+        )}
+        
         <div className="container mx-auto px-6 max-w-4xl">
           {/* Winner Animation */}
           {isWinner && (
-            <div className="fixed inset-0 pointer-events-none z-50">
+            <div className="fixed inset-0 pointer-events-none z-40">
               <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-yellow-300/20 to-yellow-400/20 animate-pulse"></div>
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
                 <div className="animate-bounce">
