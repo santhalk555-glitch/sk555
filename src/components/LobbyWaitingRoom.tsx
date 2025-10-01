@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Users, Plus, UserPlus, Crown, Play, Clock } from 'lucide-react';
+import { ArrowLeft, Users, Plus, UserPlus, Crown, Play, Clock, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -499,27 +499,48 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
           </CardContent>
         </Card>
 
-        {/* Ready Button for All Players */}
-        {lobby.status === 'waiting' && (
-          <Card className="mb-8">
-            <CardContent className="pt-6">
+        {/* Ready Button for All Players - Visible to Everyone */}
+        {lobby.status === 'waiting' && participants.some(p => p.user_id === user?.id) && (
+          <Card className="mb-8 border-2 border-primary/30 bg-gradient-card">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-center text-xl">
+                <CheckCircle className="w-5 h-5 mr-2" />
+                Player Ready Check
+              </CardTitle>
+              <CardDescription className="text-center">
+                Click the button below when you're ready to start
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
               <Button
                 onClick={toggleReady}
-                className={`w-full py-6 text-lg font-bold ${
+                className={`w-full py-6 text-lg font-bold transition-all ${
                   participants.find(p => p.user_id === user?.id)?.ready
-                    ? 'bg-green-500 hover:bg-green-600'
+                    ? 'bg-green-500 hover:bg-green-600 text-white'
                     : 'bg-gradient-primary hover:opacity-90'
                 }`}
                 size="lg"
               >
-                {participants.find(p => p.user_id === user?.id)?.ready ? '✓ Ready!' : 'Click When Ready'}
-              </Button>
-              <p className="text-center text-sm text-muted-foreground mt-3">
-                {participants.filter(p => p.ready).length}/{participants.length} players ready
-                {participants.length >= 2 && participants.every(p => p.ready) && isCreator && (
-                  <span className="block text-green-500 font-semibold mt-1">Starting quiz...</span>
+                {participants.find(p => p.user_id === user?.id)?.ready ? (
+                  <>
+                    <CheckCircle className="w-6 h-6 mr-2" />
+                    ✓ Ready!
+                  </>
+                ) : (
+                  'Click When Ready'
                 )}
-              </p>
+              </Button>
+              <div className="text-center text-sm mt-4 space-y-1">
+                <p className="font-semibold text-primary">
+                  {participants.filter(p => p.ready).length}/{participants.length} players ready
+                </p>
+                {participants.length >= 2 && participants.every(p => p.ready) && isCreator && (
+                  <p className="text-green-500 font-bold animate-pulse">🎮 Starting quiz...</p>
+                )}
+                {participants.length >= 2 && !participants.every(p => p.ready) && (
+                  <p className="text-muted-foreground">Waiting for all players to be ready...</p>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}
