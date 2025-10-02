@@ -39,8 +39,6 @@ interface LobbyInvite {
 const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
   const [invites, setInvites] = useState<LobbyInvite[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lobbyCode, setLobbyCode] = useState('');
-  const [joiningByCode, setJoiningByCode] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -326,127 +324,6 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
     }
   };
 
-  const joinByCode = async () => {
-    if (!lobbyCode.trim() || !user) return;
-
-    setJoiningByCode(true);
-    console.log('Joining lobby by code:', lobbyCode.trim());
-
-    try {
-      // Find lobby by code
-      const { data: lobby, error: lobbyError } = await supabase
-        .from('game_lobbies')
-        .select('*')
-        .eq('lobby_code', lobbyCode.trim().toUpperCase())
-        .single();
-
-      if (lobbyError || !lobby) {
-        toast({
-          title: 'Lobby Not Found',
-          description: 'No lobby found with that code.',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      // Check if lobby is accepting players
-      if (lobby.status !== 'waiting' && lobby.status !== 'active') {
-        toast({
-          title: 'Lobby Unavailable',
-          description: 'This lobby is not accepting players.',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      // Check if lobby is full
-      if (lobby.current_players >= lobby.max_players) {
-        toast({
-          title: 'Lobby Full',
-          description: 'This lobby is already full.',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      // Get user profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profile_view')
-        .select('username')
-        .eq('user_id', user.id)
-        .single();
-
-      if (profileError) throw profileError;
-
-      // Check if already in lobby
-      const { data: existingParticipant } = await supabase
-        .from('lobby_participants')
-        .select('*')
-        .eq('lobby_id', lobby.id)
-        .eq('user_id', user.id)
-        .single();
-
-      if (existingParticipant) {
-        toast({
-          title: 'Already Joined',
-          description: 'You are already in this lobby.',
-        });
-        onJoinLobby(lobby);
-        return;
-      }
-
-      // Find next available slot
-      const { data: participants } = await supabase
-        .from('lobby_participants')
-        .select('slot_number')
-        .eq('lobby_id', lobby.id)
-        .order('slot_number');
-
-      const occupiedSlots = participants?.map(p => p.slot_number) || [];
-      let nextSlot = 1;
-      for (let i = 1; i <= lobby.max_players; i++) {
-        if (!occupiedSlots.includes(i)) {
-          nextSlot = i;
-          break;
-        }
-      }
-
-      // Join the lobby
-      const { error: joinError } = await supabase
-        .from('lobby_participants')
-        .insert({
-          lobby_id: lobby.id,
-          user_id: user.id,
-          username: profile.username,
-          slot_number: nextSlot
-        });
-
-      if (joinError) throw joinError;
-
-      // Update lobby player count
-      await supabase
-        .from('game_lobbies')
-        .update({ current_players: lobby.current_players + 1 })
-        .eq('id', lobby.id);
-
-      toast({
-        title: 'Joined Lobby!',
-        description: 'You have successfully joined the lobby.',
-      });
-
-      onJoinLobby(lobby);
-    } catch (error) {
-      console.error('Error joining by code:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to join lobby. Please try again.',
-        variant: 'destructive'
-      });
-    } finally {
-      setJoiningByCode(false);
-    }
-  };
-
   const rejectInvite = async (inviteId: string) => {
     try {
       const { error: updateError } = await supabase
@@ -511,35 +388,6 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
           
           <div></div>
         </div>
-
-        {/* Join by Code Section */}
-        <Card className="max-w-md mx-auto mb-8">
-          <CardHeader>
-            <CardTitle>Join by Lobby Code</CardTitle>
-            <CardDescription>
-              Enter a lobby code to join directly
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Enter lobby code (e.g. ABC123)"
-                value={lobbyCode}
-                onChange={(e) => setLobbyCode(e.target.value.toUpperCase())}
-                onKeyPress={(e) => e.key === 'Enter' && joinByCode()}
-                maxLength={6}
-                className="uppercase"
-              />
-              <Button 
-                onClick={joinByCode}
-                disabled={!lobbyCode.trim() || joiningByCode}
-                className="bg-gradient-primary"
-              >
-                {joiningByCode ? 'Joining...' : 'Join'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Invites List */}
         {invites.length === 0 ? (
