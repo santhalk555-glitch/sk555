@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { useLocation } from 'react-router-dom';
 import LobbyMenu from './LobbyMenu';
 import CreateLobbyFlow from './CreateLobbyFlow';
 import JoinLobbyFlow from './JoinLobbyFlow';
@@ -15,6 +16,15 @@ type LobbyView = 'menu' | 'create' | 'join' | 'waiting' | 'quiz';
 const GameLobby = ({ onBack }: GameLobbyProps) => {
   const [currentView, setCurrentView] = useState<LobbyView>('menu');
   const [currentLobby, setCurrentLobby] = useState<any>(null);
+  const location = useLocation();
+
+  // Check if we should open join lobby from notification
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.openJoinLobby) {
+      setCurrentView('join');
+    }
+  }, [location]);
 
   const handleCreateLobby = () => {
     setCurrentView('create');

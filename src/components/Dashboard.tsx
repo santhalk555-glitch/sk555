@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Gamepad2, UserPlus, Crown, Zap, Heart, Settings } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import SwipeMatching from "./SwipeMatching";
@@ -23,6 +23,21 @@ const Dashboard = () => {
   
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Handle navigation from notifications
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.openJoinLobby) {
+      setActiveSection('lobby');
+      // Clear the state
+      navigate('/', { replace: true, state: {} });
+    } else if (state?.openFriendRequests) {
+      setActiveSection('requests');
+      // Clear the state
+      navigate('/', { replace: true, state: {} });
+    }
+  }, [location, navigate]);
 
   useEffect(() => {
     const checkUserProfile = async () => {

@@ -13,6 +13,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface Notification {
   id: string;
@@ -28,6 +29,7 @@ export const NotificationBell = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -106,6 +108,22 @@ export const NotificationBell = () => {
     setUnreadCount(0);
   };
 
+  const handleNotificationClick = async (notification: Notification) => {
+    // Mark as read
+    if (!notification.read) {
+      await markAsRead(notification.id);
+    }
+
+    // Handle different notification types
+    if (notification.type === 'lobby_invite') {
+      // Navigate to Dashboard and trigger join lobby view
+      navigate('/', { state: { openJoinLobby: true } });
+    } else if (notification.type === 'friend_request') {
+      // Navigate to friend requests
+      navigate('/', { state: { openFriendRequests: true } });
+    }
+  };
+
   if (!user) return null;
 
   return (
@@ -150,7 +168,7 @@ export const NotificationBell = () => {
               className={`flex-col items-start p-3 cursor-pointer ${
                 !notification.read ? 'bg-muted/50' : ''
               }`}
-              onClick={() => !notification.read && markAsRead(notification.id)}
+              onClick={() => handleNotificationClick(notification)}
             >
               <div className="flex items-center justify-between w-full">
                 <h4 className="text-sm font-medium">{notification.title}</h4>
