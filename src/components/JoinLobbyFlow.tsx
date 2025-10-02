@@ -42,6 +42,8 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  console.log('JoinLobbyFlow mounted, user:', user?.id);
+
   useEffect(() => {
     if (user) {
       loadInvites();

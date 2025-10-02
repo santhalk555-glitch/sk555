@@ -20,6 +20,7 @@ const Dashboard = () => {
   const [friendsCount, setFriendsCount] = useState(0);
   const [quizPoints, setQuizPoints] = useState(0);
   const [victoryCount, setVictoryCount] = useState(0);
+  const [lobbyState, setLobbyState] = useState<any>(null);
   
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -28,7 +29,10 @@ const Dashboard = () => {
   // Handle navigation from notifications
   useEffect(() => {
     const state = location.state as any;
+    console.log('Dashboard received state:', state);
     if (state?.openJoinLobby) {
+      console.log('Opening lobby with join state');
+      setLobbyState({ openJoinLobby: true });
       setActiveSection('lobby');
       // Clear the state
       navigate('/', { replace: true, state: {} });
@@ -91,7 +95,7 @@ const Dashboard = () => {
   }
 
   if (activeSection === "lobby") {
-    return <GameLobby onBack={() => setActiveSection("dashboard")} />;
+    return <GameLobby onBack={() => { setActiveSection("dashboard"); setLobbyState(null); }} initialView={lobbyState?.openJoinLobby ? 'join' : undefined} />;
   }
 
   if (activeSection === "matches") {

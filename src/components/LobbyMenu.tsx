@@ -63,7 +63,7 @@ const LobbyMenu = ({ onBack, onCreateLobby, onJoinLobby }: LobbyMenuProps) => {
 
           {/* Join Lobby */}
           <Card 
-            className="bg-gradient-card border-primary/20 hover:border-primary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-lg hover:shadow-glow"
+            className="bg-gradient-card border-primary/20 hover:border-primary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-lg hover:shadow-glow relative"
             onClick={onJoinLobby}
           >
             <CardContent className="p-8 text-center">

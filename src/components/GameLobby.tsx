@@ -9,22 +9,28 @@ import QuizSession from './QuizSession';
 
 interface GameLobbyProps {
   onBack: () => void;
+  initialView?: LobbyView;
 }
 
 type LobbyView = 'menu' | 'create' | 'join' | 'waiting' | 'quiz';
 
-const GameLobby = ({ onBack }: GameLobbyProps) => {
-  const [currentView, setCurrentView] = useState<LobbyView>('menu');
+const GameLobby = ({ onBack, initialView }: GameLobbyProps) => {
+  const [currentView, setCurrentView] = useState<LobbyView>(initialView || 'menu');
   const [currentLobby, setCurrentLobby] = useState<any>(null);
   const location = useLocation();
 
-  // Check if we should open join lobby from notification
+  // Check if we should open join lobby from notification or dashboard
   useEffect(() => {
     const state = location.state as any;
     if (state?.openJoinLobby) {
+      console.log('Opening join lobby from notification/state');
       setCurrentView('join');
     }
   }, [location]);
+
+  useEffect(() => {
+    console.log('GameLobby current view:', currentView);
+  }, [currentView]);
 
   const handleCreateLobby = () => {
     setCurrentView('create');
