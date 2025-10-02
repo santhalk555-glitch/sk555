@@ -99,15 +99,20 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
                 questionsData.find((q: Question) => q.id === id)
               ).filter(Boolean) as Question[];
               
-              setQuestions(orderedQuestions);
-              setAnswers(new Array(orderedQuestions.length).fill(''));
+            console.log('QuizSession: Setting questions immediately');
+            setQuestions(orderedQuestions);
+            setAnswers(new Array(orderedQuestions.length).fill(''));
+            // Set quiz started immediately so UI updates faster
+            setQuizStarted(true);
             }
             
-            // Load participants
-            const { data: participants, error: participantsError } = await supabase
+            // Load participants in parallel
+            const participantsPromise = supabase
               .from('lobby_participants')
               .select('user_id, username')
               .eq('lobby_id', lobby.id);
+            
+            const { data: participants, error: participantsError } = await participantsPromise;
             
             if (participantsError) throw participantsError;
             if (participants) {
@@ -115,7 +120,6 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
             }
             
             console.log('QuizSession: Loaded existing session successfully');
-            setQuizStarted(true);
           } else {
             // No existing session, create new one
             console.log('QuizSession: No existing session, creating new one');

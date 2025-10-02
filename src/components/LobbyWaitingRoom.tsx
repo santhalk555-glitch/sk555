@@ -31,6 +31,7 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [friends, setFriends] = useState<Profile[]>([]);
   const [loadingFriends, setLoadingFriends] = useState(false);
+  const [hasShownStartToast, setHasShownStartToast] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -277,10 +278,14 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
         // Update local lobby state immediately to prevent re-triggering
         setLobby(prev => prev ? { ...prev, status: 'active' } : null);
         
-        toast({
-          title: 'Quiz Started!',
-          description: `The quiz has begun for all participants!`,
-        });
+        // Only show toast once
+        if (!hasShownStartToast) {
+          setHasShownStartToast(true);
+          toast({
+            title: 'Quiz Started!',
+            description: `The quiz has begun for all participants!`,
+          });
+        }
         
         // Don't immediately start for creator - let real-time handle it
         // This ensures all participants get synchronized start
