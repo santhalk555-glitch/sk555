@@ -59,6 +59,12 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
   // Load quiz data and create session when lobby becomes active
   useEffect(() => {
+    console.log('=== QUIZ SESSION EFFECT ===');
+    console.log('Lobby:', lobby);
+    console.log('Lobby status:', lobby?.status);
+    console.log('Quiz started:', quizStarted);
+    console.log('Session ID:', sessionId);
+    
     if (lobby && lobby.status === 'active' && !quizStarted && !sessionId) {
       console.log('QuizSession: Loading quiz data for active lobby:', lobby.id);
       
@@ -495,6 +501,10 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   };
 
   if (!quizStarted) {
+    console.log('=== RENDERING LOADING STATE ===');
+    console.log('Questions loaded:', questions.length);
+    console.log('Session ID:', sessionId);
+    
     return (
       <div className="pt-20 pb-12">
         <div className="container mx-auto px-6 max-w-4xl">
@@ -505,7 +515,29 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
             <p className="text-muted-foreground">
               Waiting for the quiz to begin.
             </p>
+            <p className="text-xs text-muted-foreground mt-2">Check browser console (F12) for loading details</p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (questions.length === 0) {
+    console.log('=== NO QUESTIONS LOADED ===');
+    console.log('Lobby data:', lobby);
+    return (
+      <div className="pt-20 pb-12">
+        <div className="container mx-auto px-6 max-w-4xl">
+          <Card>
+            <CardHeader>
+              <CardTitle>Error Loading Quiz</CardTitle>
+              <CardDescription>Failed to load quiz questions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4">Unable to load questions for this quiz. Please try again or go back to the lobby.</p>
+              <Button onClick={onBack}>Go Back to Lobby</Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
