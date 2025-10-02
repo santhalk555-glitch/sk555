@@ -214,20 +214,23 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
       console.log('initializeQuizSession: Found', lobbyParticipants?.length, 'participants');
 
       if (lobbyParticipants) {
-        // Create quiz_player records for all participants
-        console.log('initializeQuizSession: Creating quiz_player records');
-        for (const participant of lobbyParticipants) {
+        // Create quiz_player record for current user only (RLS allows only own record)
+        console.log('initializeQuizSession: Creating quiz_player record for current user');
+        const currentParticipant = lobbyParticipants.find(p => p.user_id === user?.id);
+        
+        if (currentParticipant) {
           const { error: playerError } = await supabase
             .from('quiz_players')
             .insert({
               session_id: session.id,
-              user_id: participant.user_id,
-              username: participant.username
+              user_id: currentParticipant.user_id,
+              username: currentParticipant.username
             });
           
           if (playerError) {
             console.error('initializeQuizSession: Error creating player record:', playerError);
-            throw playerError;
+            // Don't throw - other players will create their own records
+            console.log('initializeQuizSession: Continuing despite player record error');
           }
         }
 
