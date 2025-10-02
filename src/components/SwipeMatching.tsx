@@ -228,10 +228,18 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
                 <CardContent className="p-0 h-full flex flex-col">
                   {/* Profile Photo Area */}
                   <div className="flex-1 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-t-lg flex items-center justify-center relative overflow-hidden">
-                    <div className="text-8xl">
-                      {currentProfile?.display_user_id ? 
-                        String(currentProfile.display_user_id).charAt(0) : '👤'}
-                    </div>
+                    {currentProfile?.avatar_url ? (
+                      <img 
+                        src={currentProfile.avatar_url} 
+                        alt={currentProfile.username || 'Profile'} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="text-8xl">
+                        {currentProfile?.username ? 
+                          currentProfile.username.charAt(0).toUpperCase() : '👤'}
+                      </div>
+                    )}
                     
                     {/* Overlay indicators */}
                     {swipeDirection === 'right' && (
@@ -254,7 +262,7 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
                   <div className="p-6 space-y-4">
                     <div>
                       <h2 className="text-2xl font-bold mb-1">
-                        User #{currentProfile?.display_user_id}
+                        {currentProfile?.username || `User #${currentProfile?.display_user_id}`}
                       </h2>
                       <div className="flex items-center text-muted-foreground">
                         <GraduationCap className="w-4 h-4 mr-2" />
