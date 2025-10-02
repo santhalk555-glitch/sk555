@@ -68,17 +68,72 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     if (lobby && lobby.status === 'active' && !quizStarted && !sessionId) {
       console.log('QuizSession: Loading quiz data for active lobby:', lobby.id);
       
-      initializeQuizSession().then(() => {
-        console.log('QuizSession: Quiz session initialized successfully');
-        setQuizStarted(true);
-      }).catch((error) => {
-        console.error('QuizSession: Failed to initialize quiz session:', error);
-        toast({
-          title: 'Error Loading Quiz',
-          description: 'Failed to load questions. Please try again.',
-          variant: 'destructive'
-        });
-      });
+      // First check if a session already exists for this lobby
+      const loadSession = async () => {
+        try {
+          const { data: existingSession, error: checkError } = await supabase
+            .from('quiz_sessions')
+            .select('*')
+            .eq('lobby_id', lobby.id)
+            .maybeSingle();
+          
+          if (checkError) {
+            console.error('QuizSession: Error checking for existing session:', checkError);
+            throw checkError;
+          }
+          
+          if (existingSession) {
+            console.log('QuizSession: Found existing session:', existingSession.id);
+            setSessionId(existingSession.id);
+            
+            // Load questions from existing session
+            const { data: questionsData, error: questionsError } = await supabase
+              .from('quiz_questions')
+              .select('*')
+              .in('id', existingSession.question_ids);
+            
+            if (questionsError) throw questionsError;
+            
+            if (questionsData) {
+              const orderedQuestions = existingSession.question_ids.map((id: string) => 
+                questionsData.find((q: Question) => q.id === id)
+              ).filter(Boolean) as Question[];
+              
+              setQuestions(orderedQuestions);
+              setAnswers(new Array(orderedQuestions.length).fill(''));
+            }
+            
+            // Load participants
+            const { data: participants, error: participantsError } = await supabase
+              .from('lobby_participants')
+              .select('user_id, username')
+              .eq('lobby_id', lobby.id);
+            
+            if (participantsError) throw participantsError;
+            if (participants) {
+              setParticipants(participants.map(p => ({ ...p, score: 0 })));
+            }
+            
+            console.log('QuizSession: Loaded existing session successfully');
+            setQuizStarted(true);
+          } else {
+            // No existing session, create new one
+            console.log('QuizSession: No existing session, creating new one');
+            await initializeQuizSession();
+            console.log('QuizSession: Quiz session initialized successfully');
+            setQuizStarted(true);
+          }
+        } catch (error) {
+          console.error('QuizSession: Failed to initialize quiz session:', error);
+          toast({
+            title: 'Error Loading Quiz',
+            description: 'Failed to load questions. Please try again.',
+            variant: 'destructive'
+          });
+        }
+      };
+      
+      loadSession();
     }
   }, [lobby?.status, sessionId]);
 

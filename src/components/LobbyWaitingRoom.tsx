@@ -187,9 +187,9 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
         
         console.log('Updated participants state:', data);
         
-        // Check if all players are ready
+        // Check if all players are ready - prevent multiple calls with loading check
         const allReady = data.length >= 2 && data.every((p: LobbyParticipant) => p.ready);
-        if (allReady && isCreator && lobby.status === 'waiting') {
+        if (allReady && isCreator && lobby.status === 'waiting' && !loading) {
           console.log('All players ready! Auto-starting quiz...');
           startQuiz();
         }
@@ -229,7 +229,7 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
   };
 
   const startQuiz = async () => {
-    if (!lobby || !user || !isCreator) return;
+    if (!lobby || !user || !isCreator || loading) return;
 
     console.log('Starting quiz for lobby:', lobby.id, 'with', participants.length, 'participants');
     setLoading(true);
@@ -273,6 +273,10 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
 
       if (data) {
         console.log('Quiz started successfully!');
+        
+        // Update local lobby state immediately to prevent re-triggering
+        setLobby(prev => prev ? { ...prev, status: 'active' } : null);
+        
         toast({
           title: 'Quiz Started!',
           description: `The quiz has begun for all participants!`,
