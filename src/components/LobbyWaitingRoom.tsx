@@ -230,7 +230,15 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
   };
 
   const startQuiz = async () => {
-    if (!lobby || !user || !isCreator || loading) return;
+    if (!lobby || !user || !isCreator) {
+      console.log('startQuiz: Precondition check failed', { lobby: !!lobby, user: !!user, isCreator });
+      return;
+    }
+    
+    if (loading) {
+      console.log('startQuiz: Already loading, skipping');
+      return;
+    }
 
     console.log('Starting quiz for lobby:', lobby.id, 'with', participants.length, 'participants');
     setLoading(true);
@@ -273,7 +281,7 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
       if (error) throw error;
 
       if (data) {
-        console.log('Quiz started successfully!');
+        console.log('Quiz started successfully by creator!');
         
         // Only show toast once
         if (!hasShownStartToast) {
@@ -284,18 +292,30 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
           });
         }
         
+        // Release loading state before fetching
+        setLoading(false);
+        
         // Fetch the updated lobby and start quiz for creator immediately
+        console.log('Creator: Fetching updated lobby to start quiz');
         const { data: updatedLobby, error: fetchError } = await supabase
           .from('game_lobbies')
           .select('*')
           .eq('id', lobby.id)
           .single();
         
+        console.log('Creator: Fetched lobby result:', { updatedLobby, fetchError });
+        
         if (!fetchError && updatedLobby) {
-          console.log('Creator: Starting quiz immediately with updated lobby');
+          console.log('Creator: Starting quiz immediately with lobby status:', updatedLobby.status);
           setLobby(updatedLobby);
+          
+          // Call onQuizStarted immediately
+          console.log('Creator: Calling onQuizStarted');
           onQuizStarted(updatedLobby);
+        } else {
+          console.error('Creator: Failed to fetch updated lobby:', fetchError);
         }
+        return; // Exit early to prevent finally block from setting loading false again
       } else {
         console.log('Quiz start failed - access denied');
         toast({
