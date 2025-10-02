@@ -275,9 +275,6 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
       if (data) {
         console.log('Quiz started successfully!');
         
-        // Update local lobby state immediately to prevent re-triggering
-        setLobby(prev => prev ? { ...prev, status: 'active' } : null);
-        
         // Only show toast once
         if (!hasShownStartToast) {
           setHasShownStartToast(true);
@@ -287,9 +284,18 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
           });
         }
         
-        // Don't immediately start for creator - let real-time handle it
-        // This ensures all participants get synchronized start
-        console.log('Quiz status updated, waiting for real-time notification...');
+        // Fetch the updated lobby and start quiz for creator immediately
+        const { data: updatedLobby, error: fetchError } = await supabase
+          .from('game_lobbies')
+          .select('*')
+          .eq('id', lobby.id)
+          .single();
+        
+        if (!fetchError && updatedLobby) {
+          console.log('Creator: Starting quiz immediately with updated lobby');
+          setLobby(updatedLobby);
+          onQuizStarted(updatedLobby);
+        }
       } else {
         console.log('Quiz start failed - access denied');
         toast({
