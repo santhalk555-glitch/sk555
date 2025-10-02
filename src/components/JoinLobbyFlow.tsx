@@ -45,13 +45,48 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
   useEffect(() => {
     if (user) {
       loadInvites();
+      
+      // Set up real-time subscription for new invitations
+      const channel = supabase
+        .channel('lobby-invites-realtime')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'lobby_invites',
+            filter: `receiver_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('New invitation received:', payload);
+            loadInvites(); // Reload invitations when a new one arrives
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'lobby_invites',
+            filter: `receiver_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Invitation updated:', payload);
+            loadInvites(); // Reload invitations when one is updated
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 
   const loadInvites = async () => {
     if (!user) return;
 
-    console.log('Loading invites for user:', user.id);
+    console.log('=== Loading invites for user:', user.id, '===');
     
     try {
       const { data, error } = await supabase
@@ -72,20 +107,34 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
-      console.log('Lobby invites query result:', { data, error });
+      console.log('Lobby invites query result:', { 
+        dataCount: data?.length, 
+        data, 
+        error 
+      });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error in lobby_invites query:', error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        console.log('No pending invitations found');
+        setInvites([]);
+        setLoading(false);
+        return;
+      }
 
       // Get sender profiles separately
       const senderIds = data?.map(invite => invite.sender_id) || [];
       console.log('Sender IDs:', senderIds);
       
-      const { data: profiles } = await supabase
+      const { data: profiles, error: profileError } = await supabase
         .from('profile_view')
         .select('user_id, username')
         .in('user_id', senderIds);
 
-      console.log('Profiles query result:', profiles);
+      console.log('Profiles query result:', { profiles, profileError });
 
       // Transform the data to match our interface
       const transformedInvites = data?.map((invite: any) => ({
@@ -93,7 +142,8 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
         sender_profile: profiles?.find(p => p.user_id === invite.sender_id) || { username: 'Unknown' },
       })) || [];
 
-      console.log('Transformed invites:', transformedInvites);
+      console.log('Transformed invites count:', transformedInvites.length);
+      console.log('First invite sample:', transformedInvites[0]);
       setInvites(transformedInvites);
     } catch (error) {
       console.error('Error loading invites:', error);
@@ -390,6 +440,10 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
         </div>
 
         {/* Invites List */}
+        <div className="mb-4 text-center text-sm text-muted-foreground">
+          {invites.length > 0 ? `${invites.length} pending invitation${invites.length > 1 ? 's' : ''}` : 'No pending invitations'}
+        </div>
+        
         {invites.length === 0 ? (
           <Card className="max-w-md mx-auto">
             <CardContent className="p-8 text-center">
