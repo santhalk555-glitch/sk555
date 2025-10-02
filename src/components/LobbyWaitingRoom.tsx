@@ -3,10 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, Users, Plus, UserPlus, Crown, Play, Clock, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Profile, parseCompetitiveExams } from '@/types/profile';
 
 interface LobbyWaitingRoomProps {
   lobby: any;
@@ -26,6 +28,9 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
   const [participants, setParticipants] = useState<LobbyParticipant[]>([]);
   const [inviteUserId, setInviteUserId] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [friends, setFriends] = useState<Profile[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -296,33 +301,51 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
     }
   };
 
-  const invitePlayer = async () => {
-    if (!lobby || !inviteUserId.trim() || !isCreator) return;
-
-    console.log('Inviting player:', inviteUserId.trim(), 'to lobby:', lobby.id);
+  const loadFriends = async () => {
+    if (!user) return;
+    setLoadingFriends(true);
 
     try {
-      const { data: profile, error: profileError } = await supabase
-        .from('profile_view')
-        .select('user_id, username')
-        .eq('username', inviteUserId.trim())
-        .single();
+      const { data: friendships, error } = await supabase
+        .from('friends')
+        .select('*')
+        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`);
 
-      console.log('Profile lookup result:', { profile, profileError });
+      if (error) throw error;
 
-      if (profileError || !profile) {
-        console.log('Profile not found for username:', inviteUserId.trim());
-        toast({
-          title: 'User Not Found',
-          description: 'No user found with that username.',
-          variant: 'destructive'
-        });
-        return;
+      const friendProfiles: Profile[] = [];
+      
+      for (const friendship of friendships || []) {
+        const otherUserId = friendship.user1_id === user.id ? friendship.user2_id : friendship.user1_id;
+        
+        const { data: profile, error: profileError } = await supabase
+          .from('profile_view')
+          .select('*')
+          .eq('user_id', otherUserId)
+          .single();
+          
+        if (profile && !profileError) {
+          const parsedProfile = {
+            ...profile,
+            competitive_exams: parseCompetitiveExams(profile.competitive_exams)
+          };
+          friendProfiles.push(parsedProfile);
+        }
       }
 
-      console.log('Checking lobby capacity. Current participants:', participants.length, 'Max:', lobby.max_players);
+      setFriends(friendProfiles);
+    } catch (error) {
+      console.error('Error loading friends:', error);
+    } finally {
+      setLoadingFriends(false);
+    }
+  };
+
+  const inviteFriend = async (friendUserId: string, friendUsername: string) => {
+    if (!lobby || !isCreator) return;
+
+    try {
       if (participants.length >= lobby.max_players) {
-        console.log('Lobby is full');
         toast({
           title: 'Lobby Full',
           description: 'This lobby is already full.',
@@ -331,11 +354,74 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
         return;
       }
 
-      console.log('Sending invite with data:', {
-        lobby_id: lobby.id,
-        sender_id: user?.id,
-        receiver_id: profile.user_id
+      // Check if already invited
+      const { data: existingInvite } = await supabase
+        .from('lobby_invites')
+        .select('*')
+        .eq('lobby_id', lobby.id)
+        .eq('receiver_id', friendUserId)
+        .eq('status', 'pending')
+        .maybeSingle();
+
+      if (existingInvite) {
+        toast({
+          title: 'Already Invited',
+          description: `@${friendUsername} has already been invited.`,
+        });
+        return;
+      }
+
+      const { error: inviteError } = await supabase
+        .from('lobby_invites')
+        .insert({
+          lobby_id: lobby.id,
+          sender_id: user?.id,
+          receiver_id: friendUserId
+        });
+
+      if (inviteError) throw inviteError;
+
+      toast({
+        title: 'Invite Sent!',
+        description: `Sent lobby invite to @${friendUsername}`,
       });
+    } catch (error) {
+      console.error('Error sending invite:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send invite.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const invitePlayer = async () => {
+    if (!lobby || !inviteUserId.trim() || !isCreator) return;
+
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from('profile_view')
+        .select('user_id, username')
+        .eq('username', inviteUserId.trim())
+        .single();
+
+      if (profileError || !profile) {
+        toast({
+          title: 'User Not Found',
+          description: 'No user found with that username.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      if (participants.length >= lobby.max_players) {
+        toast({
+          title: 'Lobby Full',
+          description: 'This lobby is already full.',
+          variant: 'destructive'
+        });
+        return;
+      }
 
       const { error: inviteError } = await supabase
         .from('lobby_invites')
@@ -344,8 +430,6 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
           sender_id: user?.id,
           receiver_id: profile.user_id
         });
-
-      console.log('Invite creation result:', { inviteError });
 
       if (inviteError) throw inviteError;
 
@@ -557,32 +641,55 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
                     Invite Players
                   </CardTitle>
                   <CardDescription>
-                    Enter a player's username to send them an invitation
+                    Invite your friends to join this lobby
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex space-x-2">
+                  <div className="space-y-3">
+                    <Button 
+                      onClick={() => {
+                        setShowInviteDialog(true);
+                        loadFriends();
+                      }}
+                      className="w-full bg-gradient-primary hover:opacity-90"
+                    >
+                      <Users className="w-4 h-4 mr-2" />
+                      Invite Friends
+                    </Button>
+                    
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">Or</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
                       <Input
-                        placeholder="Enter username to invite..."
+                        placeholder="Enter username..."
                         value={inviteUserId}
                         onChange={(e) => setInviteUserId(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            invitePlayer();
+                          }
+                        }}
                         maxLength={20}
-                        className="flex-1"
                       />
                       <Button 
-                        onClick={invitePlayer} 
+                        onClick={invitePlayer}
                         disabled={!inviteUserId.trim()}
-                        className="bg-gradient-primary hover:opacity-90"
                       >
-                        Send Invite
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        Invite
                       </Button>
                     </div>
                     
                     <div className="text-sm text-muted-foreground">
+                      <p>• {lobby.max_players - participants.length} slots remaining</p>
                       <p>• Players will receive an invitation notification</p>
-                      <p>• They can accept or decline your invitation</p>
-                      <p>• You have {lobby.max_players - participants.length} slots remaining</p>
                     </div>
                   </div>
                 </CardContent>
@@ -661,6 +768,58 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
             </CardContent>
           </Card>
         )}
+
+        {/* Invite Friends Dialog */}
+        <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Invite Friends to Lobby</DialogTitle>
+              <DialogDescription>
+                Select friends to invite to your quiz lobby
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {loadingFriends ? (
+                <div className="text-center py-8">
+                  <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                  <p className="text-sm text-muted-foreground">Loading friends...</p>
+                </div>
+              ) : friends.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="w-12 h-12 text-muted-foreground mx-auto mb-2 opacity-50" />
+                  <p className="text-sm text-muted-foreground">No friends yet. Go to matching to find study partners!</p>
+                </div>
+              ) : (
+                friends.map((friend) => (
+                  <div
+                    key={friend.user_id}
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                        <span className="font-bold text-primary">
+                          {friend.username?.charAt(0).toUpperCase() || '?'}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="font-medium">@{friend.username}</div>
+                        <div className="text-xs text-muted-foreground">{friend.course_name}</div>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => inviteFriend(friend.user_id, friend.username || '')}
+                    >
+                      <UserPlus className="w-4 h-4 mr-1" />
+                      Invite
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
