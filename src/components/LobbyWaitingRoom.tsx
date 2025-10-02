@@ -297,29 +297,12 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
           });
         }
         
-        // Release loading state before fetching
+        // Don't start quiz immediately for creator - let polling handle it
+        // This ensures all participants start at the same time
+        console.log('Creator: Quiz status updated in database, waiting for polling to detect it...');
+        
+        // Release loading state
         setLoading(false);
-        
-        // Fetch the updated lobby and start quiz for creator immediately
-        console.log('Creator: Fetching updated lobby to start quiz');
-        const { data: updatedLobby, error: fetchError } = await supabase
-          .from('game_lobbies')
-          .select('*')
-          .eq('id', lobby.id)
-          .single();
-        
-        console.log('Creator: Fetched lobby result:', { updatedLobby, fetchError });
-        
-        if (!fetchError && updatedLobby) {
-          console.log('Creator: Starting quiz immediately with lobby status:', updatedLobby.status);
-          setLobby(updatedLobby);
-          
-          // Call onQuizStarted immediately
-          console.log('Creator: Calling onQuizStarted');
-          onQuizStarted(updatedLobby);
-        } else {
-          console.error('Creator: Failed to fetch updated lobby:', fetchError);
-        }
         return; // Exit early to prevent finally block from setting loading false again
       } else {
         console.log('Quiz start failed - access denied');
