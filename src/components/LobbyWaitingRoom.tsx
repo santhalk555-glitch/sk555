@@ -140,15 +140,20 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
           if (currentLobby) {
             console.log('Polling lobby status for user:', user?.id, '- Current:', lobby.status, 'Database:', currentLobby.status);
             
-            if (currentLobby.status !== lobby.status) {
+            // If lobby is active and we're still in waiting room, start the quiz
+            if (currentLobby.status === 'active' && lobby.status !== 'active') {
               console.log('Lobby status changed via polling for user:', user?.id, '- New status:', currentLobby.status);
               setLobby(currentLobby);
-              
-              if (currentLobby.status === 'active') {
-                console.log('Quiz started via polling, redirecting participant:', user?.id);
-                clearInterval(pollLobbyStatus); // Stop polling once quiz starts
-                onQuizStarted(currentLobby);
-              }
+              clearInterval(pollLobbyStatus); // Stop polling once quiz starts
+              onQuizStarted(currentLobby);
+            } else if (currentLobby.status === 'active') {
+              // Already active but somehow still here - force start
+              console.log('Lobby already active, forcing quiz start for user:', user?.id);
+              clearInterval(pollLobbyStatus);
+              onQuizStarted(currentLobby);
+            } else if (currentLobby.status !== lobby.status) {
+              console.log('Lobby status changed via polling for user:', user?.id, '- New status:', currentLobby.status);
+              setLobby(currentLobby);
             }
           }
         } catch (error) {
