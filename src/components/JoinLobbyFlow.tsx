@@ -136,6 +136,16 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
         return;
       }
 
+      // Check if user is trying to join their own lobby
+      if (currentLobby.creator_id === user?.id) {
+        toast({
+          title: 'Cannot Join Own Lobby',
+          description: 'This is your own lobby. You are already in it as the creator!',
+          variant: 'destructive'
+        });
+        return;
+      }
+
       // Check if lobby is full
       console.log('Checking if lobby is full. Current:', currentLobby.current_players, 'Max:', currentLobby.max_players);
       if (currentLobby.current_players >= currentLobby.max_players) {
@@ -344,6 +354,16 @@ const JoinLobbyFlow = ({ onBack, onJoinLobby }: JoinLobbyFlowProps) => {
         toast({
           title: 'Lobby Not Found',
           description: 'No lobby found with that code.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Check if user is trying to join their own lobby
+      if (lobby.creator_id === user.id) {
+        toast({
+          title: 'Cannot Join Own Lobby',
+          description: 'You cannot join your own lobby. You are already the creator!',
           variant: 'destructive'
         });
         return;
