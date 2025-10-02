@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLocation } from 'react-router-dom';
 import LobbyMenu from './LobbyMenu';
 import CreateLobbyFlow from './CreateLobbyFlow';
@@ -19,6 +20,8 @@ const GameLobby = ({ onBack, initialView }: GameLobbyProps) => {
   const [currentLobby, setCurrentLobby] = useState<any>(null);
   const location = useLocation();
 
+  console.log('GameLobby render - currentView:', currentView, 'currentLobby:', currentLobby);
+
   // Check if we should open join lobby from notification or dashboard
   useEffect(() => {
     const state = location.state as any;
@@ -30,7 +33,8 @@ const GameLobby = ({ onBack, initialView }: GameLobbyProps) => {
 
   useEffect(() => {
     console.log('GameLobby current view:', currentView);
-  }, [currentView]);
+    console.log('GameLobby current lobby:', currentLobby);
+  }, [currentView, currentLobby]);
 
   const handleCreateLobby = () => {
     setCurrentView('create');
@@ -50,10 +54,12 @@ const GameLobby = ({ onBack, initialView }: GameLobbyProps) => {
   };
 
   const handleLobbyCreated = (lobby: any) => {
+    console.log('=== LOBBY CREATED ===');
     console.log('Lobby created with status:', lobby.status);
+    console.log('Full lobby data:', lobby);
     setCurrentLobby(lobby);
     if (lobby.status === 'active') {
-      console.log('Switching to quiz view');
+      console.log('Switching to quiz view immediately');
       setCurrentView('quiz');
     } else {
       console.log('Switching to waiting view');
@@ -62,10 +68,12 @@ const GameLobby = ({ onBack, initialView }: GameLobbyProps) => {
   };
 
   const handleJoinedLobby = (lobby: any) => {
+    console.log('=== LOBBY JOINED ===');
     console.log('Joined lobby with status:', lobby.status);
+    console.log('Full lobby data:', lobby);
     setCurrentLobby(lobby);
     if (lobby.status === 'active') {
-      console.log('Switching to quiz view');
+      console.log('Switching to quiz view immediately');
       setCurrentView('quiz');
     } else {
       console.log('Switching to waiting view');
@@ -102,6 +110,26 @@ const GameLobby = ({ onBack, initialView }: GameLobbyProps) => {
         />
       );
     case 'quiz':
+      console.log('=== RENDERING QUIZ SESSION ===');
+      console.log('Current lobby for quiz:', currentLobby);
+      if (!currentLobby) {
+        console.error('NO LOBBY DATA FOR QUIZ!');
+        return (
+          <div className="pt-20 pb-12">
+            <div className="container mx-auto px-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Error</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p>No lobby data available. Please go back and try again.</p>
+                  <Button onClick={handleBackToMenu} className="mt-4">Back to Menu</Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        );
+      }
       return (
         <QuizSession
           lobby={currentLobby}
