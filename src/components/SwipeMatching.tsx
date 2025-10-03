@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { 
   ArrowLeft, 
   Heart, 
@@ -228,17 +227,19 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
                 }`}
               >
                 <CardContent className="p-0 h-full flex flex-col">
-                  {/* Profile Photo Area */}
-                  <div className="flex-1 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-t-lg flex items-center justify-center relative overflow-hidden">
-                    <Avatar className="w-64 h-64 border-4 border-background shadow-2xl">
-                      <AvatarImage 
-                        src={currentProfile?.avatar_url || ''} 
-                        alt={currentProfile?.username || 'User'}
+                  {/* Profile Photo Area - Full Square */}
+                  <div className="relative w-full h-[400px] bg-gradient-to-br from-primary/10 to-secondary/10 overflow-hidden">
+                    {currentProfile?.avatar_url ? (
+                      <img 
+                        src={currentProfile.avatar_url} 
+                        alt={currentProfile.username || 'User'}
+                        className="w-full h-full object-cover"
                       />
-                      <AvatarFallback className="text-6xl bg-secondary/20">
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-muted/20">
                         <User className="w-32 h-32 text-muted-foreground" />
-                      </AvatarFallback>
-                    </Avatar>
+                      </div>
+                    )}
                     
                     {/* Overlay indicators */}
                     {swipeDirection === 'right' && (
