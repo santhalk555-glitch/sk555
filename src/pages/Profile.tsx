@@ -15,7 +15,7 @@ import {
   AlertDialogTitle, 
   AlertDialogTrigger 
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, LogOut, User, BookOpen, Target, Trash2, Mail, Instagram, Camera, Upload } from 'lucide-react';
+import { ArrowLeft, LogOut, User, BookOpen, Target, Trash2, Instagram, Camera, Upload, Youtube } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -406,18 +406,20 @@ const Profile = () => {
               </AlertDialog>
             </div>
 
-            {/* Connect With Us Section */}
+            {/* Connect On Us Section */}
             <div className="pt-8 mt-8 border-t border-border">
-              <h3 className="text-lg font-semibold mb-4 text-center">Connect With Us</h3>
+              <h3 className="text-lg font-semibold mb-4 text-center">Connect On Us</h3>
               <div className="space-y-3">
                 <a 
-                  href="mailto:studymatesmeet@gmail.com"
-                  className="flex items-center justify-center gap-3 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 hover:border-primary/40 transition-all duration-200 hover:scale-105 group"
+                  href="https://youtube.com/@officialstudymates"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-3 p-4 rounded-lg bg-background border border-accent/20 hover:border-accent/40 transition-all duration-200 hover:scale-105 group shadow-sm hover:shadow-md"
                 >
-                  <Mail className="w-5 h-5 text-primary group-hover:animate-pulse" />
+                  <Youtube className="w-5 h-5 text-accent group-hover:animate-pulse" />
                   <div className="text-center">
-                    <div className="font-medium">Email</div>
-                    <div className="text-sm text-muted-foreground">studymatesmeet@gmail.com</div>
+                    <div className="font-medium">YouTube</div>
+                    <div className="text-sm text-muted-foreground">@officialstudymates</div>
                   </div>
                 </a>
                 
@@ -425,9 +427,9 @@ const Profile = () => {
                   href="https://instagram.com/studymatesmeet"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-3 p-4 rounded-lg bg-gradient-to-r from-pink-500/10 to-purple-500/10 border border-pink-500/20 hover:border-pink-500/40 transition-all duration-200 hover:scale-105 group"
+                  className="flex items-center justify-center gap-3 p-4 rounded-lg bg-background border border-accent/20 hover:border-accent/40 transition-all duration-200 hover:scale-105 group shadow-sm hover:shadow-md"
                 >
-                  <Instagram className="w-5 h-5 text-pink-500 group-hover:animate-pulse" />
+                  <Instagram className="w-5 h-5 text-accent group-hover:animate-pulse" />
                   <div className="text-center">
                     <div className="font-medium">Instagram</div>
                     <div className="text-sm text-muted-foreground">@studymatesmeet</div>
