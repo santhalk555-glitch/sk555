@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { 
   ArrowLeft, 
   Heart, 
@@ -11,7 +12,8 @@ import {
   BookOpen, 
   GraduationCap,
   Users,
-  Sparkles
+  Sparkles,
+  User
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -227,11 +229,16 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
               >
                 <CardContent className="p-0 h-full flex flex-col">
                   {/* Profile Photo Area */}
-                  <div className="flex-1 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-t-lg flex items-center justify-center relative overflow-hidden">
-                    <div className="text-8xl">
-                      {currentProfile?.display_user_id ? 
-                        String(currentProfile.display_user_id).charAt(0) : '👤'}
-                    </div>
+                  <div className="flex-1 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-t-lg flex items-center justify-center relative overflow-hidden">
+                    <Avatar className="w-64 h-64 border-4 border-background shadow-2xl">
+                      <AvatarImage 
+                        src={currentProfile?.avatar_url || ''} 
+                        alt={currentProfile?.username || 'User'}
+                      />
+                      <AvatarFallback className="text-6xl bg-secondary/20">
+                        <User className="w-32 h-32 text-muted-foreground" />
+                      </AvatarFallback>
+                    </Avatar>
                     
                     {/* Overlay indicators */}
                     {swipeDirection === 'right' && (
@@ -252,11 +259,11 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
 
                   {/* Profile Info */}
                   <div className="p-6 space-y-4">
-                    <div>
-                      <h2 className="text-2xl font-bold mb-1">
-                        User #{currentProfile?.display_user_id}
+                    <div className="text-center">
+                      <h2 className="text-3xl font-bold mb-2">
+                        {currentProfile?.username || 'Anonymous'}
                       </h2>
-                      <div className="flex items-center text-muted-foreground">
+                      <div className="flex items-center justify-center text-muted-foreground">
                         <GraduationCap className="w-4 h-4 mr-2" />
                         <span className="text-sm">{currentProfile?.course_name}</span>
                       </div>
