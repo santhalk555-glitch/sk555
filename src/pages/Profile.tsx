@@ -408,7 +408,7 @@ const Profile = () => {
 
             {/* Connect On Us Section */}
             <div className="pt-8 mt-8 border-t border-border">
-              <h3 className="text-lg font-semibold mb-4 text-center">Connect On Us</h3>
+              <h3 className="text-lg font-semibold mb-4 text-center">Connect With Us</h3>
               <div className="space-y-3">
                 <a 
                   href="https://youtube.com/@officialstudymates"
