@@ -109,6 +109,19 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
 
       if (participantError) throw participantError;
       
+      // For practice lobbies, automatically start the quiz
+      if (selectionData.lobbyType === 'practice') {
+        const { data: startedLobby, error: startError } = await supabase
+          .rpc('start_quiz_lobby', { lobby_id: lobby.id });
+        
+        if (startError) {
+          console.error('Error starting practice session:', startError);
+        } else if (startedLobby) {
+          // Update lobby with active status
+          lobby.status = 'active';
+        }
+      }
+      
       toast({
         title: 'Lobby Created!',
         description: `${subjectName} ${selectionData.lobbyType} lobby created with ${selectionData.maxPlayers} players!`,
