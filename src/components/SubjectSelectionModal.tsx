@@ -492,8 +492,8 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-gradient-card border-primary/20">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-background border-primary/20 shadow-2xl">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-2xl bg-gradient-primary bg-clip-text text-transparent">
             {getStepTitle()}
@@ -572,7 +572,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
                   <Badge
                     key={index}
                     variant="outline"
-                    className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:border-primary/30"
+                    className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 bg-background hover:bg-muted border-border hover:border-primary text-foreground"
                     onClick={() => handleExamSelect(exam)}
                   >
                     {exam.name}
@@ -600,7 +600,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
                     <Badge
                       key={branch.id}
                       variant="outline"
-                      className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:border-primary/30"
+                      className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 bg-background hover:bg-muted border-border hover:border-primary text-foreground"
                       onClick={() => handleBranchSelect(branch)}
                     >
                       {branch.name}
@@ -629,7 +629,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
                     <Badge
                       key={subject.id}
                       variant="outline"
-                      className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:border-primary/30"
+                      className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 bg-background hover:bg-muted border-border hover:border-primary text-foreground"
                       onClick={() => handleSubjectSelect(subject)}
                     >
                       {subject.name}
@@ -658,7 +658,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
                     <Badge
                       key={topic.id}
                       variant="outline"
-                      className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:border-primary/30"
+                      className="p-3 text-center cursor-pointer transition-all duration-200 hover:scale-105 bg-background hover:bg-muted border-border hover:border-primary text-foreground"
                       onClick={() => handleTopicSelect(topic)}
                     >
                       {topic.name}
