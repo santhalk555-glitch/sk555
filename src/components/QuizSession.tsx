@@ -194,23 +194,56 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
       } else {
         // Select and randomize questions
         console.log('initializeQuizSession: Selecting random questions');
+        console.log('initializeQuizSession: Lobby query params:', {
+          subject_id: lobby.subject_id,
+          topic_id: lobby.topic_id,
+          exam_simple_id: lobby.exam_simple_id,
+          source_type: lobby.source_type
+        });
         
-        if (!lobby.subject_id) {
-          console.error('initializeQuizSession: Lobby missing subject_id');
-          throw new Error('Lobby missing subject_id');
+        let allQuestions = [];
+        let questionsError = null;
+
+        // Try querying by subject_id first
+        if (lobby.subject_id) {
+          console.log('initializeQuizSession: Querying by subject_id:', lobby.subject_id);
+          let questionsQuery = supabase
+            .from('quiz_questions')
+            .select('*')
+            .eq('subject_id', lobby.subject_id);
+
+          if (lobby.topic_id) {
+            console.log('initializeQuizSession: Adding topic filter:', lobby.topic_id);
+            questionsQuery = questionsQuery.eq('topic_id', lobby.topic_id);
+          }
+
+          const result = await questionsQuery;
+          questionsError = result.error;
+          allQuestions = result.data || [];
+          
+          console.log('initializeQuizSession: Questions found by subject_id:', allQuestions.length);
         }
 
-        let questionsQuery = supabase
-          .from('quiz_questions')
-          .select('*')
-          .eq('subject_id', lobby.subject_id);
+        // If no questions found by subject_id, try exam_simple_id
+        if ((!allQuestions || allQuestions.length === 0) && lobby.exam_simple_id) {
+          console.log('initializeQuizSession: No questions by subject_id, trying exam_simple_id:', lobby.exam_simple_id);
+          
+          let questionsQuery = supabase
+            .from('quiz_questions')
+            .select('*')
+            .eq('exam_simple_id', lobby.exam_simple_id);
 
-        if (lobby.topic_id) {
-          console.log('initializeQuizSession: Adding topic filter:', lobby.topic_id);
-          questionsQuery = questionsQuery.eq('topic_id', lobby.topic_id);
+          if (lobby.topic_id) {
+            console.log('initializeQuizSession: Adding topic filter for exam query:', lobby.topic_id);
+            questionsQuery = questionsQuery.eq('topic_id', lobby.topic_id);
+          }
+
+          const result = await questionsQuery;
+          questionsError = result.error;
+          allQuestions = result.data || [];
+          
+          console.log('initializeQuizSession: Questions found by exam_simple_id:', allQuestions.length);
         }
-
-        const { data: allQuestions, error: questionsError } = await questionsQuery;
 
         if (questionsError) {
           console.error('initializeQuizSession: Error fetching questions:', questionsError);
@@ -218,8 +251,9 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         }
 
         if (!allQuestions || allQuestions.length === 0) {
-          console.error('initializeQuizSession: No questions found for filters');
-          throw new Error('No questions found');
+          console.error('initializeQuizSession: No questions found for any query method');
+          console.error('initializeQuizSession: Tried subject_id:', lobby.subject_id, 'exam_simple_id:', lobby.exam_simple_id);
+          throw new Error('No questions found for this exam/subject');
         }
 
         console.log('initializeQuizSession: Found', allQuestions.length, 'questions');
