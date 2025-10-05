@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { Users, Gamepad2, Trophy, User } from "lucide-react";
+import { Users, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { NotificationBell } from "@/components/NotificationBell";
+import studymatesLogo from "@/assets/studymates-logo.jpeg";
 
 const Navigation = () => {
   const navigate = useNavigate();
@@ -14,11 +15,13 @@ const Navigation = () => {
             className="flex items-center space-x-2 cursor-pointer" 
             onClick={() => navigate('/')}
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-              <Trophy className="w-5 h-5 text-primary-foreground" />
-            </div>
+            <img 
+              src={studymatesLogo} 
+              alt="StudyMates Logo" 
+              className="w-10 h-10 rounded-lg object-cover"
+            />
             <h1 className="text-xl font-bold text-[#FF1493]">
-              StudyMates
+              StudyMates Arena
             </h1>
           </div>
           
