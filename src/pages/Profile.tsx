@@ -20,6 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CompetitiveExam, parseCompetitiveExams } from '@/types/profile';
+import { ImageCropDialog } from '@/components/ImageCropDialog';
 
 interface UserProfile {
   display_user_id: string;
@@ -34,6 +35,9 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string>('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, signOut } = useAuth();
   const { toast } = useToast();
@@ -96,8 +100,8 @@ const Profile = () => {
     }
   };
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!user || !event.target.files || event.target.files.length === 0) return;
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) return;
 
     const file = event.target.files[0];
     
@@ -111,25 +115,37 @@ const Profile = () => {
       return;
     }
 
-    // Validate file size (2MB)
-    if (file.size > 2 * 1024 * 1024) {
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
       toast({
         title: 'File Too Large',
-        description: 'Please upload an image smaller than 2MB.',
+        description: 'Please upload an image smaller than 5MB.',
         variant: 'destructive'
       });
       return;
     }
 
+    // Create preview URL and open crop dialog
+    const imageUrl = URL.createObjectURL(file);
+    setSelectedImageUrl(imageUrl);
+    setSelectedFile(file);
+    setCropDialogOpen(true);
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    if (!user) return;
+
     setUploading(true);
+    setCropDialogOpen(false);
+
     try {
-      const fileExt = file.name.split('.').pop();
+      const fileExt = selectedFile?.name.split('.').pop() || 'jpg';
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
-      // Upload to storage
+      // Upload cropped image to storage
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, croppedBlob, { upsert: true });
 
       if (uploadError) throw uploadError;
 
@@ -162,6 +178,22 @@ const Profile = () => {
       });
     } finally {
       setUploading(false);
+      setSelectedImageUrl('');
+      setSelectedFile(null);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleCropCancel = () => {
+    setCropDialogOpen(false);
+    setSelectedImageUrl('');
+    setSelectedFile(null);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -286,9 +318,9 @@ const Profile = () => {
             <div className="text-center p-6 bg-gradient-card rounded-lg border border-primary/20">
               <div className="flex flex-col items-center gap-4 mb-4">
                 <div className="relative group">
-                  <Avatar className="h-24 w-24 border-4 border-primary/20">
-                    <AvatarImage src={profile.avatar_url || undefined} alt={profile.username} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-3xl">
+                  <Avatar className="h-24 w-24 border-4 border-primary/20 rounded-full">
+                    <AvatarImage src={profile.avatar_url || undefined} alt={profile.username} className="rounded-full object-cover" />
+                    <AvatarFallback className="bg-primary/10 text-primary text-3xl rounded-full">
                       {profile.username?.charAt(0).toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
@@ -309,7 +341,7 @@ const Profile = () => {
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
-                    onChange={handleAvatarUpload}
+                    onChange={handleFileSelect}
                     className="hidden"
                   />
                 </div>
@@ -327,6 +359,13 @@ const Profile = () => {
                 Click the camera icon to upload a profile picture (optional)
               </div>
             </div>
+
+            <ImageCropDialog
+              open={cropDialogOpen}
+              imageUrl={selectedImageUrl}
+              onComplete={handleCropComplete}
+              onCancel={handleCropCancel}
+            />
 
             {/* Course Information */}
             <div className="space-y-3">

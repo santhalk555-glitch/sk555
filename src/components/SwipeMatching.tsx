@@ -227,13 +227,14 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
                 }`}
               >
                 <CardContent className="p-0 h-full flex flex-col">
-                  {/* Profile Photo Area - Full Square */}
+                  {/* Profile Photo Area - Full Square (no additional crop) */}
                   <div className="relative w-full h-[400px] bg-gradient-to-br from-primary/10 to-secondary/10 overflow-hidden">
                     {currentProfile?.avatar_url ? (
                       <img 
                         src={currentProfile.avatar_url} 
                         alt={currentProfile.username || 'User'}
                         className="w-full h-full object-cover"
+                        style={{ objectFit: 'cover' }}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-muted/20">
