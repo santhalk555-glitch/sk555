@@ -20,7 +20,7 @@ const Navigation = () => {
               alt="StudyMates Logo" 
               className="w-16 h-16 rounded-lg object-cover"
             />
-            <h1 className="text-xl font-bold text-[#FF1493]">
+            <h1 className="text-xl font-bold text-primary">
               StudyMates
             </h1>
           </div>
