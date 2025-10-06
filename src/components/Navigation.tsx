@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Users, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { NotificationBell } from "@/components/NotificationBell";
-import studymatesLogo from "@/assets/studymates-logo.jpeg";
+import studymatesLogo from "@/assets/studymates-logo-new.jpg";
 
 const Navigation = () => {
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ const Navigation = () => {
               className="w-10 h-10 rounded-lg object-cover"
             />
             <h1 className="text-xl font-bold text-[#FF1493]">
-              StudyMates Arena
+              StudyMates
             </h1>
           </div>
           
