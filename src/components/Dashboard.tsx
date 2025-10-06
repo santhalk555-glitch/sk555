@@ -107,14 +107,14 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="pt-28 pb-12">
+    <div className="pt-32 pb-12">
       <div className="container mx-auto px-6">
         {/* Hero Section */}
-        <div className="text-center mb-12 mt-4">
+        <div className="text-center mb-12 mt-6">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-primary mb-6 animate-glow-pulse">
             <Crown className="w-8 h-8 text-primary-foreground" />
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">
+          <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-primary bg-clip-text text-transparent leading-tight">
             StudyMates Arena
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
