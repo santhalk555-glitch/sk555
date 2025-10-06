@@ -17,10 +17,10 @@ const Navigation = () => {
           >
             <img 
               src={studymatesLogo} 
-              alt="StudyMates Logo" 
-              className="w-16 h-16 rounded-lg object-cover"
+              alt="StudyMates Logo - Connect with Study Partners" 
+              className="w-20 h-20 rounded-lg object-cover shadow-sm"
             />
-            <h1 className="text-xl font-bold text-primary">
+            <h1 className="text-2xl font-bold text-primary tracking-tight">
               StudyMates
             </h1>
           </div>
