@@ -107,7 +107,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="pt-32 pb-12">
+    <div className="pt-20 pb-12">
       <div className="container mx-auto px-6">
         {/* Hero Section */}
         <div className="text-center mb-12 mt-6">
