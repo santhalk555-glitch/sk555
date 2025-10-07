@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import ProfileCreation from "./pages/ProfileCreation";
 import ProfileMatches from "./pages/ProfileMatches";
 import Profile from "./pages/Profile";
+import QuestionTranslation from "./pages/QuestionTranslation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/create-profile" element={<ProfileCreation />} />
           <Route path="/profile-matches" element={<ProfileMatches />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/translate-questions" element={<QuestionTranslation />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -550,10 +550,15 @@ export type Database = {
           exam_simple_id: string | null
           id: string
           option_1: string
+          option_1_hindi: string | null
           option_2: string
+          option_2_hindi: string | null
           option_3: string
+          option_3_hindi: string | null
           option_4: string
+          option_4_hindi: string | null
           question: string
+          question_hindi: string | null
           subject_id: string | null
           topic_id: string | null
         }
@@ -564,10 +569,15 @@ export type Database = {
           exam_simple_id?: string | null
           id?: string
           option_1: string
+          option_1_hindi?: string | null
           option_2: string
+          option_2_hindi?: string | null
           option_3: string
+          option_3_hindi?: string | null
           option_4: string
+          option_4_hindi?: string | null
           question: string
+          question_hindi?: string | null
           subject_id?: string | null
           topic_id?: string | null
         }
@@ -578,10 +588,15 @@ export type Database = {
           exam_simple_id?: string | null
           id?: string
           option_1?: string
+          option_1_hindi?: string | null
           option_2?: string
+          option_2_hindi?: string | null
           option_3?: string
+          option_3_hindi?: string | null
           option_4?: string
+          option_4_hindi?: string | null
           question?: string
+          question_hindi?: string | null
           subject_id?: string | null
           topic_id?: string | null
         }

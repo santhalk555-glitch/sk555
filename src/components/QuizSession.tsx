@@ -23,6 +23,11 @@ interface Question {
   option_3: string;
   option_4: string;
   correct_answer: number;
+  question_hindi?: string;
+  option_1_hindi?: string;
+  option_2_hindi?: string;
+  option_3_hindi?: string;
+  option_4_hindi?: string;
 }
 
 interface Participant {
@@ -871,7 +876,12 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
                         />
                       </div>
                     </div>
-                    <p className="mb-2">{question.question}</p>
+                    <div className="mb-2 space-y-1">
+                      <p>{question.question}</p>
+                      {question.question_hindi && (
+                        <p className="text-muted-foreground">{question.question_hindi}</p>
+                      )}
+                    </div>
                     <div className="text-sm">
                       <p>Your answer: <span className={parseInt(answers[index]) === question.correct_answer ? 'text-green-600' : 'text-red-600'}>{answers[index]}</span></p>
                       <p>Correct answer: <span className="text-green-600">{question.correct_answer}</span></p>
@@ -1002,25 +1012,44 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
                 </Badge>
               )}
             </div>
-            <CardDescription className="text-lg font-medium text-foreground">
-              {currentQuestion.question}
+            <CardDescription className="space-y-2">
+              <p className="text-lg font-medium text-foreground">
+                {currentQuestion.question}
+              </p>
+              {currentQuestion.question_hindi && (
+                <p className="text-lg text-muted-foreground">
+                  {currentQuestion.question_hindi}
+                </p>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {[1, 2, 3, 4].map((option) => (
-                <Button
-                  key={option}
-                  variant={answers[currentQuestionIndex] === option.toString() ? "default" : "outline"}
-                  className={`w-full text-left justify-start p-4 h-auto ${
-                    answers[currentQuestionIndex] === option.toString() ? 'bg-gradient-primary text-white' : ''
-                  }`}
-                  onClick={() => handleAnswerSelect(option.toString())}
-                >
-                  <span className="font-semibold mr-3">{option}.</span>
-                  <span>{currentQuestion[`option_${option}` as keyof Question]}</span>
-                </Button>
-              ))}
+              {[1, 2, 3, 4].map((option) => {
+                const optionText = currentQuestion[`option_${option}` as keyof Question] as string;
+                const optionHindi = currentQuestion[`option_${option}_hindi` as keyof Question] as string | undefined;
+                
+                return (
+                  <Button
+                    key={option}
+                    variant={answers[currentQuestionIndex] === option.toString() ? "default" : "outline"}
+                    className={`w-full text-left justify-start p-4 h-auto ${
+                      answers[currentQuestionIndex] === option.toString() ? 'bg-gradient-primary text-white' : ''
+                    }`}
+                    onClick={() => handleAnswerSelect(option.toString())}
+                  >
+                    <span className="font-semibold mr-3 shrink-0">{option}.</span>
+                    <div className="flex flex-col gap-1">
+                      <span>{optionText}</span>
+                      {optionHindi && (
+                        <span className={answers[currentQuestionIndex] === option.toString() ? 'opacity-80' : 'text-muted-foreground'}>
+                          {optionHindi}
+                        </span>
+                      )}
+                    </div>
+                  </Button>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
