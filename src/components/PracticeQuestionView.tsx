@@ -39,6 +39,8 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
   const [showAnswer, setShowAnswer] = useState(false);
   const [savedQuestionIds, setSavedQuestionIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(0);
+  const questionsPerPage = 50;
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -181,6 +183,8 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
     setCurrentQuestionIndex(index);
     setSelectedAnswer(null);
     setShowAnswer(false);
+    // Update pagination to show the selected question
+    setCurrentPage(Math.floor(index / questionsPerPage));
   };
 
   const handleAnswerSelect = (optionNum: number) => {
@@ -193,11 +197,30 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
 
   const handleNextQuestion = () => {
     if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      const nextIndex = currentQuestionIndex + 1;
+      setCurrentQuestionIndex(nextIndex);
       setSelectedAnswer(null);
       setShowAnswer(false);
+      // Auto-update page if moving to next page
+      setCurrentPage(Math.floor(nextIndex / questionsPerPage));
     }
   };
+
+  const handlePreviousQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      const prevIndex = currentQuestionIndex - 1;
+      setCurrentQuestionIndex(prevIndex);
+      setSelectedAnswer(null);
+      setShowAnswer(false);
+      // Auto-update page if moving to previous page
+      setCurrentPage(Math.floor(prevIndex / questionsPerPage));
+    }
+  };
+
+  const totalPages = Math.ceil(questions.length / questionsPerPage);
+  const startQuestion = currentPage * questionsPerPage;
+  const endQuestion = Math.min(startQuestion + questionsPerPage, questions.length);
+  const visibleQuestions = questions.slice(startQuestion, endQuestion);
 
   if (loading) {
     return (
@@ -288,22 +311,74 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
           <Progress value={((currentQuestionIndex + 1) / questions.length) * 100} />
         </div>
 
-        {/* Question Navigation */}
-        <ScrollArea className="mb-6 pb-4">
-          <div className="flex gap-2">
-            {questions.map((_, index) => (
+        {/* Question Navigation with Pagination */}
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
               <Button
-                key={index}
-                variant={index === currentQuestionIndex ? "default" : "outline"}
+                variant="outline"
                 size="sm"
-                onClick={() => handleQuestionSelect(index)}
-                className="min-w-[40px] transition-all duration-200"
+                onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                disabled={currentPage === 0}
+                className="px-3"
               >
-                {index + 1}
+                ←
               </Button>
-            ))}
-          </div>
-        </ScrollArea>
+              <span className="text-sm text-muted-foreground min-w-[120px] text-center">
+                {startQuestion + 1}-{endQuestion} of {questions.length}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
+                disabled={currentPage === totalPages - 1}
+                className="px-3"
+              >
+                →
+              </Button>
+            </div>
+            
+            <ScrollArea className="pb-2">
+              <div className="flex gap-2">
+                {visibleQuestions.map((_, idx) => {
+                  const absoluteIndex = startQuestion + idx;
+                  return (
+                    <Button
+                      key={absoluteIndex}
+                      variant={absoluteIndex === currentQuestionIndex ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleQuestionSelect(absoluteIndex)}
+                      className="min-w-[40px] transition-all duration-200 flex-shrink-0"
+                    >
+                      {absoluteIndex + 1}
+                    </Button>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+            
+            {/* Page indicator dots */}
+            {totalPages > 1 && (
+              <div className="flex justify-center gap-1 mt-3">
+                {Array.from({ length: Math.min(totalPages, 10) }).map((_, idx) => {
+                  const pageIdx = totalPages <= 10 ? idx : Math.floor((idx / 10) * totalPages);
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentPage(pageIdx)}
+                      className={`w-2 h-2 rounded-full transition-all ${
+                        currentPage === pageIdx 
+                          ? 'bg-primary w-4' 
+                          : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                      }`}
+                      aria-label={`Go to page ${pageIdx + 1}`}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Question Card */}
         <Card className="mb-6 animate-fade-in">
@@ -378,10 +453,20 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
 
         {/* Actions */}
         <div className="flex items-center justify-between gap-4">
-          <ReportQuestionDialog 
-            questionId={currentQuestion.id}
-            questionText={currentQuestion.question}
-          />
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handlePreviousQuestion}
+              disabled={currentQuestionIndex === 0}
+              size="lg"
+            >
+              ← Previous
+            </Button>
+            <ReportQuestionDialog 
+              questionId={currentQuestion.id}
+              questionText={currentQuestion.question}
+            />
+          </div>
           
           <div className="flex gap-3">
             {!showAnswer ? (
@@ -401,7 +486,7 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
                     className="gap-2"
                     size="lg"
                   >
-                    Next Question
+                    Next Question →
                   </Button>
                 )}
               </>
