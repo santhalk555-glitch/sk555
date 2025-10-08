@@ -682,6 +682,30 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_questions: {
+        Row: {
+          id: string
+          notes: string | null
+          question_id: string
+          saved_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          notes?: string | null
+          question_id: string
+          saved_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          notes?: string | null
+          question_id?: string
+          saved_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       subjects_hierarchy: {
         Row: {
           created_at: string

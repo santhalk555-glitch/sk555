@@ -1,14 +1,15 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Plus, UserPlus, Users } from 'lucide-react';
+import { ArrowLeft, Plus, UserPlus, Users, BookOpen } from 'lucide-react';
 
 interface LobbyMenuProps {
   onBack: () => void;
   onCreateLobby: () => void;
   onJoinLobby: () => void;
+  onPracticeLobby: () => void;
 }
 
-const LobbyMenu = ({ onBack, onCreateLobby, onJoinLobby }: LobbyMenuProps) => {
+const LobbyMenu = ({ onBack, onCreateLobby, onJoinLobby, onPracticeLobby }: LobbyMenuProps) => {
   return (
     <div className="pt-20 pb-12">
       <div className="container mx-auto px-6">
@@ -36,7 +37,7 @@ const LobbyMenu = ({ onBack, onCreateLobby, onJoinLobby }: LobbyMenuProps) => {
         </div>
 
         {/* Lobby Options */}
-        <div className="max-w-2xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Create Lobby */}
           <Card 
             className="bg-gradient-card border-primary/20 hover:border-primary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-lg hover:shadow-glow"
@@ -81,6 +82,30 @@ const LobbyMenu = ({ onBack, onCreateLobby, onJoinLobby }: LobbyMenuProps) => {
                 className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300"
               >
                 View Invites
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Practice Lobby */}
+          <Card 
+            className="bg-gradient-card border-primary/20 hover:border-primary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-lg hover:shadow-glow"
+            onClick={onPracticeLobby}
+          >
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
+                <BookOpen className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold mb-2 group-hover:text-primary transition-colors duration-300">
+                Practice Lobby
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                Practice questions by topic at your own pace
+              </p>
+              <Button 
+                variant="outline" 
+                className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300"
+              >
+                Start Practice
               </Button>
             </CardContent>
           </Card>

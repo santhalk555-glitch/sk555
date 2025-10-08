@@ -7,6 +7,7 @@ import CreateLobbyFlow from './CreateLobbyFlow';
 import JoinLobbyFlow from './JoinLobbyFlow';
 import LobbyWaitingRoom from './LobbyWaitingRoom';
 import QuizSession from './QuizSession';
+import PracticeLobby from './PracticeLobby';
 
 interface GameLobbyProps {
   onBack: () => void;
@@ -18,6 +19,7 @@ type LobbyView = 'menu' | 'create' | 'join' | 'waiting' | 'quiz';
 const GameLobby = ({ onBack, initialView }: GameLobbyProps) => {
   const [currentView, setCurrentView] = useState<LobbyView>(initialView || 'menu');
   const [currentLobby, setCurrentLobby] = useState<any>(null);
+  const [showPracticeLobby, setShowPracticeLobby] = useState(false);
   const location = useLocation();
 
   console.log('GameLobby render - currentView:', currentView, 'currentLobby:', currentLobby);
@@ -44,12 +46,17 @@ const GameLobby = ({ onBack, initialView }: GameLobbyProps) => {
     setCurrentView('join');
   };
 
+  const handlePracticeLobby = () => {
+    setShowPracticeLobby(true);
+  };
+
   const handleBackToMenu = () => {
     if (currentView === 'menu') {
       onBack();
     } else {
       setCurrentView('menu');
       setCurrentLobby(null);
+      setShowPracticeLobby(false);
     }
   };
 
@@ -80,6 +87,11 @@ const GameLobby = ({ onBack, initialView }: GameLobbyProps) => {
       setCurrentView('waiting');
     }
   };
+
+  // Show Practice Lobby if selected
+  if (showPracticeLobby) {
+    return <PracticeLobby onBack={() => setShowPracticeLobby(false)} />;
+  }
 
   // Render based on current view
   switch (currentView) {
@@ -142,6 +154,7 @@ const GameLobby = ({ onBack, initialView }: GameLobbyProps) => {
           onBack={onBack}
           onCreateLobby={handleCreateLobby}
           onJoinLobby={handleJoinLobby}
+          onPracticeLobby={handlePracticeLobby}
         />
       );
   }
