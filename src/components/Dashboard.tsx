@@ -218,10 +218,10 @@ const Dashboard = () => {
               <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gaming-secondary to-gaming-accent flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
                 <Gamepad2 className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-bold mb-2 group-hover:text-gaming-secondary transition-colors duration-300">Create Lobby</h3>
+              <h3 className="text-xl font-bold mb-2 group-hover:text-gaming-secondary transition-colors duration-300">Lobby</h3>
               <p className="text-muted-foreground mb-4">Create a 2-player, 4-player, or practice lobby for quizzes</p>
               <Button variant="outline" className="w-full bg-gaming-secondary/10 border-gaming-secondary/30 hover:bg-gaming-secondary/20 group-hover:shadow-glow transition-all duration-300">
-                Create Lobby
+                Lobby
               </Button>
             </CardContent>
           </Card>
