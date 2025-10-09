@@ -545,7 +545,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
                     <div className="w-12 h-12 rounded-full bg-gradient-to-r from-secondary to-primary flex items-center justify-center mx-auto mb-3">
                       <Target className="w-6 h-6 text-white" />
                     </div>
-                    <h4 className="font-bold mb-2">Practice Lobby</h4>
+                    <h4 className="font-bold mb-2">Quiz Practice Lobby</h4>
                     <p className="text-sm text-muted-foreground mb-3">
                       Single player focused learning
                     </p>
