@@ -96,7 +96,7 @@ const LobbyMenu = ({ onBack, onCreateLobby, onJoinLobby, onPracticeLobby }: Lobb
                 <BookOpen className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-2xl font-bold mb-2 group-hover:text-primary transition-colors duration-300">
-                Quiz Practice Lobby
+                Practice Lobby
               </h3>
               <p className="text-muted-foreground mb-4">
                 Practice questions by topic at your own pace
