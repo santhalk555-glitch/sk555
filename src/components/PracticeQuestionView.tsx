@@ -337,8 +337,8 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
               </Button>
             </div>
             
-            <ScrollArea className="pb-2">
-              <div className="flex gap-2">
+            <div className="overflow-x-auto pb-2 px-2 -mx-2">
+              <div className="flex gap-2 min-w-min px-1">
                 {visibleQuestions.map((_, idx) => {
                   const absoluteIndex = startQuestion + idx;
                   return (
@@ -354,7 +354,7 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
                   );
                 })}
               </div>
-            </ScrollArea>
+            </div>
             
             {/* Page indicator dots */}
             {totalPages > 1 && (
