@@ -40,7 +40,7 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
   const [savedQuestionIds, setSavedQuestionIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
-  const questionsPerPage = 50;
+  const questionsPerPage = 20;
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -275,8 +275,7 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
           </Button>
           
           <div className="text-center flex-1">
-            <h2 className="text-2xl font-bold">{topicName}</h2>
-            <p className="text-muted-foreground">{questions.length} Questions</p>
+            <h2 className="text-2xl font-bold">{topicName} – {questions.length} Questions</h2>
           </div>
 
           <Button
