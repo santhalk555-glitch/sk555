@@ -10,6 +10,7 @@ import GameLobby from "./GameLobby";
 import MatchedFriends from "./MatchedFriends";
 import FriendRequests from "./FriendRequests";
 import { RecentActivity } from "./RecentActivity";
+import heroImage from "@/assets/hero-studymates.jpg";
 
 
 const Dashboard = () => {
@@ -110,16 +111,29 @@ const Dashboard = () => {
     <div className="pt-20 pb-12">
       <div className="container mx-auto px-6">
         {/* Hero Section */}
-        <div className="text-center mb-12 mt-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-primary mb-6 animate-glow-pulse">
-            <Crown className="w-8 h-8 text-primary-foreground" />
+        <div className="relative text-center mb-12 mt-6 rounded-2xl overflow-hidden">
+          {/* Background Image with Overlay */}
+          <div className="absolute inset-0 z-0">
+            <img 
+              src={heroImage} 
+              alt="Students collaborating and studying together" 
+              className="w-full h-full object-cover opacity-20"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background/80"></div>
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-primary bg-clip-text text-transparent leading-tight">
-            StudyMates Arena
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Connect with study partners and challenge them in epic quiz battles. Level up your learning game!
-          </p>
+          
+          {/* Content */}
+          <div className="relative z-10 py-12 px-6">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-primary mb-6 animate-glow-pulse">
+              <Crown className="w-8 h-8 text-primary-foreground" />
+            </div>
+            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-primary bg-clip-text text-transparent leading-tight">
+              StudyMates Arena
+            </h1>
+            <p className="text-xl text-foreground max-w-2xl mx-auto drop-shadow-md">
+              Connect with study partners and challenge them in epic quiz battles. Level up your learning game!
+            </p>
+          </div>
         </div>
 
         {/* Quick Stats */}
