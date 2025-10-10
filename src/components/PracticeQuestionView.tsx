@@ -83,7 +83,8 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
           .from('quiz_questions')
           .select('*')
           .eq('topic_id', topicId)
-          .order('created_at');
+          .order('created_at')
+          .limit(10000);
 
         if (questionsError) throw questionsError;
         setQuestions(questionsData || []);
