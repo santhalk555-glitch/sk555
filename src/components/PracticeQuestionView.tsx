@@ -73,7 +73,8 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
         const { data: questionsData, error: questionsError } = await supabase
           .from('quiz_questions')
           .select('*')
-          .in('id', questionIds);
+          .in('id', questionIds)
+          .limit(10000);
 
         if (questionsError) throw questionsError;
         setQuestions(questionsData || []);

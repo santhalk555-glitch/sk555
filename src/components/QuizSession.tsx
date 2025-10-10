@@ -215,7 +215,8 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
           let questionsQuery = supabase
             .from('quiz_questions')
             .select('*')
-            .eq('subject_id', lobby.subject_id);
+            .eq('subject_id', lobby.subject_id)
+            .limit(10000);
 
           if (lobby.topic_id) {
             console.log('initializeQuizSession: Adding topic filter:', lobby.topic_id);
@@ -236,7 +237,8 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
           let questionsQuery = supabase
             .from('quiz_questions')
             .select('*')
-            .eq('exam_simple_id', lobby.exam_simple_id);
+            .eq('exam_simple_id', lobby.exam_simple_id)
+            .limit(10000);
 
           if (lobby.topic_id) {
             console.log('initializeQuizSession: Adding topic filter for exam query:', lobby.topic_id);
