@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Users, User } from "lucide-react";
+import { User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { NotificationBell } from "@/components/NotificationBell";
 import studymatesLogo from "@/assets/studymates-logo-new.jpg";
@@ -28,18 +28,8 @@ const Navigation = () => {
           <div className="flex items-center space-x-2">
             <NotificationBell />
             <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => navigate('/profile-matches')}
-            >
-              <Users className="w-4 h-4 mr-2" />
-              Find Partners
-            </Button>
-            <Button 
               variant="gaming" 
               size="sm" 
-              className="ml-4"
               onClick={() => navigate('/profile')}
             >
               <User className="w-4 h-4 mr-2" />
