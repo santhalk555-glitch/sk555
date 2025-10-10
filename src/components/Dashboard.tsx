@@ -119,7 +119,7 @@ const Dashboard = () => {
               alt="Students collaborating and studying together" 
               className="w-full h-full object-cover opacity-20"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background/80"></div>
+            <div className="absolute inset-0 bg-white/75"></div>
           </div>
           
           {/* Content */}
@@ -127,17 +127,20 @@ const Dashboard = () => {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-primary mb-6 animate-glow-pulse">
               <Crown className="w-8 h-8 text-primary-foreground" />
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-primary bg-clip-text text-transparent leading-tight">
+            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-primary bg-clip-text text-transparent leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
               StudyMates Arena
             </h1>
-            <p className="text-xl text-foreground max-w-2xl mx-auto drop-shadow-md">
+            <p className="text-xl text-foreground max-w-2xl mx-auto drop-shadow-md mb-3">
               Connect with study partners and challenge them in epic quiz battles. Level up your learning game!
+            </p>
+            <p className="text-sm text-muted-foreground max-w-xl mx-auto">
+              Challenge your friends. Sharpen your mind. Win rewards.
             </p>
           </div>
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 mt-8">
            <Card className="bg-gradient-card border-border hover:shadow-gaming transition-all duration-300">
             <CardContent className="p-6 text-center">
               <Heart className="w-8 h-8 text-gaming-accent mx-auto mb-3" />
