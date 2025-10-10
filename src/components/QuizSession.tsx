@@ -95,7 +95,8 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
             const { data: questionsData, error: questionsError } = await supabase
               .from('quiz_questions')
               .select('*')
-              .in('id', existingSession.question_ids);
+              .in('id', existingSession.question_ids)
+              .range(0, 9999);
             
             if (questionsError) throw questionsError;
             
@@ -184,7 +185,8 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         const { data, error } = await supabase
           .from('quiz_questions')
           .select('*')
-          .in('id', lobby.question_ids);
+          .in('id', lobby.question_ids)
+          .range(0, 9999);
 
         if (error) {
           console.error('initializeQuizSession: Error loading questions:', error);
@@ -216,7 +218,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
             .from('quiz_questions')
             .select('*')
             .eq('subject_id', lobby.subject_id)
-            .limit(10000);
+            .range(0, 9999);
 
           if (lobby.topic_id) {
             console.log('initializeQuizSession: Adding topic filter:', lobby.topic_id);
@@ -238,7 +240,7 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
             .from('quiz_questions')
             .select('*')
             .eq('exam_simple_id', lobby.exam_simple_id)
-            .limit(10000);
+            .range(0, 9999);
 
           if (lobby.topic_id) {
             console.log('initializeQuizSession: Adding topic filter for exam query:', lobby.topic_id);
