@@ -28,6 +28,13 @@ interface Branch {
   questionCount: number;
 }
 
+interface Subject {
+  id: string;
+  name: string;
+  exam_simple_id: string;
+  questionCount: number;
+}
+
 interface Topic {
   id: string;
   name: string;
@@ -39,12 +46,14 @@ interface Topic {
 const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSavedQuestions, setShowSavedQuestions] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const topicsPerPage = 20;
+  const itemsPerPage = 20;
   const { toast } = useToast();
 
   useEffect(() => {
@@ -115,28 +124,71 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
     }
   };
 
-  const loadTopicsForBranch = async (branch: Branch) => {
+  const loadSubjectsForBranch = async (branch: Branch) => {
     try {
       setLoading(true);
       
-      // Get subjects for this branch
-      const { data: subjects } = await supabase
+      // Get subjects for this branch's exam
+      const { data: subjectsData, error: subjectsError } = await supabase
         .from('subjects_hierarchy')
-        .select('id')
-        .eq('exam_simple_id', branch.exam_simple_id);
+        .select('id, name, exam_simple_id')
+        .eq('exam_simple_id', branch.exam_simple_id)
+        .order('name');
 
-      if (!subjects || subjects.length === 0) {
-        setTopics([]);
-        return;
-      }
+      if (subjectsError) throw subjectsError;
 
-      const subjectIds = subjects.map(s => s.id);
+      // Get question counts for each subject
+      const subjectsWithCounts = await Promise.all(
+        (subjectsData || []).map(async (subject) => {
+          // Get topics for this subject
+          const { data: topicsData } = await supabase
+            .from('topics')
+            .select('id')
+            .eq('subject_id', subject.id);
+
+          if (!topicsData || topicsData.length === 0) {
+            return { ...subject, questionCount: 0 };
+          }
+
+          const topicIds = topicsData.map(t => t.id);
+          
+          // Count questions for these topics
+          const { count } = await supabase
+            .from('quiz_questions')
+            .select('*', { count: 'exact', head: true })
+            .in('topic_id', topicIds);
+
+          return {
+            ...subject,
+            questionCount: count || 0
+          };
+        })
+      );
+
+      const subjectsWithQuestions = subjectsWithCounts.filter(s => s.questionCount > 0);
+      setSubjects(subjectsWithQuestions);
+      setCurrentPage(1);
+    } catch (error) {
+      console.error('Error loading subjects:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load subjects',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTopicsForSubject = async (subject: Subject) => {
+    try {
+      setLoading(true);
       
-      // Get topics for these subjects
+      // Get topics for this subject
       const { data: topicsData, error: topicsError } = await supabase
         .from('topics')
         .select('*')
-        .in('subject_id', subjectIds)
+        .eq('subject_id', subject.id)
         .order('name');
 
       if (topicsError) throw topicsError;
@@ -204,11 +256,22 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
     );
   }
 
-  // Pagination logic for topics
-  const indexOfLastTopic = currentPage * topicsPerPage;
-  const indexOfFirstTopic = indexOfLastTopic - topicsPerPage;
-  const currentTopics = topics.slice(indexOfFirstTopic, indexOfLastTopic);
-  const totalPages = Math.ceil(topics.length / topicsPerPage);
+  // Pagination logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  
+  // Determine current items based on selection state
+  const currentItems = selectedSubject 
+    ? topics.slice(indexOfFirstItem, indexOfLastItem)
+    : selectedBranch
+    ? subjects.slice(indexOfFirstItem, indexOfLastItem)
+    : [];
+  
+  const totalPages = selectedSubject 
+    ? Math.ceil(topics.length / itemsPerPage)
+    : selectedBranch
+    ? Math.ceil(subjects.length / itemsPerPage)
+    : 0;
 
   return (
     <div className="pt-20 pb-12">
@@ -217,7 +280,15 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
         <div className="flex items-center justify-between mb-8">
           <Button 
             variant="ghost" 
-            onClick={selectedBranch ? () => setSelectedBranch(null) : onBack}
+            onClick={() => {
+              if (selectedSubject) {
+                setSelectedSubject(null);
+              } else if (selectedBranch) {
+                setSelectedBranch(null);
+              } else {
+                onBack();
+              }
+            }}
             className="text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -226,10 +297,18 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
           
           <div className="text-center flex-1">
             <h1 className="text-3xl font-bold mb-2 bg-gradient-primary bg-clip-text text-transparent">
-              {selectedBranch ? selectedBranch.name : 'Practice Lobby'}
+              {selectedSubject 
+                ? selectedSubject.name 
+                : selectedBranch 
+                ? selectedBranch.name 
+                : 'Practice Lobby'}
             </h1>
             <p className="text-muted-foreground">
-              {selectedBranch ? 'Choose a topic to practice' : 'Select a branch to start practicing'}
+              {selectedSubject 
+                ? 'Choose a topic to practice' 
+                : selectedBranch 
+                ? 'Select a subject to continue'
+                : 'Select a branch to start practicing'}
             </p>
           </div>
           
@@ -249,7 +328,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-muted-foreground">Loading...</p>
           </div>
-        ) : selectedBranch ? (
+        ) : selectedSubject ? (
           // Topics View
           <>
             {topics.length === 0 ? (
@@ -258,18 +337,18 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
                   <BookOpen className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
                   <h3 className="text-xl font-semibold mb-2">No Topics Available</h3>
                   <p className="text-muted-foreground">
-                    There are no practice questions available for this branch yet.
+                    There are no practice questions available for this subject yet.
                   </p>
                 </CardContent>
               </Card>
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto mb-8">
-                  {currentTopics.map((topic) => (
+                  {currentItems.map((topic) => (
                     <Card
                       key={topic.id}
                       className="bg-gradient-card border-primary/20 hover:border-primary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-lg hover:shadow-glow"
-                      onClick={() => setSelectedTopic(topic)}
+                      onClick={() => setSelectedTopic(topic as Topic)}
                     >
                       <CardHeader>
                         <CardTitle className="text-lg flex items-center justify-between">
@@ -284,6 +363,101 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
                           <Badge variant="secondary" className="gap-2">
                             <BookOpen className="w-4 h-4" />
                             {topic.questionCount} Questions
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                      
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                        if (
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= currentPage - 1 && page <= currentPage + 1)
+                        ) {
+                          return (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                onClick={() => setCurrentPage(page)}
+                                isActive={currentPage === page}
+                                className="cursor-pointer"
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        } else if (page === currentPage - 2 || page === currentPage + 2) {
+                          return (
+                            <PaginationItem key={page}>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          );
+                        }
+                        return null;
+                      })}
+
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                          className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                )}
+              </>
+            )}
+          </>
+        ) : selectedBranch ? (
+          // Subjects View
+          <>
+            {subjects.length === 0 ? (
+              <Card className="max-w-2xl mx-auto">
+                <CardContent className="p-12 text-center">
+                  <BookOpen className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-xl font-semibold mb-2">No Subjects Available</h3>
+                  <p className="text-muted-foreground">
+                    There are no practice questions available for this branch yet.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto mb-8">
+                  {currentItems.map((subject) => (
+                    <Card
+                      key={subject.id}
+                      className="bg-gradient-card border-primary/20 hover:border-primary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-lg hover:shadow-glow"
+                      onClick={() => {
+                        setSelectedSubject(subject as Subject);
+                        loadTopicsForSubject(subject as Subject);
+                      }}
+                    >
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center justify-between">
+                          <span className="group-hover:text-primary transition-colors">
+                            {subject.name}
+                          </span>
+                          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center justify-between">
+                          <Badge variant="secondary" className="gap-2">
+                            <BookOpen className="w-4 h-4" />
+                            {subject.questionCount} Questions
                           </Badge>
                         </div>
                       </CardContent>
@@ -364,7 +538,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
                       className="bg-gradient-card border-primary/20 hover:border-primary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-lg hover:shadow-glow"
                       onClick={() => {
                         setSelectedBranch(branch);
-                        loadTopicsForBranch(branch);
+                        loadSubjectsForBranch(branch);
                       }}
                     >
                       <CardHeader>
