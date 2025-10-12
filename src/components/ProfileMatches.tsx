@@ -5,11 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, User, BookOpen, Target, GraduationCap } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ArrowLeft, User, BookOpen, Target, GraduationCap, MoreVertical, Ban, Flag } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Profile, parseCompetitiveExams } from '@/types/profile';
+import BanUserDialog from '@/components/BanUserDialog';
+import ReportUserDialog from '@/components/ReportUserDialog';
 
 interface ProfileMatch extends Profile {
   matchScore: number;
@@ -22,6 +25,9 @@ export const ProfileMatches = () => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -79,10 +85,19 @@ export const ProfileMatches = () => {
     const from = (pageNum - 1) * ITEMS_PER_PAGE;
     const to = from + ITEMS_PER_PAGE - 1;
 
+    // Get banned user IDs first
+    const { data: bannedData } = await supabase
+      .from('banned_users')
+      .select('banned_user_id')
+      .eq('user_id', user?.id);
+    
+    const bannedUserIds = bannedData?.map(b => b.banned_user_id) || [];
+
     const { data, error } = await supabase
       .from('profile_view')
       .select('*')
       .neq('user_id', user?.id)
+      .not('user_id', 'in', `(${bannedUserIds.length > 0 ? bannedUserIds.join(',') : 'null'})`)
       .range(from, to)
       .order('created_at', { ascending: false });
 
@@ -257,9 +272,40 @@ export const ProfileMatches = () => {
                       </p>
                     </div>
                   </div>
-                  <Badge className={`${getMatchColor(match.matchPercentage)} border`}>
-                    {match.matchPercentage}% Match
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className={`${getMatchColor(match.matchPercentage)} border`}>
+                      {match.matchPercentage}% Match
+                    </Badge>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem 
+                          className="text-destructive cursor-pointer"
+                          onClick={() => {
+                            setSelectedUser(match);
+                            setBanDialogOpen(true);
+                          }}
+                        >
+                          <Ban className="w-4 h-4 mr-2" />
+                          Ban User
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          onClick={() => {
+                            setSelectedUser(match);
+                            setReportDialogOpen(true);
+                          }}
+                        >
+                          <Flag className="w-4 h-4 mr-2" />
+                          Report User
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
@@ -328,6 +374,29 @@ export const ProfileMatches = () => {
               </Button>
             </CardContent>
           </Card>
+        )}
+
+        {/* Ban & Report Dialogs */}
+        {selectedUser && (
+          <>
+            <BanUserDialog
+              open={banDialogOpen}
+              onOpenChange={setBanDialogOpen}
+              userId={selectedUser.user_id}
+              username={selectedUser.username || 'User'}
+              onBanComplete={() => {
+                setMatches([]);
+                setPage(1);
+                loadMatches(1);
+              }}
+            />
+            <ReportUserDialog
+              open={reportDialogOpen}
+              onOpenChange={setReportDialogOpen}
+              userId={selectedUser.user_id}
+              username={selectedUser.username || 'User'}
+            />
+          </>
         )}
       </div>
     </div>

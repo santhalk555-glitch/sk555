@@ -3,10 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Send } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ArrowLeft, Send, MoreVertical, Ban, Flag } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import BanUserDialog from "./BanUserDialog";
+import ReportUserDialog from "./ReportUserDialog";
 
 interface Message {
   id: string;
@@ -36,6 +39,8 @@ const Chat = ({ friend, onBack }: ChatProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -202,7 +207,29 @@ const Chat = ({ friend, onBack }: ChatProps) => {
             <p className="text-muted-foreground">{friend.course_name}</p>
           </div>
           
-          <div className="w-24" /> {/* Spacer for centering */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <MoreVertical className="w-5 h-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                className="text-destructive cursor-pointer"
+                onClick={() => setBanDialogOpen(true)}
+              >
+                <Ban className="w-4 h-4 mr-2" />
+                Ban User
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className="cursor-pointer"
+                onClick={() => setReportDialogOpen(true)}
+              >
+                <Flag className="w-4 h-4 mr-2" />
+                Report User
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Messages */}
@@ -270,6 +297,21 @@ const Chat = ({ friend, onBack }: ChatProps) => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Ban & Report Dialogs */}
+        <BanUserDialog
+          open={banDialogOpen}
+          onOpenChange={setBanDialogOpen}
+          userId={friend.user_id}
+          username={friend.username}
+          onBanComplete={onBack}
+        />
+        <ReportUserDialog
+          open={reportDialogOpen}
+          onOpenChange={setReportDialogOpen}
+          userId={friend.user_id}
+          username={friend.username}
+        />
       </div>
     </div>
   );

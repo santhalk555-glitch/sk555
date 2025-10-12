@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { 
   ArrowLeft, 
   Heart, 
@@ -12,12 +13,17 @@ import {
   GraduationCap,
   Users,
   Sparkles,
-  User
+  User,
+  MoreVertical,
+  Ban,
+  Flag
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Profile, parseCompetitiveExams } from '@/types/profile';
+import BanUserDialog from '@/components/BanUserDialog';
+import ReportUserDialog from '@/components/ReportUserDialog';
 
 interface SwipeMatchingProps {
   onBack: () => void;
@@ -31,7 +37,8 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [matches, setMatches] = useState<Profile[]>([]);
-  // Removed instant popup functionality
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -45,10 +52,19 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
     if (!user) return;
 
     try {
+      // Get banned user IDs first
+      const { data: bannedData } = await supabase
+        .from('banned_users')
+        .select('banned_user_id')
+        .eq('user_id', user.id);
+      
+      const bannedUserIds = bannedData?.map(b => b.banned_user_id) || [];
+
       const { data: profilesData, error } = await supabase
         .from('profile_view')
         .select('*')
-        .neq('user_id', user.id);
+        .neq('user_id', user.id)
+        .not('user_id', 'in', `(${bannedUserIds.length > 0 ? bannedUserIds.join(',') : 'null'})`);
 
       if (error) throw error;
 
@@ -226,7 +242,34 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
                     : 'translate-x-0 rotate-0 opacity-100'
                 }`}
               >
-                <CardContent className="p-0 h-full flex flex-col">
+                <CardContent className="p-0 h-full flex flex-col relative">
+                  {/* Three-dot menu */}
+                  <div className="absolute top-4 right-4 z-10">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="secondary" size="sm" className="h-9 w-9 p-0 rounded-full shadow-lg">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem 
+                          className="text-destructive cursor-pointer"
+                          onClick={() => setBanDialogOpen(true)}
+                        >
+                          <Ban className="w-4 h-4 mr-2" />
+                          Ban User
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          onClick={() => setReportDialogOpen(true)}
+                        >
+                          <Flag className="w-4 h-4 mr-2" />
+                          Report User
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
                   {/* Profile Photo Area - Full Square (no additional crop) */}
                   <div className="relative w-full h-[400px] bg-gradient-to-br from-primary/10 to-secondary/10 overflow-hidden">
                     {currentProfile?.avatar_url ? (
@@ -339,6 +382,29 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
 
         {/* Friend requests are now handled in the FriendRequests component */}
       </div>
+
+      {/* Ban & Report Dialogs */}
+      {currentProfile && (
+        <>
+          <BanUserDialog
+            open={banDialogOpen}
+            onOpenChange={setBanDialogOpen}
+            userId={currentProfile.user_id}
+            username={currentProfile.username || 'User'}
+            onBanComplete={() => {
+              setProfiles([]);
+              setCurrentProfileIndex(0);
+              loadProfiles();
+            }}
+          />
+          <ReportUserDialog
+            open={reportDialogOpen}
+            onOpenChange={setReportDialogOpen}
+            userId={currentProfile.user_id}
+            username={currentProfile.username || 'User'}
+          />
+        </>
+      )}
     </div>
   );
 };

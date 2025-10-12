@@ -411,6 +411,13 @@ const Profile = () => {
               >
                 Find Study Partners
               </Button>
+              <Button 
+                onClick={() => navigate('/account-settings')} 
+                className="w-full"
+                variant="outline"
+              >
+                Account Settings
+              </Button>
               
               {/* Delete Account */}
               <AlertDialog>

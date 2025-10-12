@@ -1,11 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Heart, Star, MapPin, MessageCircle, Video, BookOpen, Users } from "lucide-react";
+import { ArrowLeft, Heart, Star, MapPin, MessageCircle, Video, BookOpen, Users, MoreVertical, Ban, Flag } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import Chat from "./Chat";
+import BanUserDialog from "./BanUserDialog";
+import ReportUserDialog from "./ReportUserDialog";
 import { Profile, parseCompetitiveExams } from '@/types/profile';
 
 interface MatchedFriendsProps {
@@ -17,6 +20,9 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
   const [chatFriend, setChatFriend] = useState<Profile | null>(null);
   const [friends, setFriends] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -61,7 +67,15 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
     if (!user) return;
 
     try {
-      // Load accepted friends from the friends table (without trying to join profiles)
+      // Get list of banned users first
+      const { data: bannedData } = await supabase
+        .from('banned_users')
+        .select('banned_user_id')
+        .eq('user_id', user.id);
+      
+      const bannedUserIds = bannedData?.map(b => b.banned_user_id) || [];
+
+      // Load accepted friends from the friends table
       const { data: friendships, error } = await supabase
         .from('friends')
         .select('*')
@@ -74,8 +88,10 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
       
       // For each friendship, get the profile of the other user
       for (const friendship of friendships || []) {
-        // Get the profile of the other user (not the current user)
         const otherUserId = friendship.user1_id === user.id ? friendship.user2_id : friendship.user1_id;
+        
+        // Skip banned users
+        if (bannedUserIds.includes(otherUserId)) continue;
         
         const { data: profile, error: profileError } = await supabase
           .from('profile_view')
@@ -163,11 +179,45 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
             {friends.map((match, index) => (
               <Card 
                 key={match.id}
-                className="bg-gradient-card border-gaming-primary/30 hover:border-gaming-primary/60 transform hover:scale-105 transition-all duration-500 cursor-pointer group shadow-gaming hover:shadow-glow animate-fade-in"
+                className="bg-gradient-card border-gaming-primary/30 hover:border-gaming-primary/60 transform hover:scale-105 transition-all duration-500 group shadow-gaming hover:shadow-glow animate-fade-in"
                 style={{animationDelay: `${index * 100}ms`}}
-                onClick={() => setSelectedMatch(match)}
               >
-                <CardHeader className="text-center pb-4">
+                <CardHeader className="text-center pb-4 relative">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="absolute top-2 right-2 h-8 w-8 p-0"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        className="text-destructive cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedUser(match);
+                          setBanDialogOpen(true);
+                        }}
+                      >
+                        <Ban className="w-4 h-4 mr-2" />
+                        Ban User
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedUser(match);
+                          setReportDialogOpen(true);
+                        }}
+                      >
+                        <Flag className="w-4 h-4 mr-2" />
+                        Report User
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <div className="relative w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-4 text-3xl group-hover:scale-110 transition-transform duration-300 shadow-glow">
                     {match.username ? match.username.charAt(0).toUpperCase() : '👤'}
                   </div>
@@ -255,6 +305,25 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* Ban & Report Dialogs */}
+        {selectedUser && (
+          <>
+            <BanUserDialog
+              open={banDialogOpen}
+              onOpenChange={setBanDialogOpen}
+              userId={selectedUser.user_id}
+              username={selectedUser.username}
+              onBanComplete={loadFriends}
+            />
+            <ReportUserDialog
+              open={reportDialogOpen}
+              onOpenChange={setReportDialogOpen}
+              userId={selectedUser.user_id}
+              username={selectedUser.username}
+            />
+          </>
         )}
       </div>
     </div>
