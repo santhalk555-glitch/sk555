@@ -60,11 +60,17 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
       
       const bannedUserIds = bannedData?.map(b => b.banned_user_id) || [];
 
-      const { data: profilesData, error } = await supabase
+      let query = supabase
         .from('profile_view')
         .select('*')
-        .neq('user_id', user.id)
-        .not('user_id', 'in', `(${bannedUserIds.length > 0 ? bannedUserIds.join(',') : 'null'})`);
+        .neq('user_id', user.id);
+      
+      // Only add the banned users filter if there are banned users
+      if (bannedUserIds.length > 0) {
+        query = query.not('user_id', 'in', `(${bannedUserIds.join(',')})`);
+      }
+      
+      const { data: profilesData, error } = await query;
 
       if (error) throw error;
 

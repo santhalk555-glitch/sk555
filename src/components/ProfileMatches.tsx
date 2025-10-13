@@ -93,11 +93,17 @@ export const ProfileMatches = () => {
     
     const bannedUserIds = bannedData?.map(b => b.banned_user_id) || [];
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('profile_view')
       .select('*')
-      .neq('user_id', user?.id)
-      .not('user_id', 'in', `(${bannedUserIds.length > 0 ? bannedUserIds.join(',') : 'null'})`)
+      .neq('user_id', user?.id);
+    
+    // Only add the banned users filter if there are banned users
+    if (bannedUserIds.length > 0) {
+      query = query.not('user_id', 'in', `(${bannedUserIds.join(',')})`);
+    }
+    
+    const { data, error } = await query
       .range(from, to)
       .order('created_at', { ascending: false });
 
