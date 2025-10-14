@@ -127,7 +127,7 @@ const BanList: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Ban className="w-5 h-5" />
+            <Ban className="w-5 h-5 text-primary" />
             Ban List
           </CardTitle>
           <CardDescription>Manage users you've banned</CardDescription>
@@ -144,7 +144,7 @@ const BanList: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Ban className="w-5 h-5" />
+            <Ban className="w-5 h-5 text-primary" />
             Ban List
           </CardTitle>
           <CardDescription>Manage users you've banned</CardDescription>

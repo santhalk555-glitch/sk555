@@ -366,42 +366,63 @@ export type Database = {
       }
       profiles: {
         Row: {
+          allow_friend_requests: boolean | null
+          allow_messages_non_friends: boolean | null
           avatar_url: string | null
           competitive_exams: Json | null
           competitive_exams_old: string[]
           course_name: string
           created_at: string
+          dark_mode: boolean | null
           display_user_id: string | null
+          enable_notifications: boolean | null
           id: string
+          language: string | null
+          profile_visibility: string | null
           quiz_points: number
+          show_in_search: boolean | null
           updated_at: string
           user_id: string
           username: string | null
           victory_count: number
         }
         Insert: {
+          allow_friend_requests?: boolean | null
+          allow_messages_non_friends?: boolean | null
           avatar_url?: string | null
           competitive_exams?: Json | null
           competitive_exams_old?: string[]
           course_name: string
           created_at?: string
+          dark_mode?: boolean | null
           display_user_id?: string | null
+          enable_notifications?: boolean | null
           id?: string
+          language?: string | null
+          profile_visibility?: string | null
           quiz_points?: number
+          show_in_search?: boolean | null
           updated_at?: string
           user_id: string
           username?: string | null
           victory_count?: number
         }
         Update: {
+          allow_friend_requests?: boolean | null
+          allow_messages_non_friends?: boolean | null
           avatar_url?: string | null
           competitive_exams?: Json | null
           competitive_exams_old?: string[]
           course_name?: string
           created_at?: string
+          dark_mode?: boolean | null
           display_user_id?: string | null
+          enable_notifications?: boolean | null
           id?: string
+          language?: string | null
+          profile_visibility?: string | null
           quiz_points?: number
+          show_in_search?: boolean | null
           updated_at?: string
           user_id?: string
           username?: string | null
