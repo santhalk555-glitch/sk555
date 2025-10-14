@@ -111,59 +111,75 @@ const Dashboard = () => {
     <div className="pt-20 pb-12">
       <div className="container mx-auto px-6">
         {/* Hero Section */}
-        <div className="relative text-center mb-12 mt-6 rounded-2xl overflow-hidden">
-          {/* Background Image with Overlay */}
+        <div className="relative text-center mb-12 mt-8 rounded-3xl overflow-hidden shadow-glow">
+          {/* Background with Gradient Overlay */}
           <div className="absolute inset-0 z-0">
             <img 
               src={heroImage} 
               alt="Students collaborating and studying together" 
-              className="w-full h-full object-cover opacity-20"
+              className="w-full h-full object-cover opacity-15"
             />
-            <div className="absolute inset-0 bg-white/75"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background/90 to-gaming-secondary/10"></div>
           </div>
           
           {/* Content */}
-          <div className="relative z-10 py-12 px-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-primary mb-6 animate-glow-pulse">
-              <Crown className="w-8 h-8 text-primary-foreground" />
+          <div className="relative z-10 py-16 px-6 animate-fade-in">
+            {/* Crown with Glow Effect */}
+            <div className="relative inline-block mb-8 animate-scale-in">
+              <div className="absolute inset-0 bg-gradient-primary blur-xl opacity-60 rounded-full scale-150"></div>
+              <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-primary shadow-glow animate-pulse-slow">
+                <Crown className="w-12 h-12 text-primary-foreground drop-shadow-lg" />
+              </div>
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-primary bg-clip-text text-transparent leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
+            
+            {/* Title with Gradient and Shadow */}
+            <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-gaming-primary via-primary to-gaming-secondary bg-clip-text text-transparent leading-tight animate-slide-up" style={{ textShadow: '0 4px 12px rgba(59, 130, 246, 0.25)' }}>
               StudyMates Arena
             </h1>
-            <p className="text-xl text-foreground max-w-2xl mx-auto drop-shadow-md mb-3">
+            
+            {/* Subtitle */}
+            <p className="text-xl md:text-2xl text-foreground/90 max-w-2xl mx-auto mb-4 font-medium animate-slide-up" style={{ animationDelay: '0.1s' }}>
               Connect with study partners and challenge them in epic quiz battles. Level up your learning game!
             </p>
-            <p className="text-sm text-muted-foreground max-w-xl mx-auto">
+            
+            {/* Secondary Text */}
+            <p className="text-base text-muted-foreground max-w-xl mx-auto animate-slide-up" style={{ animationDelay: '0.2s' }}>
               Challenge your friends. Sharpen your mind. Win rewards.
             </p>
           </div>
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 mt-8">
-           <Card className="bg-gradient-card border-border hover:shadow-gaming transition-all duration-300">
-            <CardContent className="p-6 text-center">
-              <Heart className="w-8 h-8 text-gaming-accent mx-auto mb-3" />
-              <div className="text-2xl font-bold text-gaming-accent">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 mt-10">
+           <Card className="bg-gradient-card border-border hover:shadow-glow hover:scale-105 transition-all duration-300 rounded-2xl group animate-fade-in" style={{ animationDelay: '0.3s' }}>
+            <CardContent className="p-8 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gaming-accent/10 mb-4 group-hover:bg-gaming-accent/20 transition-colors duration-300">
+                <Heart className="w-8 h-8 text-gaming-accent group-hover:scale-110 transition-transform duration-300" />
+              </div>
+              <div className="text-3xl font-bold text-gaming-accent mb-2">
                 {hasProfile ? profileMatchCount : '0'}
               </div>
-              <div className="text-sm text-muted-foreground">Study Matches</div>
+              <div className="text-sm font-medium text-muted-foreground">Study Matches</div>
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-card border-border hover:shadow-gaming transition-all duration-300">
-            <CardContent className="p-6 text-center">
-              <Zap className="w-8 h-8 text-gaming-warning mx-auto mb-3" />
-              <div className="text-2xl font-bold text-gaming-warning">{quizPoints}</div>
-              <div className="text-sm text-muted-foreground">Quiz Points</div>
+          <Card className="bg-gradient-card border-border hover:shadow-glow hover:scale-105 transition-all duration-300 rounded-2xl group animate-fade-in" style={{ animationDelay: '0.4s' }}>
+            <CardContent className="p-8 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gaming-warning/10 mb-4 group-hover:bg-gaming-warning/20 transition-colors duration-300">
+                <Zap className="w-8 h-8 text-gaming-warning group-hover:scale-110 transition-transform duration-300" />
+              </div>
+              <div className="text-3xl font-bold text-gaming-warning mb-2">{quizPoints}</div>
+              <div className="text-sm font-medium text-muted-foreground">Quiz Points</div>
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-card border-border hover:shadow-gaming transition-all duration-300">
-            <CardContent className="p-6 text-center">
-              <Crown className="w-8 h-8 text-gaming-success mx-auto mb-3" />
-              <div className="text-2xl font-bold text-gaming-success">{victoryCount}</div>
-              <div className="text-sm text-muted-foreground">Victories</div>
+          <Card className="bg-gradient-card border-border hover:shadow-glow hover:scale-105 transition-all duration-300 rounded-2xl group animate-fade-in" style={{ animationDelay: '0.5s' }}>
+            <CardContent className="p-8 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gaming-success/10 mb-4 group-hover:bg-gaming-success/20 transition-colors duration-300">
+                <Crown className="w-8 h-8 text-gaming-success group-hover:scale-110 transition-transform duration-300" />
+              </div>
+              <div className="text-3xl font-bold text-gaming-success mb-2">{victoryCount}</div>
+              <div className="text-sm font-medium text-muted-foreground">Victories</div>
             </CardContent>
           </Card>
         </div>

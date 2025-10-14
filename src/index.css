@@ -61,7 +61,7 @@ All colors MUST be HSL.
     /* Shadows */
     --shadow-gaming: 0 8px 32px hsl(217 91% 60% / 0.2);
     --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.05);
-    --shadow-glow: 0 0 40px hsl(217 91% 60% / 0.3);
+    --shadow-glow: 0 0 40px hsl(217 91% 60% / 0.35), 0 0 80px hsl(217 91% 60% / 0.15);
     
     /* Animations */
     --transition-gaming: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
