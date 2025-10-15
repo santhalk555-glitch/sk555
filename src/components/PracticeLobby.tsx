@@ -64,7 +64,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
     try {
       setLoading(true);
       
-      // Fetch all branches ordered by name
+      // Fetch all branches from database (reusing Quiz Practice Lobby data source)
       const { data: branchesData, error: branchesError } = await supabase
         .from('branches')
         .select('id, name, simple_id, exam_simple_id')
@@ -72,10 +72,10 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
 
       if (branchesError) throw branchesError;
 
-      // Get question counts for each branch by checking subjects and topics
+      // Get question counts for each branch
       const branchesWithCounts = await Promise.all(
         (branchesData || []).map(async (branch) => {
-          // Get subjects for this branch's exam
+          // Get all subjects for this exam (both general and technical)
           const { data: subjects } = await supabase
             .from('subjects_hierarchy')
             .select('id')
@@ -87,7 +87,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
 
           const subjectIds = subjects.map(s => s.id);
           
-          // Get topics for these subjects
+          // Get all topics for these subjects
           const { data: topicsData } = await supabase
             .from('topics')
             .select('id')
@@ -99,7 +99,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
 
           const topicIds = topicsData.map(t => t.id);
           
-          // Count questions for these topics
+          // Count all questions available for these topics
           const { count } = await supabase
             .from('quiz_questions')
             .select('*', { count: 'exact', head: true })
@@ -109,9 +109,8 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
         })
       );
 
-      // Only show branches that have questions
-      const branchesWithQuestions = branchesWithCounts.filter(b => b.questionCount > 0);
-      setBranches(branchesWithQuestions);
+      // Show all branches (including those being populated with questions)
+      setBranches(branchesWithCounts);
     } catch (error) {
       console.error('Error loading branches:', error);
       toast({
@@ -128,19 +127,38 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
     try {
       setLoading(true);
       
-      // Get subjects for this branch's exam
+      // Fetch all subjects for this exam from same source as Quiz Practice Lobby
       const { data: subjectsData, error: subjectsError } = await supabase
         .from('subjects_hierarchy')
-        .select('id, name, exam_simple_id')
+        .select('id, name, exam_simple_id, simple_id')
         .eq('exam_simple_id', branch.exam_simple_id)
         .order('name');
 
       if (subjectsError) throw subjectsError;
 
-      // Get question counts for each subject
+      // Also fetch general subjects (not exam-specific) to support additional subjects
+      const { data: generalSubjects } = await supabase
+        .from('subjects_hierarchy')
+        .select('id, name, exam_simple_id, simple_id')
+        .is('exam_simple_id', null)
+        .order('name');
+
+      // Combine and unify subjects by name (no duplicates)
+      const allSubjects = [...(subjectsData || []), ...(generalSubjects || [])];
+      const uniqueSubjectsMap = new Map();
+      
+      allSubjects.forEach(subject => {
+        if (!uniqueSubjectsMap.has(subject.name)) {
+          uniqueSubjectsMap.set(subject.name, subject);
+        }
+      });
+
+      const uniqueSubjects = Array.from(uniqueSubjectsMap.values());
+
+      // Get question counts for each unified subject
       const subjectsWithCounts = await Promise.all(
-        (subjectsData || []).map(async (subject) => {
-          // Get topics for this subject
+        uniqueSubjects.map(async (subject) => {
+          // Get all topics for this subject
           const { data: topicsData } = await supabase
             .from('topics')
             .select('id')
@@ -152,7 +170,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
 
           const topicIds = topicsData.map(t => t.id);
           
-          // Count questions for these topics
+          // Count all questions for these topics
           const { count } = await supabase
             .from('quiz_questions')
             .select('*', { count: 'exact', head: true })
@@ -165,8 +183,8 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
         })
       );
 
-      const subjectsWithQuestions = subjectsWithCounts.filter(s => s.questionCount > 0);
-      setSubjects(subjectsWithQuestions);
+      // Show all subjects (supporting both shared and unique subjects/topics)
+      setSubjects(subjectsWithCounts);
       setCurrentPage(1);
     } catch (error) {
       console.error('Error loading subjects:', error);
@@ -184,7 +202,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
     try {
       setLoading(true);
       
-      // Get topics for this subject
+      // Fetch all topics for this subject (reusing Quiz Practice Lobby data source)
       const { data: topicsData, error: topicsError } = await supabase
         .from('topics')
         .select('*')
@@ -193,7 +211,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
 
       if (topicsError) throw topicsError;
 
-      // Get question counts for each topic
+      // Get question counts for each topic (showing all questions present)
       const topicsWithCounts = await Promise.all(
         (topicsData || []).map(async (topic) => {
           const { count, error } = await supabase
@@ -210,8 +228,8 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
         })
       );
 
-      const topicsWithQuestions = topicsWithCounts.filter(t => t.questionCount > 0);
-      setTopics(topicsWithQuestions);
+      // Show all topics with their question counts
+      setTopics(topicsWithCounts);
       setCurrentPage(1);
     } catch (error) {
       console.error('Error loading topics:', error);
