@@ -117,9 +117,9 @@ const Dashboard = () => {
             <img 
               src={heroImage} 
               alt="Students collaborating and studying together" 
-              className="w-full h-full object-cover opacity-10 blur-sm saturate-50"
+              className="w-full h-full object-cover opacity-25 blur-[2px]"
             />
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 via-background/95 to-blue-50/60"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-blue-50/70 via-background/75 to-background/80"></div>
           </div>
           
           {/* Content */}
