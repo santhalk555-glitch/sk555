@@ -127,37 +127,26 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
     try {
       setLoading(true);
       
-      // Fetch all subjects for this exam from same source as Quiz Practice Lobby
-      const { data: subjectsData, error: subjectsError } = await supabase
+      // For "General" branch, only load subjects without exam_simple_id
+      // For specific branches, only load subjects for that exam
+      const query = supabase
         .from('subjects_hierarchy')
         .select('id, name, exam_simple_id, simple_id')
-        .eq('exam_simple_id', branch.exam_simple_id)
         .order('name');
+      
+      if (branch.exam_simple_id === 'general' || branch.simple_id === 'general') {
+        query.is('exam_simple_id', null);
+      } else {
+        query.eq('exam_simple_id', branch.exam_simple_id);
+      }
+
+      const { data: subjectsData, error: subjectsError } = await query;
 
       if (subjectsError) throw subjectsError;
 
-      // Also fetch general subjects (not exam-specific) to support additional subjects
-      const { data: generalSubjects } = await supabase
-        .from('subjects_hierarchy')
-        .select('id, name, exam_simple_id, simple_id')
-        .is('exam_simple_id', null)
-        .order('name');
-
-      // Combine and unify subjects by name (no duplicates)
-      const allSubjects = [...(subjectsData || []), ...(generalSubjects || [])];
-      const uniqueSubjectsMap = new Map();
-      
-      allSubjects.forEach(subject => {
-        if (!uniqueSubjectsMap.has(subject.name)) {
-          uniqueSubjectsMap.set(subject.name, subject);
-        }
-      });
-
-      const uniqueSubjects = Array.from(uniqueSubjectsMap.values());
-
-      // Get question counts for each unified subject
+      // Get question counts for each subject
       const subjectsWithCounts = await Promise.all(
-        uniqueSubjects.map(async (subject) => {
+        (subjectsData || []).map(async (subject) => {
           // Get all topics for this subject
           const { data: topicsData } = await supabase
             .from('topics')
@@ -183,7 +172,6 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
         })
       );
 
-      // Show all subjects (supporting both shared and unique subjects/topics)
       setSubjects(subjectsWithCounts);
       setCurrentPage(1);
     } catch (error) {
