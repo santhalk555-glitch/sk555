@@ -64,7 +64,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
     try {
       setLoading(true);
       
-      // Fetch all branches from database (reusing Quiz Practice Lobby data source)
+      // Fetch all branches from database
       const { data: branchesData, error: branchesError } = await supabase
         .from('branches')
         .select('id, name, simple_id, exam_simple_id')
@@ -72,10 +72,19 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
 
       if (branchesError) throw branchesError;
 
+      // Add "General" branch at the beginning (same as Quiz Practice Lobby)
+      const generalBranch: Branch = {
+        id: 'general',
+        name: 'General',
+        simple_id: 'general',
+        exam_simple_id: 'general',
+        questionCount: 0
+      };
+
       // Get question counts for each branch
       const branchesWithCounts = await Promise.all(
         (branchesData || []).map(async (branch) => {
-          // Get all subjects for this exam (both general and technical)
+          // Get all subjects for this exam
           const { data: subjects } = await supabase
             .from('subjects_hierarchy')
             .select('id')
@@ -109,8 +118,34 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
         })
       );
 
-      // Show all branches (including those being populated with questions)
-      setBranches(branchesWithCounts);
+      // Count questions for General branch
+      const generalSubjectNames = ['Biology', 'Chemistry', 'Physics', 'Quantitative Aptitude', 'Reasoning Ability'];
+      const { data: generalSubjects } = await supabase
+        .from('subjects_hierarchy')
+        .select('id')
+        .in('name', generalSubjectNames)
+        .is('exam_simple_id', null);
+
+      if (generalSubjects && generalSubjects.length > 0) {
+        const generalSubjectIds = generalSubjects.map(s => s.id);
+        const { data: generalTopics } = await supabase
+          .from('topics')
+          .select('id')
+          .in('subject_id', generalSubjectIds);
+
+        if (generalTopics && generalTopics.length > 0) {
+          const generalTopicIds = generalTopics.map(t => t.id);
+          const { count } = await supabase
+            .from('quiz_questions')
+            .select('*', { count: 'exact', head: true })
+            .in('topic_id', generalTopicIds);
+          
+          generalBranch.questionCount = count || 0;
+        }
+      }
+
+      // Combine General branch with other branches
+      setBranches([generalBranch, ...branchesWithCounts]);
     } catch (error) {
       console.error('Error loading branches:', error);
       toast({
@@ -127,27 +162,59 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
     try {
       setLoading(true);
       
-      // For "General" branch, only load subjects without exam_simple_id
-      // For specific branches, only load subjects for that exam
-      const query = supabase
+      // For "General" branch, load specific general subjects (same as Quiz Practice Lobby)
+      if (branch.exam_simple_id === 'general' || branch.simple_id === 'general') {
+        const generalSubjectNames = ['Biology', 'Chemistry', 'Physics', 'Quantitative Aptitude', 'Reasoning Ability'];
+        
+        const { data: subjectsData, error: subjectsError } = await supabase
+          .from('subjects_hierarchy')
+          .select('id, name, exam_simple_id, simple_id')
+          .in('name', generalSubjectNames)
+          .is('exam_simple_id', null)
+          .order('name');
+
+        if (subjectsError) throw subjectsError;
+
+        // Get question counts for each subject
+        const subjectsWithCounts = await Promise.all(
+          (subjectsData || []).map(async (subject) => {
+            const { data: topicsData } = await supabase
+              .from('topics')
+              .select('id')
+              .eq('subject_id', subject.id);
+
+            if (!topicsData || topicsData.length === 0) {
+              return { ...subject, questionCount: 0 };
+            }
+
+            const topicIds = topicsData.map(t => t.id);
+            const { count } = await supabase
+              .from('quiz_questions')
+              .select('*', { count: 'exact', head: true })
+              .in('topic_id', topicIds);
+
+            return { ...subject, questionCount: count || 0 };
+          })
+        );
+
+        setSubjects(subjectsWithCounts);
+        setCurrentPage(1);
+        setLoading(false);
+        return;
+      }
+      
+      // For specific branches, load exam-specific subjects
+      const { data: subjectsData, error: subjectsError } = await supabase
         .from('subjects_hierarchy')
         .select('id, name, exam_simple_id, simple_id')
+        .eq('exam_simple_id', branch.exam_simple_id)
         .order('name');
-      
-      if (branch.exam_simple_id === 'general' || branch.simple_id === 'general') {
-        query.is('exam_simple_id', null);
-      } else {
-        query.eq('exam_simple_id', branch.exam_simple_id);
-      }
-
-      const { data: subjectsData, error: subjectsError } = await query;
 
       if (subjectsError) throw subjectsError;
 
       // Get question counts for each subject
       const subjectsWithCounts = await Promise.all(
         (subjectsData || []).map(async (subject) => {
-          // Get all topics for this subject
           const { data: topicsData } = await supabase
             .from('topics')
             .select('id')
@@ -158,17 +225,12 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
           }
 
           const topicIds = topicsData.map(t => t.id);
-          
-          // Count all questions for these topics
           const { count } = await supabase
             .from('quiz_questions')
             .select('*', { count: 'exact', head: true })
             .in('topic_id', topicIds);
 
-          return {
-            ...subject,
-            questionCount: count || 0
-          };
+          return { ...subject, questionCount: count || 0 };
         })
       );
 
