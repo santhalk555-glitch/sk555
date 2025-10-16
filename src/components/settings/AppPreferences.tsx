@@ -7,14 +7,20 @@ import { Bell, Moon, Globe } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
+import { useTranslation } from 'react-i18next';
 
 const AppPreferences = () => {
   const [enableNotifications, setEnableNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
-  const [language, setLanguage] = useState('en');
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const { t, i18n } = useTranslation();
+  
+  const [language, setLanguage] = useState(() => {
+    return localStorage.getItem('app-language') || 'en';
+  });
 
   useEffect(() => {
     const loadPreferences = async () => {
@@ -22,7 +28,7 @@ const AppPreferences = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('enable_notifications, dark_mode, language')
+        .select('enable_notifications, language')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -30,8 +36,10 @@ const AppPreferences = () => {
         console.error('Error loading preferences:', error);
       } else if (data) {
         setEnableNotifications(data.enable_notifications ?? true);
-        setDarkMode(data.dark_mode ?? false);
-        setLanguage(data.language || 'en');
+        if (data.language) {
+          setLanguage(data.language);
+          i18n.changeLanguage(data.language);
+        }
       }
       setLoading(false);
     };
@@ -49,16 +57,39 @@ const AppPreferences = () => {
 
     if (error) {
       toast({
-        title: 'Error',
+        title: t('error'),
         description: 'Failed to update preference.',
         variant: 'destructive'
       });
     } else {
       toast({
-        title: 'Success',
-        description: 'Preference updated successfully!'
+        title: t('success'),
+        description: t('settingUpdated')
       });
     }
+  };
+
+  const handleLanguageChange = async (newLanguage: string) => {
+    setLanguage(newLanguage);
+    localStorage.setItem('app-language', newLanguage);
+    i18n.changeLanguage(newLanguage);
+    
+    if (user) {
+      await updatePreference('language', newLanguage);
+    }
+    
+    toast({
+      title: t('success'),
+      description: t('languageChanged')
+    });
+  };
+
+  const handleThemeChange = (isDark: boolean) => {
+    setTheme(isDark ? 'dark' : 'light');
+    toast({
+      title: t('success'),
+      description: t('themeChanged')
+    });
   };
 
   if (loading) {
@@ -72,7 +103,7 @@ const AppPreferences = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bell className="w-5 h-5 text-primary" />
-            Notification Settings
+            {t('notificationSettings')}
           </CardTitle>
           <CardDescription>
             Manage how you receive notifications
@@ -81,9 +112,9 @@ const AppPreferences = () => {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="notifications">Enable Notifications</Label>
+              <Label htmlFor="notifications">{t('enableNotifications')}</Label>
               <p className="text-sm text-muted-foreground">
-                Receive alerts for messages, friend requests, and updates
+                {t('notificationDescription')}
               </p>
             </div>
             <Switch
@@ -103,7 +134,7 @@ const AppPreferences = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Moon className="w-5 h-5 text-primary" />
-            Theme Mode
+            {t('themeMode')}
           </CardTitle>
           <CardDescription>
             Choose your preferred theme
@@ -112,19 +143,15 @@ const AppPreferences = () => {
         <CardContent>
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="dark-mode">Dark Mode</Label>
+              <Label htmlFor="dark-mode">{t('darkMode')}</Label>
               <p className="text-sm text-muted-foreground">
-                Coming soon - toggle between light and dark themes
+                {t('darkModeDescription')}
               </p>
             </div>
             <Switch
               id="dark-mode"
-              checked={darkMode}
-              onCheckedChange={(checked) => {
-                setDarkMode(checked);
-                updatePreference('dark_mode', checked);
-              }}
-              disabled
+              checked={theme === 'dark'}
+              onCheckedChange={handleThemeChange}
             />
           </div>
         </CardContent>
@@ -135,19 +162,16 @@ const AppPreferences = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Globe className="w-5 h-5 text-primary" />
-            Language
+            {t('language')}
           </CardTitle>
           <CardDescription>
-            Select your preferred language
+            {t('selectLanguage')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Select 
             value={language} 
-            onValueChange={(value) => {
-              setLanguage(value);
-              updatePreference('language', value);
-            }}
+            onValueChange={handleLanguageChange}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select language" />

@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const PrivacyData = () => {
   const [showInSearch, setShowInSearch] = useState(true);
@@ -29,6 +30,7 @@ const PrivacyData = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -63,14 +65,14 @@ const PrivacyData = () => {
 
     if (error) {
       toast({
-        title: 'Error',
+        title: t('error'),
         description: 'Failed to update setting.',
         variant: 'destructive'
       });
     } else {
       toast({
-        title: 'Success',
-        description: 'Privacy setting updated successfully!'
+        title: t('success'),
+        description: t('settingUpdated')
       });
     }
   };
@@ -112,28 +114,42 @@ const PrivacyData = () => {
     
     setIsDeleting(true);
     try {
-      // Delete user profile and related data
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('user_id', user.id);
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error('No active session');
+      }
 
-      if (profileError) {
-        throw profileError;
+      // Call edge function to delete the auth user (which will cascade delete all related data)
+      const response = await fetch(
+        `https://jczdjensbkzhsehgtvcq.supabase.co/functions/v1/delete-user-account`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to delete account');
       }
 
       toast({
-        title: 'Account Deleted',
-        description: 'Your account has been permanently deleted.'
+        title: t('success'),
+        description: t('accountDeleted')
       });
       
-      await supabase.auth.signOut();
+      // Sign out and redirect
+      await supabase.auth.signOut({ scope: 'global' });
       navigate('/auth');
     } catch (error) {
       console.error('Error deleting account:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to delete account. Please try again.',
+        title: t('error'),
+        description: t('deleteError'),
         variant: 'destructive'
       });
     } finally {
@@ -246,26 +262,19 @@ const PrivacyData = () => {
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogTitle>{t('areYouSure')}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete your account
-                  and remove all your data from our servers, including:
-                  <ul className="list-disc list-inside mt-2 space-y-1">
-                    <li>Profile information</li>
-                    <li>Friend connections</li>
-                    <li>Messages and chat history</li>
-                    <li>Quiz scores and activity</li>
-                  </ul>
+                  {t('deleteWarning')}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
                 <AlertDialogAction 
                   onClick={handleDeleteAccount}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   disabled={isDeleting}
                 >
-                  {isDeleting ? 'Deleting...' : 'Yes, Delete Forever'}
+                  {isDeleting ? t('deleting') : t('confirm')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
