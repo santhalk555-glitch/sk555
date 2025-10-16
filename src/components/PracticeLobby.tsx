@@ -162,10 +162,11 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
     try {
       setLoading(true);
       
+      // Define general subject names that should ONLY appear in General branch
+      const generalSubjectNames = ['Biology', 'Chemistry', 'Physics', 'Quantitative Aptitude', 'Reasoning Ability'];
+      
       // For "General" branch, load specific general subjects (same as Quiz Practice Lobby)
       if (branch.exam_simple_id === 'general' || branch.simple_id === 'general') {
-        const generalSubjectNames = ['Biology', 'Chemistry', 'Physics', 'Quantitative Aptitude', 'Reasoning Ability'];
-        
         const { data: subjectsData, error: subjectsError } = await supabase
           .from('subjects_hierarchy')
           .select('id, name, exam_simple_id, simple_id')
@@ -212,9 +213,13 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
 
       if (subjectsError) throw subjectsError;
 
-      // Get question counts for each subject
+      // Filter out general subjects - they should ONLY appear in General branch
+      const filteredSubjects = (subjectsData || []).filter(
+        subject => !generalSubjectNames.includes(subject.name)
+      );
+
       const subjectsWithCounts = await Promise.all(
-        (subjectsData || []).map(async (subject) => {
+        filteredSubjects.map(async (subject) => {
           const { data: topicsData } = await supabase
             .from('topics')
             .select('id')
