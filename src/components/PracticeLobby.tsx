@@ -65,7 +65,8 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
       setLoading(true);
       
       // Define general subject names that should ONLY appear in General branch
-      const generalSubjectNames = ['Biology', 'Chemistry', 'Physics', 'Quantitative Aptitude', 'Reasoning Ability'];
+      // These should be filtered out from appearing as separate branches
+      const generalSubjectNames = ['Biology', 'Chemistry', 'Physics', 'Quantitative Aptitude', 'Reasoning Ability', 'Mathematics'];
       
       // Add "General" branch at the beginning (same as Quiz Practice Lobby)
       const generalBranch: Branch = {
@@ -76,7 +77,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
         questionCount: 0
       };
 
-      // Count questions for General branch
+      // Count questions for General branch (only from subjects_hierarchy with null exam_simple_id)
       const { data: generalSubjects } = await supabase
         .from('subjects_hierarchy')
         .select('id')
@@ -101,7 +102,8 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
         }
       }
 
-      // Fetch exam-specific branches from database (exclude General subjects)
+      // Fetch ONLY actual engineering branches from database
+      // Filter out any entries that match general subject names
       const { data: branchesData, error: branchesError } = await supabase
         .from('branches')
         .select('id, name, simple_id, exam_simple_id')
@@ -109,9 +111,15 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
 
       if (branchesError) throw branchesError;
 
-      // Get question counts for each exam-specific branch
+      // Filter out general subject names from branches list
+      // Only keep actual branches like "Electrical & Allied Engineering", "Civil & Allied Engineering", etc.
+      const actualBranches = (branchesData || []).filter(
+        branch => !generalSubjectNames.includes(branch.name)
+      );
+
+      // Get question counts for each actual branch
       const branchesWithCounts = await Promise.all(
-        (branchesData || []).map(async (branch) => {
+        actualBranches.map(async (branch) => {
           // Get all subjects for this exam, excluding general subjects
           const { data: subjects } = await supabase
             .from('subjects_hierarchy')
@@ -155,7 +163,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
         })
       );
 
-      // Combine General branch with other branches
+      // Combine General branch with actual branches only
       setBranches([generalBranch, ...branchesWithCounts]);
     } catch (error) {
       console.error('Error loading branches:', error);
@@ -174,9 +182,9 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
       setLoading(true);
       
       // Define general subject names that should ONLY appear in General branch
-      const generalSubjectNames = ['Quantitative Aptitude', 'Reasoning Ability', 'Physics', 'Chemistry', 'Biology'];
+      const generalSubjectNames = ['Quantitative Aptitude', 'Reasoning Ability', 'Physics', 'Chemistry', 'Biology', 'Mathematics'];
       
-      // For "General" branch, load specific general subjects (same as Quiz Practice Lobby)
+      // For "General" branch, load specific general subjects (from subjects_hierarchy with null exam_simple_id)
       if (branch.exam_simple_id === 'general' || branch.simple_id === 'general') {
         const { data: subjectsData, error: subjectsError } = await supabase
           .from('subjects_hierarchy')
