@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
@@ -18,6 +19,7 @@ export const SignUpForm = ({ onSwitchToSignIn }: SignUpFormProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [acceptedGuidelines, setAcceptedGuidelines] = useState(false);
   const { signUp, signInWithGoogle } = useAuth();
   const { toast } = useToast();
 
@@ -72,7 +74,7 @@ export const SignUpForm = ({ onSwitchToSignIn }: SignUpFormProps) => {
           variant="outline"
           className="w-full"
           onClick={handleGoogleSignUp}
-          disabled={googleLoading}
+          disabled={googleLoading || !acceptedGuidelines}
         >
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
             <path
@@ -147,10 +149,40 @@ export const SignUpForm = ({ onSwitchToSignIn }: SignUpFormProps) => {
             </div>
           </div>
 
+          <Alert className="border-amber-300" style={{ backgroundColor: '#FFF9E6' }}>
+            <AlertTriangle className="h-5 w-5 text-amber-600" />
+            <AlertTitle className="text-foreground font-semibold mb-3">Account Creation Guidelines</AlertTitle>
+            <AlertDescription className="text-foreground space-y-2">
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="font-medium">Respectful Communication:</span>
+                  <p className="text-muted-foreground">Always interact respectfully with other users.</p>
+                </div>
+                <div>
+                  <span className="font-medium">Privacy & Security:</span>
+                  <p className="text-muted-foreground">Never share personal details. Report any suspicious messages, users, or content immediately.</p>
+                </div>
+                <div>
+                  <span className="font-medium">Appropriate Content:</span>
+                  <p className="text-muted-foreground">Upload only study-related and relevant material. Avoid unrelated or inappropriate content.</p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant={acceptedGuidelines ? "default" : "outline"}
+                className="w-full mt-4"
+                onClick={() => setAcceptedGuidelines(true)}
+                disabled={acceptedGuidelines}
+              >
+                {acceptedGuidelines ? '✓ Accepted' : 'I Accept'}
+              </Button>
+            </AlertDescription>
+          </Alert>
+
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={loading}
+            disabled={loading || !acceptedGuidelines}
           >
             {loading ? 'Creating Account...' : 'Sign Up'}
           </Button>
