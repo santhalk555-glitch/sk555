@@ -138,8 +138,8 @@ const PrivacyData = () => {
       }
 
       toast({
-        title: t('success'),
-        description: t('accountDeleted')
+        title: 'Success',
+        description: 'Your account has been deleted successfully.'
       });
       
       // Sign out and redirect
@@ -148,8 +148,8 @@ const PrivacyData = () => {
     } catch (error) {
       console.error('Error deleting account:', error);
       toast({
-        title: t('error'),
-        description: t('deleteError'),
+        title: 'Error',
+        description: 'Something went wrong. Please try again later.',
         variant: 'destructive'
       });
     } finally {
@@ -260,21 +260,21 @@ const PrivacyData = () => {
                 Delete Account
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent className="sm:max-w-md">
               <AlertDialogHeader>
-                <AlertDialogTitle>{t('areYouSure')}</AlertDialogTitle>
+                <AlertDialogTitle>Are you sure you want to delete your account?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  {t('deleteWarning')}
+                  This action is permanent and will remove all your data.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
                 <AlertDialogAction 
                   onClick={handleDeleteAccount}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   disabled={isDeleting}
                 >
-                  {isDeleting ? t('deleting') : t('confirm')}
+                  {isDeleting ? 'Deleting...' : 'Delete'}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
