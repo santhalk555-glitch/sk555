@@ -6,6 +6,7 @@ import { ArrowLeft, BookOpen, Star, ChevronRight, Zap, Cpu, Wrench, Building2 } 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import PracticeQuestionView from './PracticeQuestionView';
+import { RRB_JE_ENGINEERING_BRANCHES } from '@/constants/profileOptions';
 import {
   Pagination,
   PaginationContent,
@@ -223,7 +224,71 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
         return;
       }
       
-      // For exam-specific branches, load only exam-specific subjects (excluding general subjects)
+      // Check if this is an RRB JE branch by matching branch name with RRB_JE_ENGINEERING_BRANCHES
+      const matchingRRBBranch = Object.keys(RRB_JE_ENGINEERING_BRANCHES).find(
+        key => branch.name.includes(key) || key.includes(branch.name)
+      ) as keyof typeof RRB_JE_ENGINEERING_BRANCHES | undefined;
+
+      if (matchingRRBBranch) {
+        // Use hardcoded RRB JE subjects for this branch (same as Quiz Practice Lobby)
+        const branchSubjects = RRB_JE_ENGINEERING_BRANCHES[matchingRRBBranch];
+        
+        // For RRB JE branches, we need to find matching subjects in the database
+        // by fetching all subjects for this exam and matching by name
+        const { data: allExamSubjects } = await supabase
+          .from('subjects_hierarchy')
+          .select('id, name, exam_simple_id, simple_id')
+          .eq('exam_simple_id', branch.exam_simple_id);
+
+        // Match database subjects with hardcoded RRB JE subject list
+        const matchedSubjects = branchSubjects.map((subjectName) => {
+          const dbMatch = (allExamSubjects || []).find(s => 
+            s.name === subjectName || 
+            s.name.toLowerCase().includes(subjectName.toLowerCase()) ||
+            subjectName.toLowerCase().includes(s.name.toLowerCase())
+          );
+          return dbMatch || { 
+            id: `virtual_${branch.id}_${subjectName.replace(/\s+/g, '_')}`, 
+            name: subjectName,
+            exam_simple_id: branch.exam_simple_id,
+            simple_id: subjectName.toLowerCase().replace(/\s+/g, '-')
+          };
+        });
+
+        // Get question counts for matched subjects
+        const subjectsWithCounts = await Promise.all(
+          matchedSubjects.map(async (subject) => {
+            // Skip virtual subjects (not in database)
+            if (subject.id.startsWith('virtual_')) {
+              return { ...subject, questionCount: 0 };
+            }
+
+            const { data: topicsData } = await supabase
+              .from('topics')
+              .select('id')
+              .eq('subject_id', subject.id);
+
+            if (!topicsData || topicsData.length === 0) {
+              return { ...subject, questionCount: 0 };
+            }
+
+            const topicIds = topicsData.map(t => t.id);
+            const { count } = await supabase
+              .from('quiz_questions')
+              .select('*', { count: 'exact', head: true })
+              .in('topic_id', topicIds);
+
+            return { ...subject, questionCount: count || 0 };
+          })
+        );
+
+        setSubjects(subjectsWithCounts);
+        setCurrentPage(1);
+        setLoading(false);
+        return;
+      }
+      
+      // For other exam-specific branches, load only exam-specific subjects (excluding general subjects)
       const { data: subjectsData, error: subjectsError } = await supabase
         .from('subjects_hierarchy')
         .select('id, name, exam_simple_id, simple_id')
