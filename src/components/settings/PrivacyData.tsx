@@ -114,27 +114,13 @@ const PrivacyData = () => {
     
     setIsDeleting(true);
     try {
-      // Get the current session token
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.access_token) {
-        throw new Error('No active session');
-      }
-
       // Call edge function to delete the auth user (which will cascade delete all related data)
-      const response = await fetch(
-        `https://jczdjensbkzhsehgtvcq.supabase.co/functions/v1/delete-user-account`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+      const { data, error } = await supabase.functions.invoke('delete-user-account', {
+        method: 'POST'
+      });
 
-      if (!response.ok) {
-        throw new Error('Failed to delete account');
+      if (error) {
+        throw error;
       }
 
       toast({
