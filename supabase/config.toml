@@ -3,5 +3,8 @@ project_id = "jczdjensbkzhsehgtvcq"
 [functions.delete-user-account]
 verify_jwt = true
 
+[functions.permanent-delete-expired-accounts]
+verify_jwt = false
+
 [functions.translate-to-hindi]
 verify_jwt = false

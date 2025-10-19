@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_deletion_audit: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       banned_users: {
         Row: {
           banned_user_id: string
@@ -374,9 +398,12 @@ export type Database = {
           course_name: string
           created_at: string
           dark_mode: boolean | null
+          deleted_at: string | null
+          deletion_expires_at: string | null
           display_user_id: string | null
           enable_notifications: boolean | null
           id: string
+          is_deleted: boolean | null
           language: string | null
           profile_visibility: string | null
           quiz_points: number
@@ -395,9 +422,12 @@ export type Database = {
           course_name: string
           created_at?: string
           dark_mode?: boolean | null
+          deleted_at?: string | null
+          deletion_expires_at?: string | null
           display_user_id?: string | null
           enable_notifications?: boolean | null
           id?: string
+          is_deleted?: boolean | null
           language?: string | null
           profile_visibility?: string | null
           quiz_points?: number
@@ -416,9 +446,12 @@ export type Database = {
           course_name?: string
           created_at?: string
           dark_mode?: boolean | null
+          deleted_at?: string | null
+          deletion_expires_at?: string | null
           display_user_id?: string | null
           enable_notifications?: boolean | null
           id?: string
+          is_deleted?: boolean | null
           language?: string | null
           profile_visibility?: string | null
           quiz_points?: number

@@ -77,31 +77,54 @@ Deno.serve(async (req) => {
 
     console.log(`[${requestId}] User validated - ID: ${user.id}, Email: ${user.email}`);
 
-    // Delete user from auth.users (this will cascade to related tables)
-    console.log(`[${requestId}] Attempting to delete user account`);
-    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id);
+    // Soft delete: Schedule account for deletion after 30 days
+    console.log(`[${requestId}] Attempting to soft delete user account (30-day grace period)`);
+    
+    const deletionExpiresAt = new Date();
+    deletionExpiresAt.setDate(deletionExpiresAt.getDate() + 30);
+    
+    const { error: updateError } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
+        deletion_expires_at: deletionExpiresAt.toISOString()
+      })
+      .eq('user_id', user.id);
 
-    if (deleteError) {
-      console.error(`[${requestId}] ERROR: Failed to delete user:`, {
-        message: deleteError.message,
-        status: deleteError.status,
-        name: deleteError.name,
+    if (updateError) {
+      console.error(`[${requestId}] ERROR: Failed to schedule deletion:`, {
+        message: updateError.message,
+        details: updateError.details,
         userId: user.id
       });
       return new Response(JSON.stringify({ 
-        error: 'Failed to delete account. Please contact support if this persists.',
+        error: 'Failed to schedule account deletion. Please contact support if this persists.',
         code: 'DELETE_FAILED',
-        details: deleteError.message
+        details: updateError.message
       }), {
         status: 500,
         headers: corsHeaders
       });
     }
 
-    console.log(`[${requestId}] SUCCESS: User account deleted - ID: ${user.id}`);
+    // Log to audit table
+    await supabaseAdmin
+      .from('account_deletion_audit')
+      .insert({
+        user_id: user.id,
+        action: 'account_deletion_scheduled',
+        metadata: {
+          deletion_expires_at: deletionExpiresAt.toISOString(),
+          email: user.email
+        }
+      });
+
+    console.log(`[${requestId}] SUCCESS: User account scheduled for deletion - ID: ${user.id}, Expires: ${deletionExpiresAt.toISOString()}`);
     return new Response(JSON.stringify({ 
-      message: 'Account deleted successfully',
-      success: true
+      message: 'Account scheduled for deletion',
+      success: true,
+      deletion_expires_at: deletionExpiresAt.toISOString()
     }), {
       status: 200,
       headers: corsHeaders

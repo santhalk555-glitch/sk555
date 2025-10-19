@@ -141,7 +141,7 @@ const PrivacyData = () => {
 
       console.log('[DELETE_ACCOUNT] Session found, calling delete-user-account function');
       
-      // Call edge function to delete the auth user (which will cascade delete all related data)
+      // Call edge function to schedule account deletion (30-day grace period)
       const { data, error } = await supabase.functions.invoke('delete-user-account', {
         method: 'POST'
       });
@@ -169,11 +169,20 @@ const PrivacyData = () => {
         throw new Error(errorMessage);
       }
 
-      console.log('[DELETE_ACCOUNT] Account deletion successful');
+      console.log('[DELETE_ACCOUNT] Account deletion scheduled successfully');
+      
+      // Format deletion date
+      const deletionDate = new Date(data.deletion_expires_at);
+      const formattedDate = deletionDate.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
       
       toast({
-        title: 'Success',
-        description: 'Your account has been permanently deleted.'
+        title: 'Account Deactivated',
+        description: `Your account is scheduled for deletion on ${formattedDate}. If you log in before then, deletion will be cancelled.`,
+        duration: 10000,
       });
       
       // Close dialog and reset state
@@ -185,7 +194,7 @@ const PrivacyData = () => {
         console.log('[DELETE_ACCOUNT] Signing out and redirecting');
         await supabase.auth.signOut({ scope: 'global' });
         navigate('/auth');
-      }, 1000);
+      }, 2000);
       
     } catch (error: any) {
       console.error('[DELETE_ACCOUNT] Error during deletion:', {
@@ -309,13 +318,18 @@ const PrivacyData = () => {
             </AlertDialogTrigger>
             <AlertDialogContent className="sm:max-w-md">
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete Account Permanently?</AlertDialogTitle>
+                <AlertDialogTitle>Schedule Account Deletion?</AlertDialogTitle>
                 <AlertDialogDescription className="space-y-3">
                   <p className="text-destructive font-semibold">
-                    ⚠️ This action cannot be undone!
+                    ⚠️ 30-Day Grace Period
                   </p>
                   <p>
-                    This will permanently delete your account and remove all your data including:
+                    Deleting your account will deactivate it immediately. Your data will be permanently deleted after 30 days.</p>
+                  <p className="text-sm font-medium">
+                    You can cancel deletion anytime by logging in again before the 30-day deadline.
+                  </p>
+                  <p>
+                    All your data will be removed including:
                   </p>
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     <li>Profile information</li>
