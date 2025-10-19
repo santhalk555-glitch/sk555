@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -27,6 +28,8 @@ const PrivacyData = () => {
   const [allowMessagesNonFriends, setAllowMessagesNonFriends] = useState(true);
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -110,32 +113,90 @@ const PrivacyData = () => {
   };
 
   const handleDeleteAccount = async () => {
-    if (!user) return;
+    if (!user) {
+      console.error('[DELETE_ACCOUNT] No user found');
+      return;
+    }
+
+    if (deleteConfirmation !== 'DELETE') {
+      toast({
+        title: 'Confirmation Required',
+        description: 'Please type DELETE to confirm account deletion.',
+        variant: 'destructive'
+      });
+      return;
+    }
     
+    console.log('[DELETE_ACCOUNT] Starting account deletion process for user:', user.id);
     setIsDeleting(true);
+    
     try {
+      // Get current session token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.error('[DELETE_ACCOUNT] No active session found');
+        throw new Error('No active session. Please log in again.');
+      }
+
+      console.log('[DELETE_ACCOUNT] Session found, calling delete-user-account function');
+      
       // Call edge function to delete the auth user (which will cascade delete all related data)
       const { data, error } = await supabase.functions.invoke('delete-user-account', {
         method: 'POST'
       });
 
+      console.log('[DELETE_ACCOUNT] Function response:', { data, error });
+
       if (error) {
-        throw error;
+        console.error('[DELETE_ACCOUNT] Function returned error:', {
+          message: error.message,
+          context: error.context,
+          status: error.status
+        });
+        
+        // Parse error message for better user feedback
+        let errorMessage = 'Something went wrong. Please try again later.';
+        
+        if (error.message?.includes('token') || error.message?.includes('expired')) {
+          errorMessage = 'Your session has expired. Please log in again and try deleting your account.';
+        } else if (error.message?.includes('authorization')) {
+          errorMessage = 'Authentication failed. Please log in again.';
+        } else if (error.context?.details) {
+          errorMessage = `Error: ${error.context.details}`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
+      console.log('[DELETE_ACCOUNT] Account deletion successful');
+      
       toast({
         title: 'Success',
-        description: 'Your account has been deleted successfully.'
+        description: 'Your account has been permanently deleted.'
       });
       
-      // Sign out and redirect
-      await supabase.auth.signOut({ scope: 'global' });
-      navigate('/auth');
-    } catch (error) {
-      console.error('Error deleting account:', error);
+      // Close dialog and reset state
+      setDialogOpen(false);
+      setDeleteConfirmation('');
+      
+      // Sign out and redirect after a brief delay
+      setTimeout(async () => {
+        console.log('[DELETE_ACCOUNT] Signing out and redirecting');
+        await supabase.auth.signOut({ scope: 'global' });
+        navigate('/auth');
+      }, 1000);
+      
+    } catch (error: any) {
+      console.error('[DELETE_ACCOUNT] Error during deletion:', {
+        message: error.message,
+        stack: error.stack,
+        error: error
+      });
+      
       toast({
         title: 'Error',
-        description: 'Something went wrong. Please try again later.',
+        description: error.message || 'Something went wrong. Please try again later.',
         variant: 'destructive'
       });
     } finally {
@@ -235,7 +296,7 @@ const PrivacyData = () => {
             Download My Data
           </Button>
           
-          <AlertDialog>
+          <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <AlertDialogTrigger asChild>
               <Button 
                 variant="destructive" 
@@ -248,19 +309,49 @@ const PrivacyData = () => {
             </AlertDialogTrigger>
             <AlertDialogContent className="sm:max-w-md">
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure you want to delete your account?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action is permanent and will remove all your data.
+                <AlertDialogTitle>Delete Account Permanently?</AlertDialogTitle>
+                <AlertDialogDescription className="space-y-3">
+                  <p className="text-destructive font-semibold">
+                    ⚠️ This action cannot be undone!
+                  </p>
+                  <p>
+                    This will permanently delete your account and remove all your data including:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Profile information</li>
+                    <li>Friends and connections</li>
+                    <li>Messages and chat history</li>
+                    <li>Quiz history and scores</li>
+                    <li>All saved data</li>
+                  </ul>
+                  <div className="pt-2">
+                    <Label htmlFor="delete-confirm" className="text-sm font-medium">
+                      Type <span className="font-bold text-destructive">DELETE</span> to confirm:
+                    </Label>
+                    <Input
+                      id="delete-confirm"
+                      value={deleteConfirmation}
+                      onChange={(e) => setDeleteConfirmation(e.target.value)}
+                      placeholder="Type DELETE"
+                      className="mt-2"
+                      disabled={isDeleting}
+                    />
+                  </div>
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                <AlertDialogCancel 
+                  disabled={isDeleting}
+                  onClick={() => setDeleteConfirmation('')}
+                >
+                  Cancel
+                </AlertDialogCancel>
                 <AlertDialogAction 
                   onClick={handleDeleteAccount}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  disabled={isDeleting}
+                  disabled={isDeleting || deleteConfirmation !== 'DELETE'}
                 >
-                  {isDeleting ? 'Deleting...' : 'Delete'}
+                  {isDeleting ? 'Deleting...' : 'Delete Permanently'}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
