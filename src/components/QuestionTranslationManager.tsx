@@ -167,8 +167,8 @@ const QuestionTranslationManager = () => {
 
               if (error) {
                 // Check if it's a unique constraint violation (duplicate question)
-                if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
-                  console.log('Duplicate question skipped:', row.question);
+                if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique') || error.message?.includes('idx_quiz_questions_unique_question')) {
+                  // Silently skip duplicate questions - this is expected behavior
                   skippedCount++;
                 } else {
                   console.error('Error inserting question:', error);
