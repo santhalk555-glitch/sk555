@@ -148,20 +148,7 @@ const QuestionTranslationManager = () => {
                 successCount++;
               }
             } else {
-              // Check if question already exists before inserting
-              const { data: existing } = await supabase
-                .from('quiz_questions')
-                .select('id')
-                .eq('question', row.question)
-                .maybeSingle();
-
-              if (existing) {
-                console.log('Duplicate question skipped:', row.question);
-                skippedCount++;
-                continue;
-              }
-
-              // Insert new question with translations
+              // Insert new question with translations (ON CONFLICT DO NOTHING)
               const { error } = await supabase
                 .from('quiz_questions')
                 .insert({
@@ -179,8 +166,14 @@ const QuestionTranslationManager = () => {
                 });
 
               if (error) {
-                console.error('Error inserting question:', error);
-                failedCount++;
+                // Check if it's a unique constraint violation (duplicate question)
+                if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
+                  console.log('Duplicate question skipped:', row.question);
+                  skippedCount++;
+                } else {
+                  console.error('Error inserting question:', error);
+                  failedCount++;
+                }
               } else {
                 successCount++;
               }
