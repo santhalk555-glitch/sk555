@@ -27,7 +27,7 @@ const QuestionTranslationManager = () => {
   const [file, setFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [results, setResults] = useState<{ success: number; failed: number; total: number } | null>(null);
+  const [results, setResults] = useState<{ success: number; failed: number; skipped?: number; total: number } | null>(null);
   const { toast } = useToast();
 
   const parseCSV = (text: string): CSVRow[] => {
@@ -98,6 +98,7 @@ const QuestionTranslationManager = () => {
 
       let successCount = 0;
       let failedCount = 0;
+      let skippedCount = 0;
 
       // Process in batches of 10
       const batchSize = 10;
@@ -147,7 +148,42 @@ const QuestionTranslationManager = () => {
                 successCount++;
               }
             } else {
-              failedCount++;
+              // Check if question already exists before inserting
+              const { data: existing } = await supabase
+                .from('quiz_questions')
+                .select('id')
+                .eq('question', row.question)
+                .maybeSingle();
+
+              if (existing) {
+                console.log('Duplicate question skipped:', row.question);
+                skippedCount++;
+                continue;
+              }
+
+              // Insert new question with translations
+              const { error } = await supabase
+                .from('quiz_questions')
+                .insert({
+                  question: row.question,
+                  option_1: row.option_1,
+                  option_2: row.option_2,
+                  option_3: row.option_3,
+                  option_4: row.option_4,
+                  correct_answer: parseInt(row.correct_answer),
+                  ...hindiData,
+                  subject_id: row.subject_id,
+                  topic_id: row.topic_id,
+                  exam_simple_id: row.exam_simple_id,
+                  course_simple_id: row.course_simple_id
+                });
+
+              if (error) {
+                console.error('Error inserting question:', error);
+                failedCount++;
+              } else {
+                successCount++;
+              }
             }
           }
 
@@ -173,12 +209,17 @@ const QuestionTranslationManager = () => {
       setResults({
         success: successCount,
         failed: failedCount,
+        skipped: skippedCount,
         total: rows.length
       });
 
+      const description = skippedCount > 0
+        ? `Successfully processed ${successCount} questions. ${skippedCount} duplicates skipped.`
+        : `Successfully translated ${successCount} out of ${rows.length} questions.`;
+
       toast({
         title: 'Processing Complete!',
-        description: `Successfully translated ${successCount} out of ${rows.length} questions.`,
+        description,
       });
 
     } catch (error: any) {
@@ -297,7 +338,7 @@ abc-123,What is 2+2?,2,3,4,5,3,subject-id,topic-id,exam-id`;
                   <CheckCircle2 className="w-5 h-5 text-green-500" />
                   Processing Results
                 </h4>
-                <div className="grid grid-cols-3 gap-4 text-center">
+                <div className={`grid ${results.skipped ? 'grid-cols-4' : 'grid-cols-3'} gap-4 text-center`}>
                   <div>
                     <div className="text-2xl font-bold text-green-600">{results.success}</div>
                     <div className="text-xs text-muted-foreground">Success</div>
@@ -306,6 +347,12 @@ abc-123,What is 2+2?,2,3,4,5,3,subject-id,topic-id,exam-id`;
                     <div className="text-2xl font-bold text-red-600">{results.failed}</div>
                     <div className="text-xs text-muted-foreground">Failed</div>
                   </div>
+                  {results.skipped !== undefined && results.skipped > 0 && (
+                    <div>
+                      <div className="text-2xl font-bold text-yellow-600">{results.skipped}</div>
+                      <div className="text-xs text-muted-foreground">Skipped</div>
+                    </div>
+                  )}
                   <div>
                     <div className="text-2xl font-bold">{results.total}</div>
                     <div className="text-xs text-muted-foreground">Total</div>
