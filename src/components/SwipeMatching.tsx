@@ -16,7 +16,9 @@ import {
   User,
   MoreVertical,
   Ban,
-  Flag
+  Flag,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -173,6 +175,32 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
     }, 300);
   };
 
+  const handlePrevious = () => {
+    if (isAnimating || currentProfileIndex <= 0) return;
+    
+    setIsAnimating(true);
+    setSwipeDirection('right');
+    
+    setTimeout(() => {
+      setCurrentProfileIndex(prev => prev - 1);
+      setSwipeDirection(null);
+      setIsAnimating(false);
+    }, 200);
+  };
+
+  const handleNext = () => {
+    if (isAnimating || currentProfileIndex >= profiles.length - 1) return;
+    
+    setIsAnimating(true);
+    setSwipeDirection('left');
+    
+    setTimeout(() => {
+      setCurrentProfileIndex(prev => prev + 1);
+      setSwipeDirection(null);
+      setIsAnimating(false);
+    }, 200);
+  };
+
   const currentProfile = profiles[currentProfileIndex];
   const hasMoreProfiles = currentProfileIndex < profiles.length;
 
@@ -229,6 +257,28 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
             </Card>
           ) : (
             <>
+              {/* Left Arrow Button */}
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={handlePrevious}
+                disabled={isAnimating || currentProfileIndex === 0}
+                className="absolute left-[-20px] md:left-[-60px] top-1/2 -translate-y-1/2 z-20 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/90 hover:bg-white shadow-lg hover:scale-110 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-5 h-5 md:w-6 md:h-6 text-foreground" />
+              </Button>
+
+              {/* Right Arrow Button */}
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={handleNext}
+                disabled={isAnimating || currentProfileIndex >= profiles.length - 1}
+                className="absolute right-[-20px] md:right-[-60px] top-1/2 -translate-y-1/2 z-20 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/90 hover:bg-white shadow-lg hover:scale-110 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="w-5 h-5 md:w-6 md:h-6 text-foreground" />
+              </Button>
+
               {/* Next card (shown behind) */}
               {profiles[currentProfileIndex + 1] && (
                 <Card className="absolute inset-0 w-full h-full bg-gradient-card border-border transform scale-95 opacity-50 rotate-1">
