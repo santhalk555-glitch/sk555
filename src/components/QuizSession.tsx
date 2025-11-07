@@ -960,10 +960,10 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 
   return (
-    <div className="pt-20 pb-12">
-      <div className="container mx-auto px-6 max-w-4xl">
+    <div className="pt-20 pb-12 font-poppins">
+      <div className="container mx-auto px-6 max-w-5xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <Button 
             variant="ghost" 
             onClick={onBack}
@@ -973,80 +973,127 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
             Leave Quiz
           </Button>
           
-          <div className="text-center">
-            <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+          <div className="text-center flex-1">
+            <h1 className="text-2xl md:text-3xl font-bold text-primary">
               {lobby.subject} Quiz
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground mt-1">
               Question {currentQuestionIndex + 1} of {questions.length}
             </p>
           </div>
           
-          <div className="flex items-center space-x-4">
-            <Badge variant="secondary" className="flex items-center">
+          <div className="flex items-center space-x-2 md:space-x-4">
+            <Badge variant="secondary" className="flex items-center bg-blue-50 text-primary border-primary/20">
               <Clock className="w-3 h-3 mr-1" />
               {formatTime(timeLeft)}
             </Badge>
-            <Badge variant="outline" className="flex items-center">
+            <Badge variant="outline" className="hidden sm:flex items-center">
               <Users className="w-3 h-3 mr-1" />
               {participants.length}
             </Badge>
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <Progress value={progress} className="h-3" />
-          <p className="text-sm text-muted-foreground mt-2 text-center">
-            {Math.round(progress)}% Complete
-          </p>
+        {/* Progress Bar with percentage */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-muted-foreground">
+              Progress
+            </span>
+            <span className="text-sm font-semibold text-primary">
+              {Math.round(progress)}% Complete
+            </span>
+          </div>
+          <Progress value={progress} className="h-3 bg-blue-100" />
+          <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+            <span>{answers.filter(a => a).length} answered</span>
+            <span>{questions.length - answers.filter(a => a).length} remaining</span>
+          </div>
         </div>
 
-        {/* Question Card */}
-        <Card className="mb-8 bg-gradient-card border-primary/20">
-          <CardHeader>
-            <div className="flex items-center justify-between mb-2">
-              <CardTitle className="text-xl">
-                Question {currentQuestionIndex + 1} of {questions.length}
-              </CardTitle>
+        {/* Question Navigation Grid */}
+        <Card className="mb-6 bg-white/80 backdrop-blur-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-sm font-medium text-muted-foreground">Jump to:</span>
+            </div>
+            <div className="grid grid-cols-10 sm:grid-cols-15 md:grid-cols-20 gap-2">
+              {questions.map((_, idx) => (
+                <Button
+                  key={idx}
+                  variant={idx === currentQuestionIndex ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentQuestionIndex(idx)}
+                  className={`min-w-[36px] h-9 transition-all duration-200 ${
+                    idx === currentQuestionIndex 
+                      ? 'bg-primary scale-105 shadow-md' 
+                      : answers[idx] 
+                        ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100'
+                        : 'hover:border-primary/50'
+                  }`}
+                >
+                  {idx + 1}
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Question Card with animation */}
+        <Card className="mb-6 bg-white shadow-lg border-primary/10 animate-fade-in">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
+            <div className="flex items-center justify-between mb-3">
+              <Badge variant="secondary" className="bg-primary text-white px-3 py-1">
+                Question {currentQuestionIndex + 1}
+              </Badge>
               {answers[currentQuestionIndex] && (
-                <Badge variant="secondary" className="bg-green-500/20 text-green-700">
+                <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-300">
                   <CheckCircle className="w-3 h-3 mr-1" />
                   Answered
                 </Badge>
               )}
             </div>
-            <CardDescription className="space-y-2">
-              <p className="text-lg font-medium text-foreground">
+            <CardDescription className="space-y-3">
+              <p className="text-lg md:text-xl font-semibold text-foreground leading-relaxed">
                 {currentQuestion.question}
               </p>
               {currentQuestion.question_hindi && (
-                <p className="text-lg text-muted-foreground">
+                <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
                   {currentQuestion.question_hindi}
                 </p>
               )}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <div className="space-y-3">
               {[1, 2, 3, 4].map((option) => {
                 const optionText = currentQuestion[`option_${option}` as keyof Question] as string;
                 const optionHindi = currentQuestion[`option_${option}_hindi` as keyof Question] as string | undefined;
+                const isSelected = answers[currentQuestionIndex] === option.toString();
                 
                 return (
                   <Button
                     key={option}
-                    variant={answers[currentQuestionIndex] === option.toString() ? "default" : "outline"}
-                    className={`w-full text-left justify-start p-4 h-auto ${
-                      answers[currentQuestionIndex] === option.toString() ? 'bg-gradient-primary text-white' : ''
+                    variant={isSelected ? "default" : "outline"}
+                    className={`w-full text-left justify-start p-4 md:p-5 h-auto transition-all duration-200 ${
+                      isSelected 
+                        ? 'bg-primary text-white shadow-md scale-[1.02] border-primary' 
+                        : 'hover:border-primary/50 hover:bg-blue-50/50 hover:scale-[1.01]'
                     }`}
                     onClick={() => handleAnswerSelect(option.toString())}
                   >
-                    <span className="font-semibold mr-3 shrink-0">{option}.</span>
+                    <Badge 
+                      variant={isSelected ? "secondary" : "outline"} 
+                      className={`mr-3 shrink-0 w-8 h-8 flex items-center justify-center rounded-full ${
+                        isSelected ? 'bg-white text-primary' : ''
+                      }`}
+                    >
+                      {option}
+                    </Badge>
                     <div className="flex flex-col gap-1">
-                      <span>{optionText}</span>
+                      <span className="text-sm md:text-base font-medium">{optionText}</span>
                       {optionHindi && (
-                        <span className={answers[currentQuestionIndex] === option.toString() ? 'opacity-80' : 'text-muted-foreground'}>
+                        <span className={`text-sm ${isSelected ? 'text-white/90' : 'text-muted-foreground'}`}>
                           {optionHindi}
                         </span>
                       )}
@@ -1059,25 +1106,23 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         </Card>
 
         {/* Navigation Controls */}
-        <div className="flex gap-4 items-center justify-between mb-4">
+        <div className="flex gap-3 items-center mb-4">
           <Button
             variant="outline"
             onClick={goToPreviousQuestion}
             disabled={currentQuestionIndex === 0}
-            className="flex-1"
+            size="lg"
+            className="flex-1 bg-white hover:bg-blue-50 border-primary/20 disabled:opacity-40"
           >
             ← Previous
           </Button>
-          
-          <div className="text-sm text-muted-foreground">
-            {answers.filter(a => a).length} / {questions.length} answered
-          </div>
           
           <Button
             variant="outline"
             onClick={goToNextQuestion}
             disabled={currentQuestionIndex === questions.length - 1}
-            className="flex-1"
+            size="lg"
+            className="flex-1 bg-white hover:bg-blue-50 border-primary/20 disabled:opacity-40"
           >
             Next →
           </Button>
@@ -1087,13 +1132,13 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         <div className="text-center">
           <Button 
             onClick={submitQuiz}
-            className="bg-gradient-primary hover:opacity-90 px-8 py-3 w-full"
+            className="bg-primary hover:bg-primary/90 px-8 py-6 w-full text-base md:text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
             size="lg"
           >
             Submit Quiz
           </Button>
-          <p className="text-xs text-muted-foreground mt-2">
-            You can review and change your answers before submitting
+          <p className="text-xs text-muted-foreground mt-3">
+            ✓ You can review and change your answers before submitting
           </p>
         </div>
       </div>

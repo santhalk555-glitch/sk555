@@ -264,36 +264,38 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
   const isSaved = savedQuestionIds.has(currentQuestion.id);
 
   return (
-    <div className="pt-20 pb-12">
+    <div className="pt-20 pb-12 font-poppins">
       <div className="container mx-auto px-6 max-w-5xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
           <Button 
             variant="ghost" 
             onClick={onBack}
+            className="hover:bg-blue-50"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
           
-          <div className="text-center flex-1">
-            <h2 className="text-2xl font-bold">{topicName} – {questions.length} Questions</h2>
+          <div className="text-center flex-1 min-w-[200px]">
+            <h2 className="text-xl md:text-2xl font-bold text-primary">{topicName}</h2>
+            <p className="text-sm text-muted-foreground">{questions.length} Questions Available</p>
           </div>
 
           <Button
             variant={isSaved ? "default" : "outline"}
             onClick={() => handleSaveQuestion(currentQuestion.id)}
-            className="gap-2"
+            className={`gap-2 transition-all duration-200 ${isSaved ? 'bg-primary' : 'hover:bg-blue-50'}`}
           >
             {isSaved ? (
               <>
                 <BookmarkCheck className="w-4 h-4" />
-                Saved
+                <span className="hidden sm:inline">Saved</span>
               </>
             ) : (
               <>
                 <BookmarkPlus className="w-4 h-4" />
-                Save
+                <span className="hidden sm:inline">Save</span>
               </>
             )}
           </Button>
@@ -302,18 +304,18 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
         {/* Progress */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm font-medium text-muted-foreground">
               Question {currentQuestionIndex + 1} of {questions.length}
             </span>
-            <span className="text-sm font-medium">
-              {Math.round(((currentQuestionIndex + 1) / questions.length) * 100)}%
+            <span className="text-sm font-semibold text-primary">
+              {Math.round(((currentQuestionIndex + 1) / questions.length) * 100)}% Complete
             </span>
           </div>
-          <Progress value={((currentQuestionIndex + 1) / questions.length) * 100} />
+          <Progress value={((currentQuestionIndex + 1) / questions.length) * 100} className="h-3 bg-blue-100" />
         </div>
 
         {/* Question Navigation with Pagination */}
-        <Card className="mb-6">
+        <Card className="mb-6 bg-white/80 backdrop-blur-sm shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-3">
               <Button
@@ -321,19 +323,19 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
                 size="sm"
                 onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
                 disabled={currentPage === 0}
-                className="px-3"
+                className="px-3 hover:bg-blue-50 disabled:opacity-40"
               >
                 ←
               </Button>
-              <span className="text-sm text-muted-foreground min-w-[120px] text-center">
-                {startQuestion + 1}-{endQuestion} of {questions.length}
+              <span className="text-sm font-medium text-muted-foreground min-w-[120px] text-center">
+                Showing {startQuestion + 1}-{endQuestion}
               </span>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
                 disabled={currentPage === totalPages - 1}
-                className="px-3"
+                className="px-3 hover:bg-blue-50 disabled:opacity-40"
               >
                 →
               </Button>
@@ -349,7 +351,11 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
                       variant={absoluteIndex === currentQuestionIndex ? "default" : "outline"}
                       size="sm"
                       onClick={() => handleQuestionSelect(absoluteIndex)}
-                      className="min-w-[40px] transition-all duration-200 flex-shrink-0"
+                      className={`min-w-[40px] transition-all duration-200 flex-shrink-0 ${
+                        absoluteIndex === currentQuestionIndex 
+                          ? 'bg-primary scale-105 shadow-md' 
+                          : 'hover:border-primary/50 hover:bg-blue-50'
+                      }`}
                     >
                       {absoluteIndex + 1}
                     </Button>
@@ -360,17 +366,17 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
             
             {/* Page indicator dots */}
             {totalPages > 1 && (
-              <div className="flex justify-center gap-1 mt-3">
+              <div className="flex justify-center gap-1.5 mt-3">
                 {Array.from({ length: Math.min(totalPages, 10) }).map((_, idx) => {
                   const pageIdx = totalPages <= 10 ? idx : Math.floor((idx / 10) * totalPages);
                   return (
                     <button
                       key={idx}
                       onClick={() => setCurrentPage(pageIdx)}
-                      className={`w-2 h-2 rounded-full transition-all ${
+                      className={`h-2 rounded-full transition-all duration-200 ${
                         currentPage === pageIdx 
-                          ? 'bg-primary w-4' 
-                          : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                          ? 'bg-primary w-6' 
+                          : 'bg-muted-foreground/30 hover:bg-primary/50 w-2'
                       }`}
                       aria-label={`Go to page ${pageIdx + 1}`}
                     />
@@ -381,40 +387,59 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
           </CardContent>
         </Card>
 
-        {/* Question Card */}
-        <Card className="mb-6 animate-fade-in">
-          <CardHeader>
+        {/* Question Card with smooth animation */}
+        <Card className="mb-6 bg-white shadow-lg border-primary/10 animate-fade-in">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
+            <div className="flex items-center justify-between mb-3">
+              <Badge variant="secondary" className="bg-primary text-white px-3 py-1">
+                Question {currentQuestionIndex + 1}
+              </Badge>
+              {showAnswer && (
+                <Badge 
+                  variant="secondary" 
+                  className={isCorrect ? 'bg-green-50 text-green-700 border-green-300' : 'bg-red-50 text-red-700 border-red-300'}
+                >
+                  {isCorrect ? <CheckCircle className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
+                  {isCorrect ? 'Correct!' : 'Incorrect'}
+                </Badge>
+              )}
+            </div>
             <CardTitle className="text-xl">
-              <div className="mb-4">
-                <div className="font-semibold text-foreground mb-2">
+              <div className="space-y-3">
+                <div className="text-lg md:text-xl font-semibold text-foreground leading-relaxed">
                   {currentQuestion.question}
                 </div>
                 {currentQuestion.question_hindi && (
-                  <div className="text-base text-muted-foreground font-normal">
+                  <div className="text-base md:text-lg text-muted-foreground font-normal leading-relaxed">
                     {currentQuestion.question_hindi}
                   </div>
                 )}
               </div>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-3 pt-6">
             {[1, 2, 3, 4].map((optionNum) => {
               const optionKey = `option_${optionNum}` as keyof Question;
               const optionHindiKey = `option_${optionNum}_hindi` as keyof Question;
               const isSelected = selectedAnswer === optionNum;
               const isCorrectOption = currentQuestion.correct_answer === optionNum;
               
+              let buttonClass = "w-full justify-start text-left h-auto py-4 md:py-5 transition-all duration-200";
               let buttonVariant: "outline" | "default" | "destructive" = "outline";
-              let buttonClass = "w-full justify-start text-left h-auto py-4 transition-all duration-200";
               
               if (showAnswer) {
                 if (isCorrectOption) {
-                  buttonClass += " bg-gaming-success/20 border-gaming-success hover:bg-gaming-success/30";
+                  buttonClass += " bg-green-50 border-green-400 hover:bg-green-100";
                 } else if (isSelected && !isCorrect) {
-                  buttonClass += " bg-destructive/20 border-destructive hover:bg-destructive/30";
+                  buttonClass += " bg-red-50 border-red-400 hover:bg-red-100";
                 }
-              } else if (isSelected) {
-                buttonVariant = "default";
+              } else {
+                if (isSelected) {
+                  buttonVariant = "default";
+                  buttonClass += " bg-primary text-white shadow-md scale-[1.02]";
+                } else {
+                  buttonClass += " hover:border-primary/50 hover:bg-blue-50/50 hover:scale-[1.01]";
+                }
               }
 
               return (
@@ -426,24 +451,29 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
                   className={buttonClass}
                 >
                   <div className="flex items-start gap-3 w-full">
-                    <Badge variant="secondary" className="mt-1">
+                    <Badge 
+                      variant={isSelected && !showAnswer ? "secondary" : "outline"}
+                      className={`mt-1 w-8 h-8 flex items-center justify-center rounded-full ${
+                        isSelected && !showAnswer ? 'bg-white text-primary' : ''
+                      } ${showAnswer && isCorrectOption ? 'bg-green-100 text-green-700 border-green-400' : ''}`}
+                    >
                       {optionNum}
                     </Badge>
                     <div className="flex-1 text-left">
-                      <div className="font-medium">
+                      <div className="text-sm md:text-base font-medium">
                         {currentQuestion[optionKey] as string}
                       </div>
                       {currentQuestion[optionHindiKey] && (
-                        <div className="text-sm text-muted-foreground mt-1">
+                        <div className={`text-sm mt-1 ${isSelected && !showAnswer ? 'text-white/90' : 'text-muted-foreground'}`}>
                           {currentQuestion[optionHindiKey] as string}
                         </div>
                       )}
                     </div>
                     {showAnswer && isCorrectOption && (
-                      <CheckCircle className="w-5 h-5 text-gaming-success flex-shrink-0" />
+                      <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
                     )}
                     {showAnswer && isSelected && !isCorrect && (
-                      <XCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+                      <XCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
                     )}
                   </div>
                 </Button>
@@ -453,13 +483,14 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
         </Card>
 
         {/* Actions */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="flex gap-2 order-2 sm:order-1">
             <Button
               variant="outline"
               onClick={handlePreviousQuestion}
               disabled={currentQuestionIndex === 0}
               size="lg"
+              className="flex-1 sm:flex-initial bg-white hover:bg-blue-50 border-primary/20 disabled:opacity-40"
             >
               ← Previous
             </Button>
@@ -469,12 +500,12 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
             />
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex gap-3 order-1 sm:order-2">
             {!showAnswer ? (
               <Button
                 onClick={handleCheckAnswer}
                 disabled={selectedAnswer === null}
-                className="gap-2"
+                className="gap-2 flex-1 sm:flex-initial bg-primary hover:bg-primary/90 shadow-md disabled:opacity-40"
                 size="lg"
               >
                 Check Answer
@@ -484,7 +515,7 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
                 {currentQuestionIndex < questions.length - 1 && (
                   <Button
                     onClick={handleNextQuestion}
-                    className="gap-2"
+                    className="gap-2 flex-1 sm:flex-initial bg-primary hover:bg-primary/90 shadow-md"
                     size="lg"
                   >
                     Next Question →
@@ -497,7 +528,7 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
 
         {/* Answer Feedback */}
         {showAnswer && (
-          <Card className={`mt-6 animate-fade-in ${isCorrect ? 'border-gaming-success' : 'border-destructive'}`}>
+          <Card className={`mt-6 animate-fade-in ${isCorrect ? 'border-green-400 bg-green-50/50' : 'border-red-400 bg-red-50/50'}`}>
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
                 {isCorrect ? (
