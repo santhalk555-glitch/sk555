@@ -13,6 +13,9 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        poppins: ["Poppins", "Inter", "sans-serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -53,6 +56,15 @@ export default {
           accent: "hsl(var(--gaming-accent))",
           warning: "hsl(var(--gaming-warning))",
           success: "hsl(var(--gaming-success))",
+        },
+        chat: {
+          sent: "hsl(var(--chat-sent))",
+          "sent-foreground": "hsl(var(--chat-sent-foreground))",
+          received: "hsl(var(--chat-received))",
+          "received-foreground": "hsl(var(--chat-received-foreground))",
+          "bg-start": "hsl(var(--chat-bg-start))",
+          "bg-end": "hsl(var(--chat-bg-end))",
+          timestamp: "hsl(var(--chat-timestamp))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",

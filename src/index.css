@@ -52,6 +52,15 @@ All colors MUST be HSL.
     --gaming-warning: 38 92% 50%;
     --gaming-success: 160 84% 39%;
     
+    /* Chat theme colors - lovable and friendly */
+    --chat-sent: 213 90% 64%;        /* #4F8EF7 - fresh blue */
+    --chat-sent-foreground: 0 0% 100%; /* white text */
+    --chat-received: 345 100% 92%;   /* #FFD6E0 - soft pastel pink */
+    --chat-received-foreground: 0 0% 20%; /* #333333 - dark text */
+    --chat-bg-start: 330 100% 99%;   /* #FFF8FB */
+    --chat-bg-end: 345 100% 95%;     /* #FFE3EC */
+    --chat-timestamp: 0 0% 53%;      /* #888888 */
+    
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%), hsl(217 91% 70%));
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100% / 0.8), hsl(220 13% 95% / 0.6));
@@ -122,6 +131,15 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Chat theme colors - dark mode */
+    --chat-sent: 215 100% 70%;       /* #5A8CFF - brighter blue for dark */
+    --chat-sent-foreground: 0 0% 100%;
+    --chat-received: 260 45% 45%;    /* #553C9A - lavender-purple */
+    --chat-received-foreground: 260 100% 95%; /* #F0E6FF - light purple text */
+    --chat-bg-start: 240 21% 15%;    /* #1E1E2E */
+    --chat-bg-end: 240 16% 20%;      /* #2B2B3D */
+    --chat-timestamp: 0 0% 60%;
   }
 }
 

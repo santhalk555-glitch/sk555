@@ -189,7 +189,7 @@ const Chat = ({ friend, onBack }: ChatProps) => {
   }
 
   return (
-    <div className="pt-20 pb-12 min-h-screen flex flex-col">
+    <div className="pt-20 pb-12 min-h-screen flex flex-col bg-gradient-to-b from-chat-bg-start to-chat-bg-end font-poppins">
       <div className="container mx-auto px-6 flex-1 flex flex-col max-w-4xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -233,16 +233,13 @@ const Chat = ({ friend, onBack }: ChatProps) => {
         </div>
 
         {/* Messages */}
-        <Card className="flex-1 flex flex-col bg-gradient-card">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-center text-lg">Messages</CardTitle>
-          </CardHeader>
+        <Card className="flex-1 flex flex-col bg-transparent border-none shadow-none">
           <CardContent className="flex-1 flex flex-col p-0">
             <ScrollArea className="flex-1 px-6">
-              <div className="space-y-4 py-4">
+              <div className="space-y-2 py-6">
                 {messages.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-8">
-                    No messages yet. Start the conversation!
+                  <div className="text-center text-muted-foreground py-12 text-[15px]">
+                    No messages yet. Start the conversation! 💬
                   </div>
                 ) : (
                   messages.map((message) => {
@@ -250,17 +247,17 @@ const Chat = ({ friend, onBack }: ChatProps) => {
                     return (
                       <div
                         key={message.id}
-                        className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+                        className={`flex ${isMe ? 'justify-end' : 'justify-start'} mb-2`}
                       >
                         <div
-                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                          className={`max-w-xs lg:max-w-md px-[14px] py-[10px] shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${
                             isMe
-                              ? 'bg-gaming-primary text-white'
-                              : 'bg-muted text-foreground'
+                              ? 'bg-chat-sent text-chat-sent-foreground rounded-[18px_18px_0_18px]'
+                              : 'bg-chat-received text-chat-received-foreground rounded-[18px_18px_18px_0]'
                           }`}
                         >
-                          <p className="text-sm">{message.content}</p>
-                          <p className={`text-xs mt-1 ${isMe ? 'text-white/70' : 'text-muted-foreground'}`}>
+                          <p className="text-[15px] leading-relaxed break-words">{message.content}</p>
+                          <p className="text-[12px] mt-1 text-chat-timestamp">
                             {new Date(message.created_at).toLocaleTimeString([], {
                               hour: '2-digit',
                               minute: '2-digit'
@@ -276,20 +273,20 @@ const Chat = ({ friend, onBack }: ChatProps) => {
             </ScrollArea>
             
             {/* Message Input */}
-            <div className="p-4 border-t">
+            <div className="p-4 bg-white/60 backdrop-blur-sm border-t border-white/40">
               <div className="flex space-x-2">
                 <Input
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Type your message..."
-                  className="flex-1"
+                  className="flex-1 bg-white/80 border-white/60 focus-visible:ring-chat-sent rounded-[18px] text-[15px] placeholder:text-muted-foreground/60"
                   autoFocus
                 />
                 <Button 
                   onClick={sendMessage}
                   disabled={!newMessage.trim()}
-                  className="bg-gaming-primary hover:bg-gaming-primary/90"
+                  className="bg-chat-sent hover:bg-chat-sent/90 text-white rounded-[18px] px-5 shadow-[0_2px_6px_rgba(79,142,247,0.3)] transition-all hover:shadow-[0_4px_12px_rgba(79,142,247,0.4)] disabled:opacity-40"
                 >
                   <Send className="w-4 h-4" />
                 </Button>
