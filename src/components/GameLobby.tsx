@@ -24,14 +24,45 @@ const GameLobby = ({ onBack, initialView }: GameLobbyProps) => {
 
   console.log('GameLobby render - currentView:', currentView, 'currentLobby:', currentLobby);
 
+  // Handle browser back button for internal lobby navigation
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state?.lobbyView) {
+        setCurrentView(event.state.lobbyView);
+        if (event.state.lobbyView === 'menu') {
+          setCurrentLobby(null);
+          setShowPracticeLobby(false);
+        }
+      } else if (event.state?.section === 'dashboard') {
+        // Going back to dashboard
+        onBack();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    
+    // Initialize with current view
+    if (!window.history.state?.lobbyView) {
+      window.history.replaceState({ section: 'lobby', lobbyView: currentView }, '', window.location.pathname);
+    }
+
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [onBack, currentView]);
+
   // Check if we should open join lobby from notification or dashboard
   useEffect(() => {
     const state = location.state as any;
     if (state?.openJoinLobby) {
       console.log('Opening join lobby from notification/state');
-      setCurrentView('join');
+      navigateToView('join');
     }
   }, [location]);
+
+  // Helper function to navigate to a view with history management
+  const navigateToView = (view: LobbyView) => {
+    setCurrentView(view);
+    window.history.pushState({ section: 'lobby', lobbyView: view }, '', window.location.pathname);
+  };
 
   useEffect(() => {
     console.log('GameLobby current view:', currentView);
@@ -39,22 +70,24 @@ const GameLobby = ({ onBack, initialView }: GameLobbyProps) => {
   }, [currentView, currentLobby]);
 
   const handleCreateLobby = () => {
-    setCurrentView('create');
+    navigateToView('create');
   };
 
   const handleJoinLobby = () => {
-    setCurrentView('join');
+    navigateToView('join');
   };
 
   const handlePracticeLobby = () => {
     setShowPracticeLobby(true);
+    window.history.pushState({ section: 'lobby', lobbyView: 'practice' }, '', window.location.pathname);
   };
 
   const handleBackToMenu = () => {
-    if (currentView === 'menu') {
-      onBack();
+    if (currentView === 'menu' && !showPracticeLobby) {
+      // Going back from main menu - go to dashboard
+      window.history.back();
     } else {
-      setCurrentView('menu');
+      navigateToView('menu');
       setCurrentLobby(null);
       setShowPracticeLobby(false);
     }
@@ -67,10 +100,10 @@ const GameLobby = ({ onBack, initialView }: GameLobbyProps) => {
     setCurrentLobby(lobby);
     if (lobby.status === 'active') {
       console.log('Switching to quiz view immediately');
-      setCurrentView('quiz');
+      navigateToView('quiz');
     } else {
       console.log('Switching to waiting view');
-      setCurrentView('waiting');
+      navigateToView('waiting');
     }
   };
 
@@ -81,16 +114,19 @@ const GameLobby = ({ onBack, initialView }: GameLobbyProps) => {
     setCurrentLobby(lobby);
     if (lobby.status === 'active') {
       console.log('Switching to quiz view immediately');
-      setCurrentView('quiz');
+      navigateToView('quiz');
     } else {
       console.log('Switching to waiting view');
-      setCurrentView('waiting');
+      navigateToView('waiting');
     }
   };
 
   // Show Practice Lobby if selected
   if (showPracticeLobby) {
-    return <PracticeLobby onBack={() => setShowPracticeLobby(false)} />;
+    return <PracticeLobby onBack={() => {
+      setShowPracticeLobby(false);
+      navigateToView('menu');
+    }} />;
   }
 
   // Render based on current view

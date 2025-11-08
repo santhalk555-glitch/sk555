@@ -27,19 +27,54 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Handle browser back button for internal navigation
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const section = event.state?.section || "dashboard";
+      setActiveSection(section);
+      if (section === "dashboard") {
+        setLobbyState(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    
+    // Initialize with current state
+    if (!window.history.state?.section) {
+      window.history.replaceState({ section: "dashboard" }, '', window.location.pathname);
+    }
+
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Helper function to navigate to a section with history management
+  const navigateToSection = (section: "dashboard" | "matching" | "lobby" | "matches" | "requests", additionalState?: any) => {
+    setActiveSection(section);
+    window.history.pushState({ section, ...additionalState }, '', window.location.pathname);
+    if (additionalState) {
+      setLobbyState(additionalState);
+    }
+  };
+
+  // Helper function to go back to dashboard
+  const goBackToDashboard = () => {
+    setActiveSection("dashboard");
+    setLobbyState(null);
+    window.history.pushState({ section: "dashboard" }, '', window.location.pathname);
+  };
+
   // Handle navigation from notifications
   useEffect(() => {
     const state = location.state as any;
     console.log('Dashboard received state:', state);
     if (state?.openJoinLobby) {
       console.log('Opening lobby with join state');
-      setLobbyState({ openJoinLobby: true });
-      setActiveSection('lobby');
-      // Clear the state
+      navigateToSection('lobby', { openJoinLobby: true });
+      // Clear the location state
       navigate('/', { replace: true, state: {} });
     } else if (state?.openFriendRequests) {
-      setActiveSection('requests');
-      // Clear the state
+      navigateToSection('requests');
+      // Clear the location state
       navigate('/', { replace: true, state: {} });
     }
   }, [location, navigate]);
@@ -92,19 +127,19 @@ const Dashboard = () => {
 
 
   if (activeSection === "matching") {
-    return <SwipeMatching onBack={() => setActiveSection("dashboard")} onMatchesUpdate={setMatchedStudents} />;
+    return <SwipeMatching onBack={goBackToDashboard} onMatchesUpdate={setMatchedStudents} />;
   }
 
   if (activeSection === "lobby") {
-    return <GameLobby onBack={() => { setActiveSection("dashboard"); setLobbyState(null); }} initialView={lobbyState?.openJoinLobby ? 'join' : undefined} />;
+    return <GameLobby onBack={goBackToDashboard} initialView={lobbyState?.openJoinLobby ? 'join' : undefined} />;
   }
 
   if (activeSection === "matches") {
-    return <MatchedFriends onBack={() => setActiveSection("dashboard")} />;
+    return <MatchedFriends onBack={goBackToDashboard} />;
   }
 
   if (activeSection === "requests") {
-    return <FriendRequests onBack={() => setActiveSection("dashboard")} />;
+    return <FriendRequests onBack={goBackToDashboard} />;
   }
 
   return (
@@ -192,7 +227,7 @@ const Dashboard = () => {
           {/* Find Match Card */}
           <Card 
             className="bg-gradient-card border-gaming-primary/20 hover:border-gaming-primary/30 cursor-pointer transform hover:scale-[1.02] transition-all duration-300 group shadow-sm hover:shadow-md"
-            onClick={() => hasProfile ? setActiveSection("matching") : navigate('/create-profile')}
+            onClick={() => hasProfile ? navigateToSection("matching") : navigate('/create-profile')}
           >
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
@@ -216,7 +251,7 @@ const Dashboard = () => {
           {/* My Study Squad Card */}
           <Card 
             className="bg-gradient-card border-gaming-accent/20 hover:border-gaming-accent/30 cursor-pointer transform hover:scale-[1.02] transition-all duration-300 group shadow-sm hover:shadow-md"
-            onClick={() => hasProfile ? setActiveSection("matches") : navigate('/create-profile')}
+            onClick={() => hasProfile ? navigateToSection("matches") : navigate('/create-profile')}
           >
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gaming-accent to-gaming-primary flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
@@ -248,7 +283,7 @@ const Dashboard = () => {
           {/* Create Lobby Card */}
           <Card 
             className="bg-gradient-card border-gaming-secondary/20 hover:border-gaming-secondary/30 cursor-pointer transform hover:scale-[1.02] transition-all duration-300 group shadow-sm hover:shadow-md"
-            onClick={() => setActiveSection("lobby")}
+            onClick={() => navigateToSection("lobby")}
           >
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gaming-secondary to-gaming-accent flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
@@ -265,7 +300,7 @@ const Dashboard = () => {
           {/* Friend Requests Card */}
           <Card 
             className="bg-gradient-card border-gaming-warning/20 hover:border-gaming-warning/30 cursor-pointer transform hover:scale-[1.02] transition-all duration-300 group shadow-sm hover:shadow-md"
-            onClick={() => setActiveSection("requests")}
+            onClick={() => navigateToSection("requests")}
           >
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gaming-warning to-gaming-primary flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">

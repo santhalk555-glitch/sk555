@@ -57,6 +57,40 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
   const itemsPerPage = 20;
   const { toast } = useToast();
 
+  // Handle browser back button for internal practice lobby navigation
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state?.practiceView) {
+        const view = event.state.practiceView;
+        if (view === 'branches') {
+          setSelectedBranch(null);
+          setSelectedSubject(null);
+          setSelectedTopic(null);
+          setShowSavedQuestions(false);
+        } else if (view === 'subjects') {
+          setSelectedSubject(null);
+          setSelectedTopic(null);
+          setShowSavedQuestions(false);
+        } else if (view === 'topics') {
+          setSelectedTopic(null);
+          setShowSavedQuestions(false);
+        }
+      } else if (event.state?.lobbyView === 'menu') {
+        // Going back to lobby menu
+        onBack();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    
+    // Initialize with branches view
+    if (!window.history.state?.practiceView) {
+      window.history.replaceState({ section: 'lobby', lobbyView: 'practice', practiceView: 'branches' }, '', window.location.pathname);
+    }
+
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [onBack]);
+
   useEffect(() => {
     loadBranches();
   }, []);
@@ -398,7 +432,10 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
         topicId={null}
         topicName="Saved Questions"
         savedOnly={true}
-        onBack={() => setShowSavedQuestions(false)}
+        onBack={() => {
+          setShowSavedQuestions(false);
+          window.history.pushState({ section: 'lobby', lobbyView: 'practice', practiceView: 'branches' }, '', window.location.pathname);
+        }}
       />
     );
   }
@@ -409,7 +446,10 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
         topicId={selectedTopic.id}
         topicName={selectedTopic.name}
         savedOnly={false}
-        onBack={() => setSelectedTopic(null)}
+        onBack={() => {
+          setSelectedTopic(null);
+          window.history.pushState({ section: 'lobby', lobbyView: 'practice', practiceView: 'topics' }, '', window.location.pathname);
+        }}
       />
     );
   }
@@ -441,10 +481,13 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
             onClick={() => {
               if (selectedSubject) {
                 setSelectedSubject(null);
+                window.history.pushState({ section: 'lobby', lobbyView: 'practice', practiceView: 'subjects' }, '', window.location.pathname);
               } else if (selectedBranch) {
                 setSelectedBranch(null);
+                window.history.pushState({ section: 'lobby', lobbyView: 'practice', practiceView: 'branches' }, '', window.location.pathname);
               } else {
-                onBack();
+                // Going back from branches view
+                window.history.back();
               }
             }}
             className="text-muted-foreground hover:text-foreground"
@@ -472,7 +515,10 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
           
           <Button
             variant="outline"
-            onClick={() => setShowSavedQuestions(true)}
+            onClick={() => {
+              setShowSavedQuestions(true);
+              window.history.pushState({ section: 'lobby', lobbyView: 'practice', practiceView: 'saved' }, '', window.location.pathname);
+            }}
             className="gap-2"
           >
             <Star className="w-4 h-4 fill-current text-gaming-warning" />
@@ -506,7 +552,10 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
                     <Card
                       key={topic.id}
                       className="bg-gradient-card border-primary/20 hover:border-primary/40 cursor-pointer transform hover:scale-105 transition-all duration-300 group shadow-lg hover:shadow-glow"
-                      onClick={() => setSelectedTopic(topic as Topic)}
+                      onClick={() => {
+                        setSelectedTopic(topic as Topic);
+                        window.history.pushState({ section: 'lobby', lobbyView: 'practice', practiceView: 'questions' }, '', window.location.pathname);
+                      }}
                     >
                       <CardHeader>
                         <CardTitle className="text-lg flex items-center justify-between">
@@ -601,6 +650,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
                       onClick={() => {
                         setSelectedSubject(subject as Subject);
                         loadTopicsForSubject(subject as Subject);
+                        window.history.pushState({ section: 'lobby', lobbyView: 'practice', practiceView: 'topics' }, '', window.location.pathname);
                       }}
                     >
                       <CardHeader>
@@ -697,6 +747,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
                       onClick={() => {
                         setSelectedBranch(branch);
                         loadSubjectsForBranch(branch);
+                        window.history.pushState({ section: 'lobby', lobbyView: 'practice', practiceView: 'subjects' }, '', window.location.pathname);
                       }}
                     >
                       <CardHeader>
