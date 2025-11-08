@@ -74,7 +74,7 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
           .from('quiz_questions')
           .select('*')
           .in('id', questionIds)
-          .range(0, 9999);
+          .range(0, 99999);
 
         if (questionsError) throw questionsError;
         setQuestions(questionsData || []);
@@ -85,7 +85,7 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
           .select('*')
           .eq('topic_id', topicId)
           .order('created_at')
-          .range(0, 9999);
+          .range(0, 99999);
 
         if (questionsError) throw questionsError;
         setQuestions(questionsData || []);
@@ -493,6 +493,15 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
               className="flex-1 sm:flex-initial bg-white hover:bg-blue-50 border-primary/20 disabled:opacity-40"
             >
               ← Previous
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleNextQuestion}
+              disabled={currentQuestionIndex === questions.length - 1}
+              size="lg"
+              className="flex-1 sm:flex-initial bg-white hover:bg-blue-50 border-primary/20 disabled:opacity-40"
+            >
+              Next →
             </Button>
             <ReportQuestionDialog 
               questionId={currentQuestion.id}
