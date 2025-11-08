@@ -273,7 +273,7 @@ export const SignInForm = ({ onSwitchToSignUp }: SignInFormProps) => {
             onClick={onSwitchToSignUp}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            Don't have an account? Sign up
+            Don't have an account? Create Account
           </button>
         </div>
       </CardContent>
