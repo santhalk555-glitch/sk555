@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Clock, Users, CheckCircle, Crown, Trophy } from 'lucide-react';
+import { ArrowLeft, Clock, Users, CheckCircle, Crown, Trophy, RefreshCw } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ReportQuestionDialog from './ReportQuestionDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,6 +37,8 @@ interface Participant {
   score: number;
   isWinner?: boolean;
   quiz_finished?: boolean;
+  finished_at?: string;
+  avgCorrectResp?: number;
 }
 
 const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
@@ -50,6 +53,9 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   const [currentUserFinished, setCurrentUserFinished] = useState(false);
   const [waitingForOthers, setWaitingForOthers] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [loadWarning, setLoadWarning] = useState('');
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -487,19 +493,31 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     }
   };
 
-  const loadAndShowResults = async () => {
+  const loadAndShowResults = async (retryAttempt = 0) => {
     if (!sessionId) {
       console.error('loadAndShowResults: No session ID available');
       return;
     }
 
     try {
-      console.log('loadAndShowResults: Loading results for session:', sessionId);
+      console.log(`loadAndShowResults: Loading results for session (attempt ${retryAttempt + 1}):`, sessionId);
+      
+      if (retryAttempt > 0) {
+        setIsRetrying(true);
+      }
 
-      // Get all players' scores from quiz_players table
+      // Get expected player count
+      const { data: lobbyParticipants } = await supabase
+        .from('lobby_participants')
+        .select('user_id')
+        .eq('lobby_id', lobby.id);
+      
+      const expectedPlayerCount = lobbyParticipants?.length || 0;
+
+      // Get all players' scores with timing data
       const { data: allPlayers, error: playersError } = await supabase
         .from('quiz_players')
-        .select('user_id, username, score')
+        .select('user_id, username, score, finished_at, answers')
         .eq('session_id', sessionId);
 
       console.log('loadAndShowResults: Players data from quiz_players:', allPlayers);
@@ -513,27 +531,114 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         throw new Error('No players found for session');
       }
 
+      // Check if data is incomplete
+      const hasIncompleteData = allPlayers.length < expectedPlayerCount || 
+                                allPlayers.some(p => !p.user_id || !p.username);
+
+      if (hasIncompleteData && retryAttempt < 3) {
+        // Retry with exponential backoff
+        const delays = [500, 1000, 2000];
+        const delay = delays[retryAttempt];
+        console.log(`Incomplete player data. Retrying in ${delay}ms...`);
+        setRetryCount(retryAttempt + 1);
+        
+        setTimeout(() => {
+          loadAndShowResults(retryAttempt + 1);
+        }, delay);
+        return;
+      }
+
+      if (hasIncompleteData) {
+        setLoadWarning('Some players could not be loaded — refresh to retry');
+      }
+
+      setIsRetrying(false);
+      setRetryCount(0);
+
       console.log('loadAndShowResults: Number of players:', allPlayers.length);
       console.log('loadAndShowResults: Player scores:', allPlayers.map(p => ({ username: p.username, score: p.score })));
 
-      // Determine winner(s)
-      const maxScore = Math.max(...allPlayers.map(p => p.score));
-      console.log('loadAndShowResults: Max score:', maxScore);
+      // Calculate timing metrics for each player
+      const playersWithMetrics = allPlayers.map(player => {
+        const finishedTime = player.finished_at ? new Date(player.finished_at).getTime() : 0;
+        const correctAnswers = Array.isArray(player.answers) 
+          ? player.answers.filter((ans: string, idx: number) => {
+              const q = questions[idx];
+              return q && parseInt(ans) === q.correct_answer;
+            }).length
+          : 0;
+        
+        // Calculate average time per correct answer (lower is better)
+        const avgCorrectResp = correctAnswers > 0 ? finishedTime / correctAnswers : finishedTime;
+        
+        return {
+          ...player,
+          finishedTime,
+          avgCorrectResp
+        };
+      });
+
+      // Determine winner(s) with tie-breaker logic
+      // 1. Highest score wins
+      // 2. If tied on score, fastest finish time wins
+      // 3. If tied on both, lowest avgCorrectResp wins
+      const maxScore = Math.max(...playersWithMetrics.map(p => p.score));
       
-      const winners = allPlayers.filter(p => p.score === maxScore);
-      console.log('loadAndShowResults: Winners:', winners.map(w => w.username));
+      // Check if everyone scored 0
+      const allScoresZero = maxScore === 0;
+      
+      if (allScoresZero) {
+        // Special case: everyone scored 0
+        const updatedParticipants = playersWithMetrics.map(player => ({
+          user_id: player.user_id,
+          username: player.username,
+          score: player.score,
+          isWinner: false,
+          finished_at: player.finished_at,
+          avgCorrectResp: player.avgCorrectResp
+        }));
+        
+        setParticipants(updatedParticipants);
+        setShowResults(true);
+        setIsRetrying(false);
+        return;
+      }
+      
+      const topScorePlayers = playersWithMetrics.filter(p => p.score === maxScore);
+      
+      let winners: typeof playersWithMetrics = [];
+      
+      if (topScorePlayers.length === 1) {
+        winners = topScorePlayers;
+      } else {
+        // Tie on score - check finish time
+        const fastestTime = Math.min(...topScorePlayers.map(p => p.finishedTime));
+        const fastestPlayers = topScorePlayers.filter(p => p.finishedTime === fastestTime);
+        
+        if (fastestPlayers.length === 1) {
+          winners = fastestPlayers;
+        } else {
+          // Tie on time - check avgCorrectResp
+          const lowestAvg = Math.min(...fastestPlayers.map(p => p.avgCorrectResp));
+          const bestAvgPlayers = fastestPlayers.filter(p => p.avgCorrectResp === lowestAvg);
+          winners = bestAvgPlayers;
+        }
+      }
       
       const isCurrentUserWinner = winners.some(w => w.user_id === user?.id);
       const currentUserScore = allPlayers.find(p => p.user_id === user?.id)?.score || 0;
 
+      console.log('loadAndShowResults: Winners:', winners.map(w => w.username));
       console.log('loadAndShowResults: Current user is winner?', isCurrentUserWinner);
 
       // Update participants state with ALL players' data
-      const updatedParticipants = allPlayers.map(player => ({
+      const updatedParticipants = playersWithMetrics.map(player => ({
         user_id: player.user_id,
         username: player.username,
         score: player.score,
-        isWinner: winners.some(w => w.user_id === player.user_id)
+        isWinner: winners.some(w => w.user_id === player.user_id),
+        finished_at: player.finished_at,
+        avgCorrectResp: player.avgCorrectResp
       }));
 
       console.log('loadAndShowResults: Setting participants state with:', updatedParticipants);
@@ -603,6 +708,12 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  const formatTimestamp = (timestamp?: string) => {
+    if (!timestamp) return '0:00';
+    const seconds = Math.floor(new Date(timestamp).getTime() / 1000);
+    return formatTime(seconds % 3600); // Format as mm:ss
   };
 
   if (!quizStarted) {
@@ -713,32 +824,34 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
     const currentUserParticipant = participants.find(p => p.user_id === user?.id);
     const isWinner = currentUserParticipant?.isWinner || false;
+    const winners = participants.filter(p => p.isWinner);
+    const isTie = winners.length > 1;
+    const allScoresZero = Math.max(...participants.map(p => p.score || 0)) === 0;
 
     console.log('RESULTS RENDER - Participants state:', participants);
     console.log('RESULTS RENDER - Participants count:', participants.length);
     console.log('RESULTS RENDER - Current user is winner:', isWinner);
-    console.log('RESULTS RENDER - Participants data:', participants.map(p => ({
-      username: p.username,
-      score: p.score,
-      isWinner: p.isWinner
-    })));
+    console.log('RESULTS RENDER - Is tie:', isTie);
+    console.log('RESULTS RENDER - All scores zero:', allScoresZero);
+
+    const resultText = allScoresZero ? 'Quiz Completed' : isTie ? "It's a tie!" : 'Winner!';
 
     return (
       <div className="pt-20 pb-12">
-        {/* Confetti for winner */}
-        {isWinner && (
+        {/* Confetti for winner(s) */}
+        {(isWinner && !allScoresZero) && (
           <Confetti
             width={windowSize.width}
             height={windowSize.height}
             recycle={false}
-            numberOfPieces={500}
+            numberOfPieces={isTie ? 300 : 500}
             gravity={0.3}
           />
         )}
         
         <div className="container mx-auto px-6 max-w-4xl">
-          {/* Winner Animation */}
-          {isWinner && (
+          {/* Winner Animation - only for single winner */}
+          {(isWinner && !isTie && !allScoresZero) && (
             <div className="fixed inset-0 pointer-events-none z-40">
               <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-yellow-300/20 to-yellow-400/20 animate-pulse"></div>
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
@@ -750,54 +863,97 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
           )}
           
           <div className="text-center mb-8">
-            {isWinner ? (
+            {allScoresZero ? (
+              <>
+                <h1 className="text-3xl font-bold mb-4 text-muted-foreground">
+                  Quiz Completed — Try Again!
+                </h1>
+                <div className="text-6xl font-bold text-muted-foreground mb-4">
+                  {score}/{questions.length}
+                </div>
+              </>
+            ) : resultText === 'Winner!' ? (
               <>
                 <div className="mb-4 animate-pulse">
                   <Crown className="w-16 h-16 text-yellow-500 mx-auto mb-2" />
                 </div>
                 <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent animate-pulse">
-                  🎉 WINNER! 🎉
+                  🎉 {resultText} 🎉
                 </h1>
+                <div className="text-6xl font-bold text-primary mb-4">
+                  {score}/{questions.length}
+                </div>
+                <p className="text-xl text-muted-foreground">
+                  Congratulations! You won the quiz!
+                </p>
+              </>
+            ) : isTie ? (
+              <>
+                <div className="mb-4">
+                  <Trophy className="w-16 h-16 text-primary mx-auto mb-2" />
+                </div>
+                <h1 className="text-4xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">
+                  🎊 {resultText} 🎊
+                </h1>
+                <div className="text-6xl font-bold text-primary mb-4">
+                  {score}/{questions.length}
+                </div>
+                <p className="text-xl text-muted-foreground">
+                  {isWinner ? 'You tied for first place!' : 'Close competition!'}
+                </p>
               </>
             ) : (
-              <h1 className="text-3xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">
-                Quiz Results
-              </h1>
+              <>
+                <h1 className="text-3xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">
+                  Quiz Results
+                </h1>
+                <div className="text-6xl font-bold text-primary mb-4">
+                  {score}/{questions.length}
+                </div>
+                <p className="text-xl text-muted-foreground">
+                  {score >= questions.length * 0.8 ? 'Excellent work!' : 
+                   score >= questions.length * 0.6 ? 'Good job!' : 
+                   'Keep practicing!'}
+                </p>
+              </>
             )}
-            <div className="text-6xl font-bold text-primary mb-4">
-              {score}/{questions.length}
-            </div>
-            <p className="text-xl text-muted-foreground">
-              {isWinner ? 'Congratulations! You won the quiz!' :
-               score >= questions.length * 0.8 ? 'Excellent work!' : 
-               score >= questions.length * 0.6 ? 'Good job!' : 
-               'Keep practicing!'}
-            </p>
           </div>
 
           {/* Leaderboard */}
           <Card className="mb-8 bg-gradient-card border-primary/20">
             <CardHeader>
               <CardTitle className="flex items-center justify-center">
-                <Trophy className="w-5 h-5 mr-2" />
+                {allScoresZero ? (
+                  <Clock className="w-5 h-5 mr-2" />
+                ) : (
+                  <Trophy className="w-5 h-5 mr-2" />
+                )}
                 Final Leaderboard
-                {participants.length < 2 && (
+                {(isRetrying || loadWarning) && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => {
                       console.log('Manual refresh triggered');
-                      loadAndShowResults();
+                      setLoadWarning('');
+                      loadAndShowResults(0);
                     }}
                     className="ml-2"
+                    disabled={isRetrying}
                   >
+                    <RefreshCw className={`w-4 h-4 mr-1 ${isRetrying ? 'animate-spin' : ''}`} />
                     Refresh
                   </Button>
                 )}
               </CardTitle>
-              {participants.length < 2 && (
+              {isRetrying && (
+                <CardDescription className="text-center text-blue-600">
+                  Loading player data... (Attempt {retryCount + 1}/3)
+                </CardDescription>
+              )}
+              {loadWarning && !isRetrying && (
                 <CardDescription className="text-center text-yellow-600">
-                  ⚠️ Not all players loaded. Click Refresh to try again.
+                  ⚠️ {loadWarning}
                 </CardDescription>
               )}
             </CardHeader>
@@ -808,51 +964,74 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {participants
-                    .sort((a, b) => (b.score || 0) - (a.score || 0))
-                    .map((participant, index) => (
-                      <div 
-                        key={participant.user_id}
-                        className={`flex items-center justify-between p-4 rounded-lg ${
-                          participant.isWinner 
-                            ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 border-2 border-yellow-300' 
-                            : 'bg-muted/20 border border-muted/40'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            participant.isWinner 
-                              ? 'bg-yellow-500 text-white' 
-                              : 'bg-primary/20 text-primary'
-                          }`}>
-                            {participant.isWinner ? (
-                              <Crown className="w-5 h-5" />
-                            ) : (
-                              <span className="font-bold">#{index + 1}</span>
-                            )}
-                          </div>
-                          <div>
-                            <div className="font-semibold flex items-center">
-                              @{participant.username}
-                              {participant.user_id === user?.id && (
-                                <Badge variant="outline" className="ml-2">You</Badge>
-                              )}
-                              {participant.isWinner && (
-                                <Badge variant="secondary" className="ml-2 bg-yellow-100 text-yellow-800">Winner</Badge>
-                              )}
+                  <TooltipProvider>
+                    {participants
+                      .sort((a, b) => {
+                        // Sort by score first, then by time
+                        if ((b.score || 0) !== (a.score || 0)) {
+                          return (b.score || 0) - (a.score || 0);
+                        }
+                        const aTime = a.finished_at ? new Date(a.finished_at).getTime() : Infinity;
+                        const bTime = b.finished_at ? new Date(b.finished_at).getTime() : Infinity;
+                        return aTime - bTime;
+                      })
+                      .map((participant, index) => (
+                        <Tooltip key={participant.user_id}>
+                          <TooltipTrigger asChild>
+                            <div 
+                              className={`flex items-center justify-between p-4 rounded-lg cursor-help ${
+                                participant.isWinner && !allScoresZero
+                                  ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 border-2 border-yellow-300' 
+                                  : 'bg-muted/20 border border-muted/40'
+                              }`}
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                  participant.isWinner && !allScoresZero
+                                    ? 'bg-yellow-500 text-white' 
+                                    : 'bg-primary/20 text-primary'
+                                }`}>
+                                  {participant.isWinner && !allScoresZero ? (
+                                    <Crown className="w-5 h-5" />
+                                  ) : (
+                                    <span className="font-bold">#{index + 1}</span>
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="font-semibold flex items-center">
+                                    {participant.isWinner && isTie && !allScoresZero && (
+                                      <span className="text-yellow-600 mr-1">Co-winner: </span>
+                                    )}
+                                    @{participant.username}
+                                    {participant.user_id === user?.id && (
+                                      <Badge variant="outline" className="ml-2">You</Badge>
+                                    )}
+                                    {participant.isWinner && !allScoresZero && !isTie && (
+                                      <Badge variant="secondary" className="ml-2 bg-yellow-100 text-yellow-800">Winner</Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-2xl font-bold text-primary">
+                                  {participant.score || 0}/{questions.length}
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  Time: {formatTimestamp(participant.finished_at)}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-primary">
-                            {participant.score || 0}/{questions.length}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {Math.round(((participant.score || 0) / questions.length) * 100)}%
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">
+                              Avg response time: {participant.avgCorrectResp 
+                                ? `${(participant.avgCorrectResp / 1000).toFixed(2)}s per correct answer`
+                                : 'N/A'}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ))}
+                  </TooltipProvider>
                 </div>
               )}
             </CardContent>
