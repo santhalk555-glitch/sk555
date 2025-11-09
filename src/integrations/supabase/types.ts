@@ -696,28 +696,37 @@ export type Database = {
         Row: {
           completed_at: string | null
           created_at: string
+          expires_at: string | null
           id: string
           lobby_id: string
+          order_seed: number | null
           question_ids: string[]
           started_at: string
+          starts_at: string | null
           status: string
         }
         Insert: {
           completed_at?: string | null
           created_at?: string
+          expires_at?: string | null
           id?: string
           lobby_id: string
+          order_seed?: number | null
           question_ids?: string[]
           started_at?: string
+          starts_at?: string | null
           status?: string
         }
         Update: {
           completed_at?: string | null
           created_at?: string
+          expires_at?: string | null
           id?: string
           lobby_id?: string
+          order_seed?: number | null
           question_ids?: string[]
           started_at?: string
+          starts_at?: string | null
           status?: string
         }
         Relationships: [
@@ -928,18 +937,9 @@ export type Database = {
         Args: { user1_id: string; user2_id: string }
         Returns: boolean
       }
-      generate_8_digit_user_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_lobby_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      start_quiz_lobby: {
-        Args: { lobby_id: string }
-        Returns: boolean
-      }
+      generate_8_digit_user_id: { Args: never; Returns: string }
+      generate_lobby_code: { Args: never; Returns: string }
+      start_quiz_lobby: { Args: { lobby_id: string }; Returns: boolean }
     }
     Enums: {
       quiz_status: "waiting" | "active" | "completed"

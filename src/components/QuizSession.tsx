@@ -9,6 +9,7 @@ import ReportQuestionDialog from './ReportQuestionDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useClockSync } from '@/hooks/useClockSync';
 import Confetti from 'react-confetti';
 
 interface QuizSessionProps {
@@ -56,8 +57,11 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
   const [loadWarning, setLoadWarning] = useState('');
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [sessionStartsAt, setSessionStartsAt] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { getServerTime, isSynced } = useClockSync();
 
   // Track window size for confetti
   useEffect(() => {
@@ -68,82 +72,87 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Load quiz data and create session when lobby becomes active
+  // Load quiz data and session when lobby becomes active
   useEffect(() => {
     console.log('=== QUIZ SESSION EFFECT ===');
     console.log('Lobby:', lobby);
     console.log('Lobby status:', lobby?.status);
     console.log('Quiz started:', quizStarted);
     console.log('Session ID:', sessionId);
+    console.log('Clock synced:', isSynced);
     
-    if (lobby && lobby.status === 'active' && !quizStarted && !sessionId) {
-      console.log('QuizSession: Loading quiz data for active lobby:', lobby.id);
+    if (lobby && lobby.status === 'active' && !quizStarted && !sessionId && isSynced) {
+      console.log('QuizSession: Loading quiz session for active lobby:', lobby.id);
       
-      // First check if a session already exists for this lobby
       const loadSession = async () => {
         try {
-          const { data: existingSession, error: checkError } = await supabase
-            .from('quiz_sessions')
-            .select('*')
-            .eq('lobby_id', lobby.id)
-            .maybeSingle();
-          
-          if (checkError) {
-            console.error('QuizSession: Error checking for existing session:', checkError);
-            throw checkError;
-          }
-          
-          if (existingSession) {
-            console.log('QuizSession: Found existing session:', existingSession.id);
-            setSessionId(existingSession.id);
-            
-            // Load questions from existing session
-            const { data: questionsData, error: questionsError } = await supabase
-              .from('quiz_questions')
-              .select('*')
-              .in('id', existingSession.question_ids)
-              .range(0, 9999);
-            
-            if (questionsError) throw questionsError;
-            
-            if (questionsData) {
-              const orderedQuestions = existingSession.question_ids.map((id: string) => 
-                questionsData.find((q: Question) => q.id === id)
-              ).filter(Boolean) as Question[];
-              
-            console.log('QuizSession: Setting questions immediately');
-            setQuestions(orderedQuestions);
-            setAnswers(new Array(orderedQuestions.length).fill(''));
-            // Set quiz started immediately so UI updates faster
-            setQuizStarted(true);
+          // Try to fetch existing session from backend
+          const { data: sessionData, error: sessionError } = await supabase.functions.invoke(
+            'quiz-session-get/' + lobby.id,
+            {
+              method: 'GET'
             }
+          );
+
+          let session = sessionData;
+
+          // If no session exists, create one
+          if (sessionError || !sessionData || sessionData.error) {
+            console.log('QuizSession: No existing session, creating new one via backend');
             
-            // Load participants in parallel
-            const participantsPromise = supabase
-              .from('lobby_participants')
-              .select('user_id, username')
-              .eq('lobby_id', lobby.id);
-            
-            const { data: participants, error: participantsError } = await participantsPromise;
-            
-            if (participantsError) throw participantsError;
-            if (participants) {
-              setParticipants(participants.map(p => ({ ...p, score: 0 })));
+            const { data: newSessionData, error: createError } = await supabase.functions.invoke(
+              'quiz-session-start',
+              {
+                method: 'POST',
+                body: { lobbyId: lobby.id }
+              }
+            );
+
+            if (createError) {
+              console.error('QuizSession: Error creating session:', createError);
+              throw createError;
             }
-            
-            console.log('QuizSession: Loaded existing session successfully');
+
+            session = newSessionData;
+            console.log('QuizSession: Created new session:', session);
           } else {
-            // No existing session, create new one
-            console.log('QuizSession: No existing session, creating new one');
-            await initializeQuizSession();
-            console.log('QuizSession: Quiz session initialized successfully');
-            setQuizStarted(true);
+            console.log('QuizSession: Found existing session:', session);
           }
+
+          setSessionId(session.sessionId);
+          setSessionStartsAt(session.startsAt);
+
+          // Check if quiz should start immediately or show countdown
+          const serverNow = getServerTime();
+          const startsAt = new Date(session.startsAt).getTime();
+          const timeUntilStart = Math.max(0, startsAt - serverNow);
+
+          console.log('QuizSession: Time until start:', timeUntilStart, 'ms');
+
+          if (timeUntilStart > 0) {
+            // Show countdown
+            setCountdown(Math.ceil(timeUntilStart / 1000));
+          } else {
+            // Start immediately
+            await loadQuestionsAndStart(session.questionSet);
+          }
+
+          // Load participants
+          const { data: participants, error: participantsError } = await supabase
+            .from('lobby_participants')
+            .select('user_id, username')
+            .eq('lobby_id', lobby.id);
+
+          if (participantsError) throw participantsError;
+          if (participants) {
+            setParticipants(participants.map(p => ({ ...p, score: 0 })));
+          }
+
         } catch (error) {
-          console.error('QuizSession: Failed to initialize quiz session:', error);
+          console.error('QuizSession: Failed to load quiz session:', error);
           toast({
             title: 'Error Loading Quiz',
-            description: 'Failed to load questions. Please try again.',
+            description: 'Failed to load quiz session. Please try again.',
             variant: 'destructive'
           });
         }
@@ -151,7 +160,61 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
       
       loadSession();
     }
-  }, [lobby?.status, sessionId]);
+  }, [lobby?.status, sessionId, isSynced]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (countdown !== null && countdown > 0 && sessionStartsAt) {
+      const interval = setInterval(() => {
+        const serverNow = getServerTime();
+        const startsAt = new Date(sessionStartsAt).getTime();
+        const timeUntilStart = Math.max(0, startsAt - serverNow);
+        const secondsLeft = Math.ceil(timeUntilStart / 1000);
+
+        console.log('Countdown:', secondsLeft, 'seconds');
+
+        if (secondsLeft <= 0) {
+          clearInterval(interval);
+          setCountdown(null);
+          // Start quiz
+          loadQuestionsAndStart(questions.map(q => q.id));
+        } else {
+          setCountdown(secondsLeft);
+        }
+      }, 100); // Update frequently for smooth countdown
+
+      return () => clearInterval(interval);
+    }
+  }, [countdown, sessionStartsAt, getServerTime]);
+
+  const loadQuestionsAndStart = async (questionIds: string[]) => {
+    try {
+      console.log('QuizSession: Loading questions:', questionIds);
+      
+      const { data: questionsData, error: questionsError } = await supabase
+        .from('quiz_questions')
+        .select('*')
+        .in('id', questionIds)
+        .range(0, 9999);
+
+      if (questionsError) throw questionsError;
+
+      if (questionsData) {
+        // Preserve order from backend
+        const orderedQuestions = questionIds.map((id: string) => 
+          questionsData.find((q: Question) => q.id === id)
+        ).filter(Boolean) as Question[];
+
+        console.log('QuizSession: Setting questions and starting quiz');
+        setQuestions(orderedQuestions);
+        setAnswers(new Array(orderedQuestions.length).fill(''));
+        setQuizStarted(true);
+      }
+    } catch (error) {
+      console.error('QuizSession: Error loading questions:', error);
+      throw error;
+    }
+  };
 
   // Timer that auto-submits quiz when time runs out
   useEffect(() => {
@@ -171,190 +234,6 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     return () => clearInterval(timer);
   }, [quizStarted, currentUserFinished]);
 
-
-  const initializeQuizSession = async () => {
-    console.log('initializeQuizSession: Starting for lobby:', lobby.id);
-    console.log('initializeQuizSession: Lobby data:', {
-      id: lobby.id,
-      subject_id: lobby.subject_id,
-      topic_id: lobby.topic_id,
-      question_ids: lobby.question_ids
-    });
-    
-    try {
-      let questionsData: Question[] = [];
-
-      // Check if lobby already has randomized questions
-      if (lobby.question_ids && lobby.question_ids.length > 0) {
-        console.log('initializeQuizSession: Loading pre-selected questions:', lobby.question_ids);
-        
-        const { data, error } = await supabase
-          .from('quiz_questions')
-          .select('*')
-          .in('id', lobby.question_ids)
-          .range(0, 9999);
-
-        if (error) {
-          console.error('initializeQuizSession: Error loading questions:', error);
-          throw error;
-        }
-        
-        if (data) {
-          questionsData = lobby.question_ids.map((id: string) => 
-            data.find((q: Question) => q.id === id)
-          ).filter(Boolean) as Question[];
-        }
-      } else {
-        // Select and randomize questions
-        console.log('initializeQuizSession: Selecting random questions');
-        console.log('initializeQuizSession: Lobby query params:', {
-          subject_id: lobby.subject_id,
-          topic_id: lobby.topic_id,
-          exam_simple_id: lobby.exam_simple_id,
-          source_type: lobby.source_type
-        });
-        
-        let allQuestions = [];
-        let questionsError = null;
-
-        // Try querying by subject_id first
-        if (lobby.subject_id) {
-          console.log('initializeQuizSession: Querying by subject_id:', lobby.subject_id);
-          let questionsQuery = supabase
-            .from('quiz_questions')
-            .select('*')
-            .eq('subject_id', lobby.subject_id)
-            .range(0, 9999);
-
-          if (lobby.topic_id) {
-            console.log('initializeQuizSession: Adding topic filter:', lobby.topic_id);
-            questionsQuery = questionsQuery.eq('topic_id', lobby.topic_id);
-          }
-
-          const result = await questionsQuery;
-          questionsError = result.error;
-          allQuestions = result.data || [];
-          
-          console.log('initializeQuizSession: Questions found by subject_id:', allQuestions.length);
-        }
-
-        // If no questions found by subject_id, try exam_simple_id
-        if ((!allQuestions || allQuestions.length === 0) && lobby.exam_simple_id) {
-          console.log('initializeQuizSession: No questions by subject_id, trying exam_simple_id:', lobby.exam_simple_id);
-          
-          let questionsQuery = supabase
-            .from('quiz_questions')
-            .select('*')
-            .eq('exam_simple_id', lobby.exam_simple_id)
-            .range(0, 9999);
-
-          if (lobby.topic_id) {
-            console.log('initializeQuizSession: Adding topic filter for exam query:', lobby.topic_id);
-            questionsQuery = questionsQuery.eq('topic_id', lobby.topic_id);
-          }
-
-          const result = await questionsQuery;
-          questionsError = result.error;
-          allQuestions = result.data || [];
-          
-          console.log('initializeQuizSession: Questions found by exam_simple_id:', allQuestions.length);
-        }
-
-        if (questionsError) {
-          console.error('initializeQuizSession: Error fetching questions:', questionsError);
-          throw questionsError;
-        }
-
-        if (!allQuestions || allQuestions.length === 0) {
-          console.error('initializeQuizSession: No questions found for any query method');
-          console.error('initializeQuizSession: Tried subject_id:', lobby.subject_id, 'exam_simple_id:', lobby.exam_simple_id);
-          throw new Error('No questions found for this exam/subject');
-        }
-
-        console.log('initializeQuizSession: Found', allQuestions.length, 'questions');
-        const shuffled = allQuestions.sort(() => Math.random() - 0.5);
-        questionsData = shuffled.slice(0, 15);
-        
-        const questionIds = questionsData.map(q => q.id);
-        console.log('initializeQuizSession: Saving question IDs to lobby');
-        await supabase
-          .from('game_lobbies')
-          .update({ question_ids: questionIds })
-          .eq('id', lobby.id);
-      }
-
-      console.log('initializeQuizSession: Questions loaded:', questionsData.length);
-      setQuestions(questionsData);
-      setAnswers(new Array(questionsData.length).fill(''));
-
-      // Create quiz session
-      console.log('initializeQuizSession: Creating quiz session');
-      const { data: session, error: sessionError } = await supabase
-        .from('quiz_sessions')
-        .insert({
-          lobby_id: lobby.id,
-          question_ids: questionsData.map(q => q.id),
-          status: 'active'
-        })
-        .select()
-        .single();
-
-      if (sessionError) {
-        console.error('initializeQuizSession: Error creating session:', sessionError);
-        throw sessionError;
-      }
-      
-      console.log('initializeQuizSession: Session created:', session.id);
-      setSessionId(session.id);
-
-      // Get all lobby participants and create quiz_players records
-      console.log('initializeQuizSession: Loading lobby participants');
-      const { data: lobbyParticipants, error: participantsError } = await supabase
-        .from('lobby_participants')
-        .select('user_id, username')
-        .eq('lobby_id', lobby.id);
-
-      if (participantsError) {
-        console.error('initializeQuizSession: Error loading participants:', participantsError);
-        throw participantsError;
-      }
-
-      console.log('initializeQuizSession: Found', lobbyParticipants?.length, 'participants');
-
-      if (lobbyParticipants) {
-        // Create quiz_player record for current user only (RLS allows only own record)
-        console.log('initializeQuizSession: Creating quiz_player record for current user');
-        const currentParticipant = lobbyParticipants.find(p => p.user_id === user?.id);
-        
-        if (currentParticipant) {
-          const { error: playerError } = await supabase
-            .from('quiz_players')
-            .insert({
-              session_id: session.id,
-              user_id: currentParticipant.user_id,
-              username: currentParticipant.username
-            });
-          
-          if (playerError) {
-            console.error('initializeQuizSession: Error creating player record:', playerError);
-            // Don't throw - other players will create their own records
-            console.log('initializeQuizSession: Continuing despite player record error');
-          }
-        }
-
-        setParticipants(lobbyParticipants.map(p => ({ ...p, score: 0 })));
-        console.log('initializeQuizSession: Successfully initialized quiz session!');
-      }
-    } catch (error) {
-      console.error('initializeQuizSession: Fatal error:', error);
-      toast({
-        title: 'Error Loading Quiz',
-        description: error instanceof Error ? error.message : 'Failed to load questions. Please try again.',
-        variant: 'destructive'
-      });
-      throw error;
-    }
-  };
 
   // Listen for realtime updates to quiz session status
   useEffect(() => {
@@ -717,21 +596,46 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   };
 
   if (!quizStarted) {
-    console.log('=== RENDERING LOADING STATE ===');
+    console.log('=== RENDERING LOADING/COUNTDOWN STATE ===');
     console.log('Questions loaded:', questions.length);
     console.log('Session ID:', sessionId);
+    console.log('Countdown:', countdown);
     
     return (
       <div className="pt-20 pb-12">
         <div className="container mx-auto px-6 max-w-4xl">
           <div className="text-center">
-            <h1 className="text-3xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">
-              Quiz Starting Soon...
-            </h1>
-            <p className="text-muted-foreground">
-              Waiting for the quiz to begin.
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">Check browser console (F12) for loading details</p>
+            {countdown !== null && countdown > 0 ? (
+              <>
+                <h1 className="text-3xl font-bold mb-8 bg-gradient-primary bg-clip-text text-transparent">
+                  Quiz Starting In...
+                </h1>
+                <div className="mb-8">
+                  <div className="text-9xl font-bold text-primary animate-pulse">
+                    {countdown}
+                  </div>
+                  <p className="text-xl text-muted-foreground mt-4">
+                    Get ready!
+                  </p>
+                </div>
+                <div className="flex items-center justify-center space-x-2 text-muted-foreground">
+                  <Users className="w-5 h-5" />
+                  <span>All players will start together</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <h1 className="text-3xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">
+                  Quiz Starting Soon...
+                </h1>
+                <p className="text-muted-foreground">
+                  Loading quiz questions...
+                </p>
+                <div className="mt-4 flex items-center justify-center">
+                  <Clock className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -1118,12 +1022,12 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
                 <Button 
                   variant="outline" 
                   onClick={() => {
-                    console.log('Retrying to load questions...');
-                    initializeQuizSession();
+                    console.log('Reloading page to retry...');
+                    window.location.reload();
                   }}
                   className="mt-4"
                 >
-                  Retry Loading
+                  Reload Page
                 </Button>
               </div>
             </CardContent>

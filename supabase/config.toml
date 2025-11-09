@@ -8,3 +8,12 @@ verify_jwt = false
 
 [functions.translate-to-hindi]
 verify_jwt = false
+
+[functions.quiz-session-start]
+verify_jwt = true
+
+[functions.quiz-session-get]
+verify_jwt = true
+
+[functions.clock-sync]
+verify_jwt = false

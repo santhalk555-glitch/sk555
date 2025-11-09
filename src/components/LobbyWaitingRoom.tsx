@@ -249,7 +249,24 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
     setLoading(true);
 
     try {
-      // First, create quiz participants for all lobby participants
+      // First, create quiz session with questions via backend
+      console.log('Creating quiz session with backend...');
+      const { data: sessionData, error: sessionError } = await supabase.functions.invoke(
+        'quiz-session-start',
+        {
+          method: 'POST',
+          body: { lobbyId: lobby.id }
+        }
+      );
+
+      if (sessionError) {
+        console.error('Error creating quiz session:', sessionError);
+        throw sessionError;
+      }
+
+      console.log('Quiz session created:', sessionData);
+
+      // Create quiz participants for all lobby participants
       const { data: lobbyParticipants, error: participantsError } = await supabase
         .from('lobby_participants')
         .select('*')
@@ -275,7 +292,7 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
         }
       }
 
-      // Start the quiz
+      // Update lobby status to active
       console.log('Calling start_quiz_lobby RPC function...');
       const { data, error } = await supabase.rpc('start_quiz_lobby', {
         lobby_id: lobby.id
@@ -292,8 +309,8 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
         if (!hasShownStartToast) {
           setHasShownStartToast(true);
           toast({
-            title: 'Quiz Started!',
-            description: `The quiz has begun for all participants!`,
+            title: 'Quiz Starting!',
+            description: `All players will see a countdown before the quiz begins.`,
           });
         }
         
