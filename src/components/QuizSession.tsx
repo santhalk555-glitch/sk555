@@ -110,13 +110,38 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
 
             if (createError) {
               console.error('QuizSession: Error creating session:', createError);
-              throw createError;
+              toast({
+                title: 'Failed to Load Quiz',
+                description: 'Could not create quiz session. Please try again.',
+                variant: 'destructive'
+              });
+              return;
+            }
+
+            if (!newSessionData || newSessionData.error) {
+              console.error('QuizSession: Invalid session data:', newSessionData);
+              toast({
+                title: 'Failed to Load Quiz',
+                description: newSessionData?.error || 'Invalid session data received.',
+                variant: 'destructive'
+              });
+              return;
             }
 
             session = newSessionData;
             console.log('QuizSession: Created new session:', session);
           } else {
             console.log('QuizSession: Found existing session:', session);
+          }
+
+          if (!session || !session.sessionId || !session.questionSet) {
+            console.error('QuizSession: Invalid session data:', session);
+            toast({
+              title: 'Failed to Load Quiz',
+              description: 'Quiz data is incomplete. Please refresh and try again.',
+              variant: 'destructive'
+            });
+            return;
           }
 
           setSessionId(session.sessionId);
@@ -191,28 +216,67 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
     try {
       console.log('QuizSession: Loading questions:', questionIds);
       
+      if (!questionIds || questionIds.length === 0) {
+        toast({
+          title: 'No Questions Available',
+          description: 'No questions found for this quiz. Please try again.',
+          variant: 'destructive'
+        });
+        return;
+      }
+      
       const { data: questionsData, error: questionsError } = await supabase
         .from('quiz_questions')
         .select('*')
         .in('id', questionIds)
         .range(0, 9999);
 
-      if (questionsError) throw questionsError;
-
-      if (questionsData) {
-        // Preserve order from backend
-        const orderedQuestions = questionIds.map((id: string) => 
-          questionsData.find((q: Question) => q.id === id)
-        ).filter(Boolean) as Question[];
-
-        console.log('QuizSession: Setting questions and starting quiz');
-        setQuestions(orderedQuestions);
-        setAnswers(new Array(orderedQuestions.length).fill(''));
-        setQuizStarted(true);
+      if (questionsError) {
+        console.error('QuizSession: Error loading questions:', questionsError);
+        toast({
+          title: 'Failed to Load Questions',
+          description: 'Could not load quiz questions. Please refresh and try again.',
+          variant: 'destructive'
+        });
+        throw questionsError;
       }
+
+      if (!questionsData || questionsData.length === 0) {
+        console.error('QuizSession: No questions returned from database');
+        toast({
+          title: 'No Questions Found',
+          description: 'The quiz questions could not be found. Please try again.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Preserve order from backend
+      const orderedQuestions = questionIds.map((id: string) => 
+        questionsData.find((q: Question) => q.id === id)
+      ).filter(Boolean) as Question[];
+
+      if (orderedQuestions.length === 0) {
+        console.error('QuizSession: No valid questions after ordering');
+        toast({
+          title: 'Invalid Questions',
+          description: 'Could not load valid questions. Please try again.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      console.log('QuizSession: Setting questions and starting quiz');
+      setQuestions(orderedQuestions);
+      setAnswers(new Array(orderedQuestions.length).fill(''));
+      setQuizStarted(true);
     } catch (error) {
       console.error('QuizSession: Error loading questions:', error);
-      throw error;
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred while loading questions.',
+        variant: 'destructive'
+      });
     }
   };
 

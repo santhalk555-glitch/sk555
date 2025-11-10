@@ -53,11 +53,13 @@ serve(async (req) => {
     const { lobbyId } = await req.json();
     console.log(`Starting quiz session for lobby: ${lobbyId}, user: ${user.id}`);
 
-    // Check if session already exists
+    // Check if session already exists (get most recent if multiple exist)
     const { data: existingSession, error: checkError } = await supabase
       .from('quiz_sessions')
       .select('*')
       .eq('lobby_id', lobbyId)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (checkError) {

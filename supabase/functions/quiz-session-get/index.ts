@@ -38,12 +38,14 @@ serve(async (req) => {
 
     console.log(`Getting quiz session for lobby: ${lobbyId}, user: ${user.id}`);
 
-    // Get quiz session
+    // Get quiz session (get most recent if multiple exist)
     const { data: session, error: sessionError } = await supabase
       .from('quiz_sessions')
       .select('*')
       .eq('lobby_id', lobbyId)
-      .maybeSingle();
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
 
     if (sessionError) {
       console.error('Error fetching session:', sessionError);
