@@ -299,11 +299,11 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
   }, [quizStarted, currentUserFinished]);
 
 
-  // Listen for realtime updates to quiz session status
+  // Listen for realtime updates to quiz_players and quiz_sessions
   useEffect(() => {
     if (!sessionId || !currentUserFinished) return;
 
-    console.log('QuizSession: Setting up realtime listener for session:', sessionId);
+    console.log('QuizSession: Setting up realtime listeners for session:', sessionId);
 
     const channel = supabase
       .channel(`quiz_session_${sessionId}`)
@@ -325,12 +325,132 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'quiz_players',
+          filter: `session_id=eq.${sessionId}`
+        },
+        async (payload) => {
+          console.log('Quiz player updated:', payload);
+          
+          // Check if all players have finished
+          if (payload.new.quiz_finished) {
+            await checkAllPlayersFinished();
+          }
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [sessionId, currentUserFinished]);
+
+  // Periodic check for all players finished (fallback if realtime fails)
+  useEffect(() => {
+    if (!sessionId || !currentUserFinished || showResults) return;
+
+    console.log('QuizSession: Starting periodic status check');
+    
+    const intervalId = setInterval(async () => {
+      console.log('QuizSession: Periodic check - verifying if all players finished');
+      await checkAllPlayersFinished();
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(intervalId);
+  }, [sessionId, currentUserFinished, showResults]);
+
+  // Check if all players have finished and mark session as completed
+  const checkAllPlayersFinished = async () => {
+    if (!sessionId) return;
+
+    try {
+      // Get expected player count from lobby participants
+      const { data: lobbyParticipants } = await supabase
+        .from('lobby_participants')
+        .select('user_id')
+        .eq('lobby_id', lobby.id);
+      
+      const expectedPlayerCount = lobbyParticipants?.length || 0;
+      console.log('checkAllPlayersFinished: Expected players:', expectedPlayerCount);
+
+      // Get all quiz players for this session
+      const { data: allPlayers, error } = await supabase
+        .from('quiz_players')
+        .select('user_id, quiz_finished, finished_at')
+        .eq('session_id', sessionId);
+
+      if (error) {
+        console.error('checkAllPlayersFinished: Error fetching players:', error);
+        return;
+      }
+
+      console.log('checkAllPlayersFinished: Current players:', allPlayers?.length, 'Finished:', allPlayers?.filter(p => p.quiz_finished).length);
+
+      // Check if all players have finished or timed out (15 seconds after first finish)
+      const finishedPlayers = allPlayers?.filter(p => p.quiz_finished) || [];
+      const firstFinishTime = finishedPlayers
+        .map(p => p.finished_at ? new Date(p.finished_at).getTime() : Infinity)
+        .reduce((min, time) => Math.min(min, time), Infinity);
+      
+      const now = Date.now();
+      const timeoutReached = firstFinishTime !== Infinity && (now - firstFinishTime) > 15000; // 15 seconds timeout
+
+      const allPlayersReady = (allPlayers?.length === expectedPlayerCount) && 
+                              (finishedPlayers.length === expectedPlayerCount || timeoutReached);
+
+      console.log('checkAllPlayersFinished: All ready?', allPlayersReady, 'Timeout reached?', timeoutReached);
+
+      if (allPlayersReady) {
+        // Mark any unfinished players as finished (disconnected/timed out)
+        const unfinishedPlayers = allPlayers?.filter(p => !p.quiz_finished) || [];
+        if (unfinishedPlayers.length > 0) {
+          console.log('checkAllPlayersFinished: Marking', unfinishedPlayers.length, 'disconnected players as finished');
+          
+          await Promise.all(
+            unfinishedPlayers.map(player => 
+              supabase
+                .from('quiz_players')
+                .update({ 
+                  quiz_finished: true, 
+                  finished_at: new Date().toISOString() 
+                })
+                .eq('session_id', sessionId)
+                .eq('user_id', player.user_id)
+            )
+          );
+        }
+
+        // Mark session as completed
+        const { data: currentSession } = await supabase
+          .from('quiz_sessions')
+          .select('status')
+          .eq('id', sessionId)
+          .single();
+
+        if (currentSession?.status !== 'completed') {
+          console.log('checkAllPlayersFinished: Marking session as completed');
+          
+          await supabase
+            .from('quiz_sessions')
+            .update({ 
+              status: 'completed',
+              completed_at: new Date().toISOString()
+            })
+            .eq('id', sessionId);
+
+          // Show results immediately
+          setWaitingForOthers(false);
+          await loadAndShowResults();
+        }
+      }
+    } catch (error) {
+      console.error('checkAllPlayersFinished: Error:', error);
+    }
+  };
 
 
   const handleAnswerSelect = (answer: string) => {
@@ -419,6 +539,9 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
         // Session already completed - show results immediately
         await loadAndShowResults();
       } else {
+        // Check if all players finished immediately after this submission
+        await checkAllPlayersFinished();
+        
         // Wait for other players
         setWaitingForOthers(true);
         toast({
