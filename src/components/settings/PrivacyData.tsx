@@ -26,6 +26,7 @@ const PrivacyData = () => {
   const [showInSearch, setShowInSearch] = useState(true);
   const [allowFriendRequests, setAllowFriendRequests] = useState(true);
   const [allowMessagesNonFriends, setAllowMessagesNonFriends] = useState(true);
+  const [presenceVisibility, setPresenceVisibility] = useState<'everyone' | 'friends' | 'nobody'>('everyone');
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
@@ -41,7 +42,7 @@ const PrivacyData = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('show_in_search, allow_friend_requests, allow_messages_non_friends')
+        .select('show_in_search, allow_friend_requests, allow_messages_non_friends, presence_visibility')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -51,6 +52,7 @@ const PrivacyData = () => {
         setShowInSearch(data.show_in_search ?? true);
         setAllowFriendRequests(data.allow_friend_requests ?? true);
         setAllowMessagesNonFriends(data.allow_messages_non_friends ?? true);
+        setPresenceVisibility((data.presence_visibility as 'everyone' | 'friends' | 'nobody') ?? 'everyone');
       }
       setLoading(false);
     };
@@ -58,7 +60,7 @@ const PrivacyData = () => {
     loadSettings();
   }, [user]);
 
-  const updateSetting = async (field: string, value: boolean) => {
+  const updateSetting = async (field: string, value: boolean | string) => {
     if (!user) return;
 
     const { error } = await supabase
@@ -280,6 +282,76 @@ const PrivacyData = () => {
                 updateSetting('allow_messages_non_friends', checked);
               }}
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Online Presence */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Eye className="w-5 h-5 text-primary" />
+            Online Presence
+          </CardTitle>
+          <CardDescription>
+            Control who can see when you're online. Showing your online status helps others join you for live study sessions.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <Label>Show online status to:</Label>
+            <div className="space-y-2">
+              <label className="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="presence"
+                  checked={presenceVisibility === 'everyone'}
+                  onChange={() => {
+                    setPresenceVisibility('everyone');
+                    updateSetting('presence_visibility', 'everyone');
+                  }}
+                  className="w-4 h-4 text-primary"
+                />
+                <div>
+                  <div className="font-medium">Everyone</div>
+                  <div className="text-sm text-muted-foreground">All users can see when you're online</div>
+                </div>
+              </label>
+              
+              <label className="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="presence"
+                  checked={presenceVisibility === 'friends'}
+                  onChange={() => {
+                    setPresenceVisibility('friends');
+                    updateSetting('presence_visibility', 'friends');
+                  }}
+                  className="w-4 h-4 text-primary"
+                />
+                <div>
+                  <div className="font-medium">Friends Only</div>
+                  <div className="text-sm text-muted-foreground">Only your friends can see when you're online</div>
+                </div>
+              </label>
+              
+              <label className="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="presence"
+                  checked={presenceVisibility === 'nobody'}
+                  onChange={() => {
+                    setPresenceVisibility('nobody');
+                    updateSetting('presence_visibility', 'nobody');
+                  }}
+                  className="w-4 h-4 text-primary"
+                />
+                <div>
+                  <div className="font-medium">Nobody (Appear Offline)</div>
+                  <div className="text-sm text-muted-foreground">Hide your online status from everyone</div>
+                </div>
+              </label>
+            </div>
           </div>
         </CardContent>
       </Card>

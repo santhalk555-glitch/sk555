@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Profile, parseCompetitiveExams } from '@/types/profile';
 import BanUserDialog from '@/components/BanUserDialog';
 import ReportUserDialog from '@/components/ReportUserDialog';
+import { usePresence, useUserPresence } from '@/hooks/usePresence';
+import PresenceDot from './PresenceDot';
+import PresenceStatusText from './PresenceStatusText';
 
 interface SwipeMatchingProps {
   onBack: () => void;
@@ -43,6 +46,13 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  // Initialize presence tracking
+  usePresence();
+  
+  // Get presence data for all profiles
+  const profileIds = useMemo(() => profiles.map(p => p.user_id), [profiles]);
+  const presenceMap = useUserPresence(profileIds);
 
   useEffect(() => {
     if (user) {
@@ -329,12 +339,21 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
                   {/* Profile Photo Area - Full Square (no additional crop) */}
                   <div className="relative w-full h-[400px] bg-gradient-to-br from-primary/10 to-secondary/10 overflow-hidden">
                     {currentProfile?.avatar_url ? (
-                      <img 
-                        src={currentProfile.avatar_url} 
-                        alt={currentProfile.username || 'User'}
-                        className="w-full h-full object-cover"
-                        style={{ objectFit: 'cover' }}
-                      />
+                      <>
+                        <img 
+                          src={currentProfile.avatar_url} 
+                          alt={currentProfile.username || 'User'}
+                          className="w-full h-full object-cover"
+                          style={{ objectFit: 'cover' }}
+                        />
+                        <div className="absolute top-4 left-4">
+                          <PresenceDot 
+                            status={presenceMap[currentProfile.user_id]?.status || null}
+                            lastSeen={presenceMap[currentProfile.user_id]?.last_seen}
+                            size="lg"
+                          />
+                        </div>
+                      </>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-muted/20">
                         <User className="w-32 h-32 text-muted-foreground" />
@@ -364,6 +383,11 @@ const SwipeMatching = ({ onBack, onMatchesUpdate }: SwipeMatchingProps) => {
                       <h2 className="text-3xl font-bold mb-2">
                         {currentProfile?.username || 'Anonymous'}
                       </h2>
+                      <PresenceStatusText 
+                        status={presenceMap[currentProfile?.user_id]?.status || null}
+                        lastSeen={presenceMap[currentProfile?.user_id]?.last_seen}
+                        className="mb-2"
+                      />
                       <div className="flex items-center justify-center text-muted-foreground">
                         <GraduationCap className="w-4 h-4 mr-2" />
                         <span className="text-sm">{currentProfile?.course_name}</span>

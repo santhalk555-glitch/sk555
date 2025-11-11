@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,13 +6,16 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ArrowLeft, User, BookOpen, Target, GraduationCap, MoreVertical, Ban, Flag } from 'lucide-react';
+import { ArrowLeft, User, BookOpen, Target, GraduationCap, MoreVertical, Ban, Flag, Filter } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Profile, parseCompetitiveExams } from '@/types/profile';
 import BanUserDialog from '@/components/BanUserDialog';
 import ReportUserDialog from '@/components/ReportUserDialog';
+import { usePresence, useUserPresence } from '@/hooks/usePresence';
+import PresenceDot from './PresenceDot';
+import PresenceStatusText from './PresenceStatusText';
 
 interface ProfileMatch extends Profile {
   matchScore: number;
@@ -28,9 +31,28 @@ export const ProfileMatches = () => {
   const [banDialogOpen, setBanDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
+  const [showOnlineOnly, setShowOnlineOnly] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Initialize presence tracking
+  usePresence();
+  
+  // Get presence data for all matches
+  const matchIds = useMemo(() => matches.map(m => m.user_id), [matches]);
+  const presenceMap = useUserPresence(matchIds);
+  
+  // Filter matches based on online status
+  const filteredMatches = useMemo(() => {
+    if (!showOnlineOnly) return matches;
+    return matches.filter(m => presenceMap[m.user_id]?.status === 'online');
+  }, [matches, showOnlineOnly, presenceMap]);
+  
+  // Count online matches
+  const onlineCount = useMemo(() => {
+    return matches.filter(m => presenceMap[m.user_id]?.status === 'online').length;
+  }, [matches, presenceMap]);
 
   const ITEMS_PER_PAGE = 10;
 
@@ -214,12 +236,20 @@ export const ProfileMatches = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold">Your Study Matches</h1>
             <p className="text-muted-foreground">
-              {matches.length} potential study partners found
+              <span className="text-green-600 dark:text-green-500 font-semibold">{onlineCount} online</span> • {matches.length} total
             </p>
           </div>
+          <Button
+            variant={showOnlineOnly ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowOnlineOnly(!showOnlineOnly)}
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            {showOnlineOnly ? 'Show All' : 'Online Only'}
+          </Button>
         </div>
 
         {/* Current User Profile Summary */}
@@ -260,22 +290,49 @@ export const ProfileMatches = () => {
 
         {/* Matches List */}
         <div className="space-y-4">
-          {matches.map((match) => (
+          {filteredMatches.length === 0 ? (
+            <Card className="p-8 text-center">
+              <p className="text-muted-foreground">
+                {showOnlineOnly 
+                  ? "No online matches at the moment. Check back later!" 
+                  : "No matches found yet."}
+              </p>
+            </Card>
+          ) : (
+            filteredMatches.map((match) => {
+              const presence = presenceMap[match.user_id];
+              return (
             <Card key={match.id} className="hover:shadow-lg transition-all duration-200 hover:border-primary/30">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-12 w-12 border-2 border-primary/20">
-                      <AvatarImage src={match.avatar_url || undefined} alt={match.username || 'User'} />
-                      <AvatarFallback className="bg-primary/10 text-primary">
-                        {match.username?.charAt(0).toUpperCase() || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="relative">
+                      <Avatar className="h-12 w-12 border-2 border-primary/20">
+                        <AvatarImage src={match.avatar_url || undefined} alt={match.username || 'User'} />
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {match.username?.charAt(0).toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="absolute top-0 right-0">
+                        <PresenceDot 
+                          status={presence?.status || null}
+                          lastSeen={presence?.last_seen}
+                          size="sm"
+                        />
+                      </div>
+                    </div>
                     <div>
                       <h3 className="font-semibold text-lg">{match.username || 'Anonymous User'}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Joined {new Date(match.created_at).toLocaleDateString()}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-muted-foreground">
+                          Joined {new Date(match.created_at).toLocaleDateString()}
+                        </p>
+                        <PresenceStatusText 
+                          status={presence?.status || null}
+                          lastSeen={presence?.last_seen}
+                          className="text-xs"
+                        />
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -351,7 +408,9 @@ export const ProfileMatches = () => {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          );
+          })
+          )}
         </div>
 
         {/* Load More Button */}

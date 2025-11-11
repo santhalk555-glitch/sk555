@@ -1,15 +1,18 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Heart, Star, MapPin, MessageCircle, Video, BookOpen, Users, MoreVertical, Ban, Flag } from "lucide-react";
+import { ArrowLeft, Heart, Star, MapPin, MessageCircle, Video, BookOpen, Users, MoreVertical, Ban, Flag, Filter } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import Chat from "./Chat";
 import BanUserDialog from "./BanUserDialog";
 import ReportUserDialog from "./ReportUserDialog";
 import { Profile, parseCompetitiveExams } from '@/types/profile';
+import { usePresence, useUserPresence } from "@/hooks/usePresence";
+import PresenceDot from "./PresenceDot";
+import PresenceStatusText from "./PresenceStatusText";
 
 interface MatchedFriendsProps {
   onBack: () => void;
@@ -23,7 +26,26 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
   const [banDialogOpen, setBanDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
+  const [showOnlineOnly, setShowOnlineOnly] = useState(false);
   const { user } = useAuth();
+  
+  // Initialize presence tracking for current user
+  usePresence();
+  
+  // Get presence data for all friends
+  const friendIds = useMemo(() => friends.map(f => f.user_id), [friends]);
+  const presenceMap = useUserPresence(friendIds);
+  
+  // Filter friends based on online status
+  const filteredFriends = useMemo(() => {
+    if (!showOnlineOnly) return friends;
+    return friends.filter(f => presenceMap[f.user_id]?.status === 'online');
+  }, [friends, showOnlineOnly, presenceMap]);
+  
+  // Count online friends
+  const onlineCount = useMemo(() => {
+    return friends.filter(f => presenceMap[f.user_id]?.status === 'online').length;
+  }, [friends, presenceMap]);
 
   useEffect(() => {
     loadFriends();
@@ -151,13 +173,24 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
               Your Study Squad ✨
             </h1>
             <p className="text-muted-foreground">
-              {friends.length} amazing study partner{friends.length !== 1 ? 's' : ''} ready to learn together!
+              <span className="text-green-600 dark:text-green-500 font-semibold">{onlineCount} online</span> • {friends.length} total
             </p>
           </div>
           
-          <div className="flex items-center space-x-2 bg-gaming-primary/10 px-4 py-2 rounded-full">
-            <Users className="w-5 h-5 text-gaming-primary" />
-            <span className="text-sm font-bold text-gaming-primary">{friends.length}</span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={showOnlineOnly ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowOnlineOnly(!showOnlineOnly)}
+              className="text-xs"
+            >
+              <Filter className="w-3 h-3 mr-1" />
+              {showOnlineOnly ? 'Show All' : 'Online Only'}
+            </Button>
+            <div className="flex items-center space-x-2 bg-gaming-primary/10 px-4 py-2 rounded-full">
+              <Users className="w-5 h-5 text-gaming-primary" />
+              <span className="text-sm font-bold text-gaming-primary">{filteredFriends.length}</span>
+            </div>
           </div>
         </div>
 
@@ -176,7 +209,9 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {friends.map((match, index) => (
+            {filteredFriends.map((match, index) => {
+              const presence = presenceMap[match.user_id];
+              return (
               <Card 
                 key={match.id}
                 className="bg-gradient-card border-gaming-primary/30 hover:border-gaming-primary/60 transform hover:scale-105 transition-all duration-500 group shadow-gaming hover:shadow-glow animate-fade-in"
@@ -220,11 +255,22 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
                   </DropdownMenu>
                   <div className="relative w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center mx-auto mb-4 text-3xl group-hover:scale-110 transition-transform duration-300 shadow-glow">
                     {match.username ? match.username.charAt(0).toUpperCase() : '👤'}
+                    <div className="absolute top-0 right-0">
+                      <PresenceDot 
+                        status={presence?.status || null}
+                        lastSeen={presence?.last_seen}
+                        size="md"
+                      />
+                    </div>
                   </div>
                   
                   <CardTitle className="text-xl mb-1 group-hover:text-gaming-primary transition-colors duration-300">
                     @{match.username}
                   </CardTitle>
+                  <PresenceStatusText 
+                    status={presence?.status || null}
+                    lastSeen={presence?.last_seen}
+                  />
                   
                   <div className="flex items-center justify-center space-x-1 mb-2">
                     <Star className="w-4 h-4 text-gaming-warning fill-current" />
@@ -282,7 +328,8 @@ const MatchedFriends = ({ onBack }: MatchedFriendsProps) => {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            );
+            })}
           </div>
         )}
 
