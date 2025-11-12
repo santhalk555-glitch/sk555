@@ -103,7 +103,6 @@ const QuizSession = ({ lobby, onBack }: QuizSessionProps) => {
             const { data: newSessionData, error: createError } = await supabase.functions.invoke(
               'quiz-session-start',
               {
-                method: 'POST',
                 body: { lobbyId: lobby.id }
               }
             );

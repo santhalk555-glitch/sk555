@@ -254,7 +254,6 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
       const { data: sessionData, error: sessionError } = await supabase.functions.invoke(
         'quiz-session-start',
         {
-          method: 'POST',
           body: { lobbyId: lobby.id }
         }
       );
