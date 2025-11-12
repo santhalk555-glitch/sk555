@@ -54,29 +54,17 @@ const CreateLobbyFlow = ({ onBack, onLobbyCreated }: CreateLobbyFlowProps) => {
 
       if (profileError) throw profileError;
 
-      // Get subject data
-      let subjectName = '';
-      let examSimpleId = null;
-      let isRRBJE = selectionData.subjectId.includes('rrb_je_') && selectionData.sourceType === 'exam';
-      
-      if (isRRBJE) {
-        // For RRB JE, get the stored subject name
-        const storedSubjectName = sessionStorage.getItem(`rrb_je_subject_${selectionData.subjectId}`);
-        subjectName = storedSubjectName || 'RRB JE Subject';
-        // For RRB JE, set exam_simple_id
-        examSimpleId = 'rrb-je';
-      } else {
-        // Fetch subject name
-        const { data: subjectData, error: subjectError } = await supabase
-          .from('subjects_hierarchy')
-          .select('name, exam_simple_id')
-          .eq('id', selectionData.subjectId)
-          .maybeSingle();
+      // Get subject data from database
+      const { data: subjectData, error: subjectError } = await supabase
+        .from('subjects_hierarchy')
+        .select('name, exam_simple_id')
+        .eq('id', selectionData.subjectId)
+        .maybeSingle();
 
-        if (subjectError) throw subjectError;
-        subjectName = subjectData?.name || 'Unknown Subject';
-        examSimpleId = subjectData?.exam_simple_id || selectionData.examId || null;
-      }
+      if (subjectError) throw subjectError;
+      
+      const subjectName = subjectData?.name || 'Unknown Subject';
+      const examSimpleId = subjectData?.exam_simple_id || selectionData.examId || null;
 
       const { data: lobby, error: lobbyError } = await supabase
         .from('game_lobbies')

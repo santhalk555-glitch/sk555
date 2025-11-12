@@ -5,8 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { X, BookOpen, Users, Crown, GraduationCap, Trophy, Target, Gamepad2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from './ui/use-toast';
-import { RRB_JE_ENGINEERING_BRANCHES } from '@/constants/profileOptions';
-
 // Define exams with technical + general streams
 const EXAMS_WITH_TECHNICAL_BRANCHES = [
   'RRB JE', 'RRB SSE', 'ISRO', 'DRDO', 'GATE', 'ESE/IES'
@@ -111,27 +109,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       const hasTechnicalBranches = EXAMS_WITH_TECHNICAL_BRANCHES.includes(selectedName);
       
       if (sourceType === 'exam' && hasTechnicalBranches) {
-        // For exams with technical branches (like RRB JE), show branch selection
-        if (selectedName === 'RRB JE') {
-          // Special handling for RRB JE - show engineering branches + General
-          const rrb_je_branches = [
-            ...Object.keys(RRB_JE_ENGINEERING_BRANCHES).map((branch, index) => ({
-              id: `rrb_je_${index}`,
-              name: branch,
-              exam_simple_id: 'rrb_je'
-            })),
-            {
-              id: 'rrb_je_general',
-              name: 'General',
-              exam_simple_id: 'rrb_je'
-            }
-          ];
-          setBranches(rrb_je_branches);
-          setLoading(false);
-          return;
-        }
-        
-        // For other technical exams, fetch from database
+        // Fetch branches from database for all technical exams
         const { data: examData } = await supabase
           .from('competitive_exams_list')
           .select('simple_id')
@@ -147,7 +125,17 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
           
           if (error) throw error;
           
-          setBranches(data || []);
+          // Add "General" branch for all technical exams
+          const branchesWithGeneral = [
+            ...(data || []),
+            {
+              id: `${examData.simple_id}_general`,
+              name: 'General',
+              exam_simple_id: examData.simple_id
+            }
+          ];
+          
+          setBranches(branchesWithGeneral);
         } else {
           setBranches([]);
         }
@@ -266,7 +254,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       setLoading(true);
       
       // Handle General branch - fetch general subjects from database
-      if (branchId === 'rrb_je_general' || branchId === 'general') {
+      if (branchId.endsWith('_general') || branchId === 'general') {
         if (formData.exam?.name) {
           await fetchSubjectsForExam(formData.exam.name, true);
         }
@@ -274,24 +262,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
         return;
       }
       
-      // Handle RRB JE technical branches - show technical subjects
-      if (branchId.startsWith('rrb_je_') && formData.exam?.name === 'RRB JE') {
-        const branchIndex = parseInt(branchId.replace('rrb_je_', ''));
-        const branchName = Object.keys(RRB_JE_ENGINEERING_BRANCHES)[branchIndex];
-        const branchSubjects = RRB_JE_ENGINEERING_BRANCHES[branchName as keyof typeof RRB_JE_ENGINEERING_BRANCHES];
-        
-        const rrb_je_subjects = branchSubjects.map((subject, index) => ({
-          id: `${branchId}_subject_${index}`,
-          name: subject,
-          branch_id: branchId
-        }));
-        
-        setSubjects(rrb_je_subjects);
-        setLoading(false);
-        return;
-      }
-      
-      // For other branches, fetch from subjects_hierarchy table
+      // For technical branches, fetch exam-specific subjects from database
       const { data: examData } = await supabase
         .from('competitive_exams_list')
         .select('simple_id')
@@ -304,9 +275,22 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
         return;
       }
       
+      // Fetch subjects that match the branch
+      const { data: branchData } = await supabase
+        .from('branches')
+        .select('simple_id')
+        .eq('id', branchId)
+        .maybeSingle();
+      
+      if (!branchData?.simple_id) {
+        setSubjects([]);
+        setLoading(false);
+        return;
+      }
+      
       const { data, error } = await supabase
         .from('subjects_hierarchy')
-        .select('id, name, simple_id')
+        .select('id, name, simple_id, exam_simple_id')
         .eq('exam_simple_id', examData.simple_id)
         .order('name');
       
@@ -423,11 +407,6 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
         .eq('name', formData.exam.name)
         .maybeSingle();
       examId = examData?.simple_id;
-    }
-    
-    // Store RRB JE subject name for later use in lobby creation
-    if (formData.subject && formData.subject.id.includes('rrb_je_')) {
-      sessionStorage.setItem(`rrb_je_subject_${formData.subject.id}`, formData.subject.name);
     }
     
     onSubjectSelect({
