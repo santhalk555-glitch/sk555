@@ -195,8 +195,17 @@ const LobbyWaitingRoom = ({ lobby: initialLobby, onBack, onQuizStarted }: LobbyW
         
         // Check if all players are ready - prevent multiple calls with loading check
         const allReady = data.length >= 2 && data.every((p: LobbyParticipant) => p.ready);
+        console.log('Auto-start check:', {
+          participantCount: data.length,
+          allReady,
+          isCreator,
+          lobbyStatus: lobby.status,
+          loading,
+          willAutoStart: allReady && isCreator && lobby.status === 'waiting' && !loading
+        });
+        
         if (allReady && isCreator && lobby.status === 'waiting' && !loading) {
-          console.log('All players ready! Auto-starting quiz...');
+          console.log('✅ All conditions met! Auto-starting quiz...');
           startQuiz();
         }
       }
