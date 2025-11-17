@@ -101,7 +101,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
       
       // Define general subject names that should ONLY appear in General branch
       // These should be filtered out from appearing as separate branches
-      const generalSubjectNames = ['Biology', 'Chemistry', 'Physics', 'Quantitative Aptitude', 'Reasoning Ability', 'Mathematics'];
+      const generalSubjectNames = ['Biology', 'Chemistry', 'Physics', 'Quantitative Aptitude', 'Reasoning Ability', 'Mathematics', 'Environment', 'Computer'];
       
       // Add "General" branch at the beginning (same as Quiz Practice Lobby)
       const generalBranch: Branch = {
@@ -217,7 +217,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
       setLoading(true);
       
       // Define general subject names that should ONLY appear in General branch
-      const generalSubjectNames = ['Quantitative Aptitude', 'Reasoning Ability', 'Physics', 'Chemistry', 'Biology', 'Mathematics'];
+      const generalSubjectNames = ['Quantitative Aptitude', 'Reasoning Ability', 'Physics', 'Chemistry', 'Biology', 'Mathematics', 'Environment', 'Computer'];
       
       // For "General" branch, load specific general subjects (from subjects_hierarchy with null exam_simple_id)
       if (branch.exam_simple_id === 'general' || branch.simple_id === 'general') {
@@ -433,8 +433,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
         topicName="Saved Questions"
         savedOnly={true}
         onBack={() => {
-          setShowSavedQuestions(false);
-          window.history.pushState({ section: 'lobby', lobbyView: 'practice', practiceView: 'branches' }, '', window.location.pathname);
+          window.history.back();
         }}
       />
     );
@@ -447,8 +446,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
         topicName={selectedTopic.name}
         savedOnly={false}
         onBack={() => {
-          setSelectedTopic(null);
-          window.history.pushState({ section: 'lobby', lobbyView: 'practice', practiceView: 'topics' }, '', window.location.pathname);
+          window.history.back();
         }}
       />
     );
@@ -479,16 +477,7 @@ const PracticeLobby = ({ onBack }: PracticeLobbyProps) => {
           <Button 
             variant="ghost" 
             onClick={() => {
-              if (selectedSubject) {
-                setSelectedSubject(null);
-                window.history.pushState({ section: 'lobby', lobbyView: 'practice', practiceView: 'subjects' }, '', window.location.pathname);
-              } else if (selectedBranch) {
-                setSelectedBranch(null);
-                window.history.pushState({ section: 'lobby', lobbyView: 'practice', practiceView: 'branches' }, '', window.location.pathname);
-              } else {
-                // Going back from branches view
-                window.history.back();
-              }
+              window.history.back();
             }}
             className="text-muted-foreground hover:text-foreground"
           >

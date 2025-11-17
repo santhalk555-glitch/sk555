@@ -163,7 +163,7 @@ const SubjectSelectionModal = ({ isOpen, onClose, onSubjectSelect }: SubjectSele
       
       // For general branch, fetch the common general subjects (they have null exam_simple_id)
       if (isGeneralBranch) {
-        const generalSubjectNames = ['Quantitative Aptitude', 'Reasoning Ability', 'Physics', 'Chemistry', 'Biology'];
+  const generalSubjectNames = ['Quantitative Aptitude', 'Reasoning Ability', 'Physics', 'Chemistry', 'Biology', 'Environment', 'Computer'];
         
         const { data, error } = await supabase
           .from('subjects_hierarchy')

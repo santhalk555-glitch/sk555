@@ -79,7 +79,7 @@ const GameLobby = ({ onBack, initialView }: GameLobbyProps) => {
 
   const handlePracticeLobby = () => {
     setShowPracticeLobby(true);
-    window.history.pushState({ section: 'lobby', lobbyView: 'practice' }, '', window.location.pathname);
+    window.history.replaceState({ section: 'lobby', lobbyView: 'practice' }, '', window.location.pathname);
   };
 
   const handleBackToMenu = () => {
@@ -125,7 +125,7 @@ const GameLobby = ({ onBack, initialView }: GameLobbyProps) => {
   if (showPracticeLobby) {
     return <PracticeLobby onBack={() => {
       setShowPracticeLobby(false);
-      navigateToView('menu');
+      window.history.back();
     }} />;
   }
 
