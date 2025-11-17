@@ -58,7 +58,6 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
           .from('saved_questions')
           .select('question_id', { count: 'exact', head: true })
           .eq('user_id', user?.id);
-
         if (error) throw error;
         setTotalCount(count || 0);
       } else {
@@ -66,12 +65,10 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
           .from('quiz_questions')
           .select('id', { count: 'exact', head: true })
           .eq('topic_id', topicId);
-
         if (error) throw error;
         setTotalCount(count || 0);
       }
     } catch (error) {
-      console.error('Error fetching total count:', error);
       setTotalCount(0);
     }
   };
@@ -81,37 +78,32 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
       setLoading(true);
       
       if (savedOnly) {
-        // Load saved questions in batches to avoid 1000-row cap
-        // First, fetch all saved question IDs in 1000-sized pages
         let allSavedIds: string[] = [];
-        let fetched = 0;
-        const total = totalCount;
-        while (fetched < total) {
-          const start = fetched;
-          const end = Math.min(fetched + 999, total - 1);
+        let start = 0;
+        const chunkSize = 1000;
+        while (true) {
+          const end = start + chunkSize - 1;
           const { data: savedIdsPage, error: savedIdsError } = await supabase
             .from('saved_questions')
             .select('question_id')
             .eq('user_id', user?.id)
             .range(start, end);
-
           if (savedIdsError) throw savedIdsError;
           const pageIds = (savedIdsPage || []).map(sq => sq.question_id);
           allSavedIds = allSavedIds.concat(pageIds);
-          fetched += pageIds.length;
-          if (pageIds.length === 0) break; // safety
+          if (!pageIds.length || pageIds.length < chunkSize) break;
+          start += chunkSize;
         }
 
-        if (allSavedIds.length === 0) {
+        if (!allSavedIds.length) {
           setQuestions([]);
-          setLoading(false);
+          setTotalCount(0);
           return;
         }
 
-        // Fetch questions in chunks of up to 1000 IDs
         const allQuestions: Question[] = [];
-        for (let i = 0; i < allSavedIds.length; i += 1000) {
-          const chunk = allSavedIds.slice(i, i + 1000);
+        for (let i = 0; i < allSavedIds.length; i += chunkSize) {
+          const chunk = allSavedIds.slice(i, i + chunkSize);
           const { data: chunkQuestions, error: questionsError } = await supabase
             .from('quiz_questions')
             .select('*')
@@ -122,23 +114,27 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
         }
 
         setQuestions(allQuestions);
+        setTotalCount(allQuestions.length);
       } else {
-        // Load all questions for topic in 1000-sized batches
-        const total = totalCount;
         const allQuestions: Question[] = [];
-        for (let start = 0; start < total; start += 1000) {
-          const end = Math.min(start + 999, total - 1);
+        let start = 0;
+        const chunkSize = 1000;
+        while (true) {
+          const end = start + chunkSize - 1;
           const { data: questionsData, error: questionsError } = await supabase
             .from('quiz_questions')
             .select('*')
             .eq('topic_id', topicId)
             .order('created_at')
             .range(start, end);
-
           if (questionsError) throw questionsError;
-          allQuestions.push(...(questionsData || []));
+          const batch = questionsData || [];
+          allQuestions.push(...batch);
+          if (!batch.length || batch.length < chunkSize) break;
+          start += chunkSize;
         }
         setQuestions(allQuestions);
+        setTotalCount(allQuestions.length);
       }
     } catch (error) {
       console.error('Error loading questions:', error);
