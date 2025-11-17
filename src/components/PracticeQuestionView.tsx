@@ -108,7 +108,7 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
             .from('quiz_questions')
             .select('*')
             .in('id', chunk)
-            .order('created_at');
+            .order('id', { ascending: true });
           if (questionsError) throw questionsError;
           allQuestions.push(...(chunkQuestions || []));
         }
@@ -125,7 +125,7 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
             .from('quiz_questions')
             .select('*')
             .eq('topic_id', topicId)
-            .order('created_at')
+            .order('id', { ascending: true })
             .range(start, end);
           if (questionsError) throw questionsError;
           const batch = questionsData || [];
@@ -135,6 +135,31 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
         }
         setQuestions(allQuestions);
         setTotalCount(allQuestions.length);
+
+        const { count } = await supabase
+          .from('quiz_questions')
+          .select('id', { count: 'exact', head: true })
+          .eq('topic_id', topicId);
+        const serverCount = count || allQuestions.length;
+        if (allQuestions.length < serverCount) {
+          let offset = allQuestions.length;
+          while (offset < serverCount) {
+            const end = offset + chunkSize - 1;
+            const { data: moreData, error: moreErr } = await supabase
+              .from('quiz_questions')
+              .select('*')
+              .eq('topic_id', topicId)
+              .order('id', { ascending: true })
+              .range(offset, Math.min(end, serverCount - 1));
+            if (moreErr) throw moreErr;
+            const moreBatch = moreData || [];
+            if (!moreBatch.length) break;
+            setQuestions(prev => [...prev, ...moreBatch]);
+            offset += moreBatch.length;
+            setTotalCount(offset);
+            if (moreBatch.length < chunkSize) break;
+          }
+        }
       }
     } catch (error) {
       console.error('Error loading questions:', error);
@@ -269,6 +294,66 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
   const startQuestion = currentPage * questionsPerPage;
   const endQuestion = Math.min(startQuestion + questionsPerPage, totalCount);
   const visibleQuestions = questions.slice(startQuestion, endQuestion);
+
+  useEffect(() => {
+    const ensurePageLoaded = async () => {
+      if (questions.length >= endQuestion) return;
+      if (!topicId && !savedOnly) return;
+      const pageStart = startQuestion;
+      const pageEnd = endQuestion - 1;
+      if (savedOnly) {
+        // For saved-only, fetch missing questions for this page by ids
+        // First get the ids needed for this page
+        let idsForPage: string[] = [];
+        let start = pageStart;
+        const chunkSize = 1000;
+        while (idsForPage.length < (pageEnd - pageStart + 1)) {
+          const { data } = await supabase
+            .from('saved_questions')
+            .select('question_id')
+            .eq('user_id', user?.id)
+            .range(start, start + chunkSize - 1);
+          const pageIds = (data || []).map(sq => sq.question_id);
+          idsForPage = idsForPage.concat(pageIds);
+          if (pageIds.length < chunkSize) break;
+          start += chunkSize;
+        }
+        const neededIds = idsForPage.slice(pageStart, pageEnd + 1);
+        if (neededIds.length) {
+          const { data: pageQuestions } = await supabase
+            .from('quiz_questions')
+            .select('*')
+            .in('id', neededIds)
+            .order('id', { ascending: true });
+          if (pageQuestions?.length) {
+            setQuestions(prev => {
+              const merged = prev.slice();
+              const to = Math.min(endQuestion, merged.length);
+              // Insert/append ensuring correct positions
+              const append = pageQuestions.filter(q => !merged.find(m => m.id === q.id));
+              return merged.concat(append);
+            });
+          }
+        }
+      } else {
+        const { data } = await supabase
+          .from('quiz_questions')
+          .select('*')
+          .eq('topic_id', topicId)
+          .order('id', { ascending: true })
+          .range(pageStart, pageEnd);
+        const batch = data || [];
+        if (batch.length) {
+          setQuestions(prev => {
+            const merged = prev.slice();
+            const append = batch.filter(q => !merged.find(m => m.id === q.id));
+            return merged.concat(append);
+          });
+        }
+      }
+    };
+    ensurePageLoaded();
+  }, [currentPage, totalCount]);
 
   if (loading) {
     return (
