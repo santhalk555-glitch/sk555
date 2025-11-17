@@ -40,55 +40,105 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
   const [savedQuestionIds, setSavedQuestionIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const questionsPerPage = 20;
   const { user } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
+    fetchTotalCount();
     loadQuestions();
     loadSavedQuestions();
   }, [topicId, savedOnly]);
+
+  const fetchTotalCount = async () => {
+    try {
+      if (savedOnly) {
+        const { count, error } = await supabase
+          .from('saved_questions')
+          .select('question_id', { count: 'exact', head: true })
+          .eq('user_id', user?.id);
+
+        if (error) throw error;
+        setTotalCount(count || 0);
+      } else {
+        const { count, error } = await supabase
+          .from('quiz_questions')
+          .select('id', { count: 'exact', head: true })
+          .eq('topic_id', topicId);
+
+        if (error) throw error;
+        setTotalCount(count || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching total count:', error);
+      setTotalCount(0);
+    }
+  };
 
   const loadQuestions = async () => {
     try {
       setLoading(true);
       
       if (savedOnly) {
-        // Load saved questions
-        const { data: savedData, error: savedError } = await supabase
-          .from('saved_questions')
-          .select('question_id')
-          .eq('user_id', user?.id);
+        // Load saved questions in batches to avoid 1000-row cap
+        // First, fetch all saved question IDs in 1000-sized pages
+        let allSavedIds: string[] = [];
+        let fetched = 0;
+        const total = totalCount;
+        while (fetched < total) {
+          const start = fetched;
+          const end = Math.min(fetched + 999, total - 1);
+          const { data: savedIdsPage, error: savedIdsError } = await supabase
+            .from('saved_questions')
+            .select('question_id')
+            .eq('user_id', user?.id)
+            .range(start, end);
 
-        if (savedError) throw savedError;
+          if (savedIdsError) throw savedIdsError;
+          const pageIds = (savedIdsPage || []).map(sq => sq.question_id);
+          allSavedIds = allSavedIds.concat(pageIds);
+          fetched += pageIds.length;
+          if (pageIds.length === 0) break; // safety
+        }
 
-        const questionIds = savedData?.map(sq => sq.question_id) || [];
-        
-        if (questionIds.length === 0) {
+        if (allSavedIds.length === 0) {
           setQuestions([]);
           setLoading(false);
           return;
         }
 
-        const { data: questionsData, error: questionsError } = await supabase
-          .from('quiz_questions')
-          .select('*')
-          .in('id', questionIds)
-          .range(0, 99999);
+        // Fetch questions in chunks of up to 1000 IDs
+        const allQuestions: Question[] = [];
+        for (let i = 0; i < allSavedIds.length; i += 1000) {
+          const chunk = allSavedIds.slice(i, i + 1000);
+          const { data: chunkQuestions, error: questionsError } = await supabase
+            .from('quiz_questions')
+            .select('*')
+            .in('id', chunk)
+            .order('created_at');
+          if (questionsError) throw questionsError;
+          allQuestions.push(...(chunkQuestions || []));
+        }
 
-        if (questionsError) throw questionsError;
-        setQuestions(questionsData || []);
+        setQuestions(allQuestions);
       } else {
-        // Load questions for topic
-        const { data: questionsData, error: questionsError } = await supabase
-          .from('quiz_questions')
-          .select('*')
-          .eq('topic_id', topicId)
-          .order('created_at')
-          .range(0, 99999);
+        // Load all questions for topic in 1000-sized batches
+        const total = totalCount;
+        const allQuestions: Question[] = [];
+        for (let start = 0; start < total; start += 1000) {
+          const end = Math.min(start + 999, total - 1);
+          const { data: questionsData, error: questionsError } = await supabase
+            .from('quiz_questions')
+            .select('*')
+            .eq('topic_id', topicId)
+            .order('created_at')
+            .range(start, end);
 
-        if (questionsError) throw questionsError;
-        setQuestions(questionsData || []);
+          if (questionsError) throw questionsError;
+          allQuestions.push(...(questionsData || []));
+        }
+        setQuestions(allQuestions);
       }
     } catch (error) {
       console.error('Error loading questions:', error);
@@ -219,9 +269,9 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
     }
   };
 
-  const totalPages = Math.ceil(questions.length / questionsPerPage);
+  const totalPages = Math.ceil(totalCount / questionsPerPage);
   const startQuestion = currentPage * questionsPerPage;
-  const endQuestion = Math.min(startQuestion + questionsPerPage, questions.length);
+  const endQuestion = Math.min(startQuestion + questionsPerPage, totalCount);
   const visibleQuestions = questions.slice(startQuestion, endQuestion);
 
   if (loading) {
@@ -279,7 +329,7 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
           
           <div className="text-center flex-1 min-w-[200px]">
             <h2 className="text-xl md:text-2xl font-bold text-primary">{topicName}</h2>
-            <p className="text-sm text-muted-foreground">{questions.length} Questions Available</p>
+            <p className="text-sm text-muted-foreground">{totalCount} Questions Available</p>
           </div>
 
           <Button
@@ -305,13 +355,13 @@ const PracticeQuestionView = ({ topicId, topicName, savedOnly, onBack }: Practic
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-muted-foreground">
-              Question {currentQuestionIndex + 1} of {questions.length}
+              Question {currentQuestionIndex + 1} of {totalCount}
             </span>
             <span className="text-sm font-semibold text-primary">
-              {Math.round(((currentQuestionIndex + 1) / questions.length) * 100)}% Complete
+              {totalCount > 0 ? Math.round(((currentQuestionIndex + 1) / totalCount) * 100) : 0}% Complete
             </span>
           </div>
-          <Progress value={((currentQuestionIndex + 1) / questions.length) * 100} className="h-3 bg-blue-100" />
+          <Progress value={totalCount > 0 ? ((currentQuestionIndex + 1) / totalCount) * 100 : 0} className="h-3 bg-blue-100" />
         </div>
 
         {/* Question Navigation with Pagination */}
